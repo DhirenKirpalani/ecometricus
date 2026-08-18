@@ -65,16 +65,15 @@ import {
   Link2,
   LogOut,
   DollarSign,
-  AlertTriangle
+  AlertTriangle,
+  Utensils,
+  Star,
+  Percent,
+  Receipt
 } from 'lucide-react';
 import FoodWasteChart from './FoodWasteChart';
 import WaterUsageChart from './WaterUsageChart';
-import FoodCostTemplateChart from './FoodCostTemplateChart';
-import LaborCostTemplateChart from './LaborCostTemplateChart';
-import SalesTemplateChart from './SalesTemplateChart';
-import CustomerSentimentChart from './CustomerSentimentChart';
-import AvgCheckTemplateChart from './AvgCheckTemplateChart';
-import ProfitMarginLuxuryChart from './ProfitMarginLuxuryChart';
+import KpiChart from './KpiChart';
 import FoodWasteIntelligence from './FoodWasteIntelligence';
 import ResourceIntelligence from './ResourceIntelligence';
 import LegalConsentModal from './LegalConsentModal';
@@ -1221,21 +1220,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     return (
       <button
         onClick={() => setActiveView(view)}
-        className={`relative flex items-center gap-2.5 px-4 py-2.5 rounded-lg transition-all duration-200 whitespace-nowrap group ${
+        className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all duration-200 whitespace-nowrap group ${
           active
-            ? 'bg-white/6 text-white'
-            : 'text-white/35 hover:text-white/70 hover:bg-white/3'
+            ? 'text-white'
+            : 'text-white/40 hover:text-white/80'
         }`}
       >
         <Icon
-          size={16}
-          className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/30 group-hover:text-white/50'}`}
+          size={15}
+          className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/25 group-hover:text-white/50'}`}
         />
-        <span className={`text-[11px] font-bold tracking-wide transition-colors ${active ? 'text-white' : ''}`}>
+        <span className={`text-[12px] font-semibold tracking-tight transition-colors ${active ? 'text-white' : ''}`}>
           {label}
         </span>
         {active && (
-          <span className="absolute -bottom-px left-3 right-3 h-[2px] rounded-full bg-brand-gold shadow-[0_0_8px_rgba(200,164,19,0.6)]" />
+          <span className="absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80" />
         )}
       </button>
     );
@@ -1426,11 +1425,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           return (
             <div className="flex items-end justify-between gap-4 shrink-0">
               <div>
-                <h2 className="text-3xl sm:text-4xl font-geometric font-black text-white leading-none tracking-tight">
-                  {greeting}, <span className="text-brand-gold">{firstName}</span>
+                <h2 className="text-2xl sm:text-3xl font-geometric font-bold text-white leading-none tracking-tight">
+                  {greeting}, <span className="text-brand-gold font-black">{firstName}</span>
                 </h2>
-                <p className="text-[11px] font-medium text-white/30 mt-2 tracking-wide">
-                  {currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} · {company.currentOutletName || 'All Outlets'}
+                <p className="text-[11px] font-medium text-white/35 mt-2 tracking-wide flex items-center gap-2">
+                  <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                  <span className="w-1 h-1 rounded-full bg-white/15" />
+                  <span>{company.currentOutletName || 'All Outlets'}</span>
                 </p>
               </div>
             </div>
@@ -1477,16 +1478,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-hidden">
             <div className="bg-brand-dark border border-white/8 rounded-2xl p-5 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
               {/* Main View Header */}
-              <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6 sm:mb-8 shrink-0">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-5 shrink-0">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.4em] text-brand-gold/50 mb-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-brand-gold/40 mb-1.5">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
                     {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
                     {activeView === PortalView.SYSTEM && "Raw System Response Stream"}
                   </p>
-                  <h3 className="text-xl sm:text-2xl font-geometric font-black text-white leading-tight">
+                  <h3 className="text-lg sm:text-xl font-geometric font-bold text-white/90 leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
                     {activeView === PortalView.IDENTITY && "Company Identity"}
                     {activeView === PortalView.TEAM && "Staff Registry"}
@@ -1499,18 +1500,29 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
                 {activeView === PortalView.DASHBOARD && (
                   <div className="space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col flex-grow overflow-y-auto scrollbar-hide pr-2">
-                    <div className="flex overflow-x-auto gap-2 p-1.5 bg-brand-dark border border-white/5 rounded-2xl w-full sm:w-fit shrink-0 scrollbar-hide">
+                    <div className="flex overflow-x-auto gap-1 w-full sm:w-fit shrink-0 scrollbar-hide">
                       {[
                         { id: DashboardTab.SUMMARIZED, label: 'Overview', icon: TrendingUp },
                         { id: DashboardTab.FOOD_WASTE, label: 'Food Waste', icon: Leaf },
                         { id: DashboardTab.ENERGY_WATER, label: 'Energy & Water', icon: Zap },
                         { id: DashboardTab.MILA_AI, label: 'Mila AI', icon: Cpu },
                         { id: DashboardTab.GAMIFICATION, label: 'Gamification', icon: Award },
-                      ].map((tab) => (
-                        <button key={tab.id} onClick={() => setDashboardTab(tab.id)} className={`whitespace-nowrap flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${dashboardTab === tab.id ? 'bg-brand-gold text-brand-dark' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                          <tab.icon size={14} /> {tab.label}
-                        </button>
-                      ))}
+                      ].map((tab) => {
+                        const active = dashboardTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setDashboardTab(tab.id)}
+                            className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all whitespace-nowrap ${
+                              active ? 'text-white' : 'text-white/40 hover:text-white/80'
+                            }`}
+                          >
+                            <tab.icon size={14} className={active ? 'text-brand-gold' : 'text-white/25'} />
+                            <span className="text-[12px] font-semibold tracking-tight">{tab.label}</span>
+                            {active && <span className="absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80" />}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {/* ADMIN CONTEXT FOR MILA WIDGET */}
@@ -1635,57 +1647,50 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                             return (
                               <div className="w-full max-w-full mb-8">
-                                {/* "User a dark-green background with Rounded Corners (20px) and a Thin Gold Border (1px)" */}
-                                <div className="bg-[#0f2420] border border-brand-gold/60 rounded-xl p-6 relative overflow-hidden shadow-xl">
+                                <div className="bg-[#0e1f1c] border border-white/8 rounded-2xl p-6 relative overflow-hidden shadow-xl">
 
                                   {/* HEADER SECTION */}
                                   <div className="flex justify-between items-start mb-6">
-                                    <div className="flex items-center gap-4">
-                                      {/* "Circular placeholder (24px) with a green outline, and bright green color icon" */}
-                                      <div className="w-8 h-8 rounded-full border border-brand-eco flex items-center justify-center shrink-0">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-9 h-9 rounded-lg bg-brand-eco/10 border border-brand-eco/25 flex items-center justify-center shrink-0">
                                         <ShieldCheck size={16} className="text-brand-eco" />
                                       </div>
-
-                                      {/* "Main Title: 'EARTH KEEPER'... Subtitle: 'CUMULATIVE ENGAGEMENT'" */}
-                                      <div className="flex flex-col">
-                                        <h3 className="text-[18px] font-bold text-white leading-none">EARTH KEEPER</h3>
-                                        <span className="text-[12px] font-black uppercase text-brand-gold tracking-wide mt-1">CUMULATIVE ENGAGEMENT</span>
+                                      <div>
+                                        <p className="text-[9px] font-black text-brand-gold/50 uppercase tracking-[0.3em]">Earth Keeper</p>
+                                        <h3 className="text-sm font-geometric font-black text-white leading-tight">Cumulative Engagement</h3>
                                       </div>
                                     </div>
 
-                                    {/* "STRICT RED DESIGN: Corrected ATTENTION badge" */}
-                                    <div className={`px-4 py-1.5 rounded-xl ${statusBg} ${statusText} text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 transition-all`}>
-                                      <Info size={12} strokeWidth={3} className="text-brand-gold" />
+                                    {/* Status badge */}
+                                    <div className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wide ${engagementPct >= 85 ? 'bg-green-500/15 text-green-400 border border-green-500/30' : engagementPct >= 65 ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/25' : 'bg-brand-alert/10 text-brand-alert border border-brand-alert/25'}`}>
                                       {statusLabel}
                                     </div>
                                   </div>
 
                                   {/* MAIN CONTENT AREA (Two-Column Layout) */}
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                                     {/* Left Column: Text */}
-                                    <div className="flex flex-col justify-center pl-4">
-                                      {/* "The large participation text... properly aligned and use the same muted grey/white" */}
-                                      <div className="text-5xl font-black text-white leading-none tracking-tight">
-                                        {engagementPct}% <span className="text-xl text-gray-400 font-bold uppercase tracking-wider block mt-2">PARTICIPATION</span>
+                                    <div className="flex flex-col justify-center">
+                                      <div className="text-4xl font-geometric font-black text-white leading-none">
+                                        {engagementPct}%
+                                        <span className="text-sm text-white/30 font-medium uppercase tracking-wide block mt-2">Participation</span>
                                       </div>
-                                      <p className="text-sm text-gray-400 mt-4 font-medium leading-relaxed max-w-sm">
+                                      <p className="text-xs text-white/30 mt-3 font-medium leading-relaxed max-w-sm">
                                         Cumulative tracking of sustainability reporting across all active outlets.
                                       </p>
                                     </div>
 
                                     {/* Right Column: Graphic */}
-                                    <div className="flex justify-center md:justify-end pr-4">
-                                      <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center">
-                                        <svg className="w-full h-full transform -rotate-90 drop-shadow-2xl" viewBox="0 0 128 128">
-                                          {/* Background Track - "Stroke Weight: Increase thickness... solid and substantial" */}
-                                          <circle cx="64" cy="64" r="52" stroke="#1a3b34" strokeWidth="12" fill="transparent" />
-                                          {/* Progress Bar */}
+                                    <div className="flex justify-center md:justify-end">
+                                      <div className="relative w-40 h-40 sm:w-44 sm:h-44 flex items-center justify-center">
+                                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 128 128">
+                                          <circle cx="64" cy="64" r="52" stroke="#1a3b34" strokeWidth="10" fill="transparent" />
                                           <circle
                                             cx="64"
                                             cy="64"
                                             r="52"
                                             stroke={chartColor}
-                                            strokeWidth="12"
+                                            strokeWidth="10"
                                             fill="transparent"
                                             strokeDasharray={2 * Math.PI * 52}
                                             strokeDashoffset={(2 * Math.PI * 52) - (engagementPct / 100) * (2 * Math.PI * 52)}
@@ -1693,12 +1698,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                             className="transition-all duration-1000 ease-out"
                                           />
                                         </svg>
-                                        {/* "LOGIC: Isolated container for perfect vertical/horizontal centering" */}
                                         <div className="absolute inset-0 flex flex-col items-center justify-center leading-none pointer-events-none">
-                                          <span className="text-4xl sm:text-5xl font-black text-white tracking-tighter" style={{ textShadow: '0 0 20px ' + chartColor + '40' }}>
-                                            {engagementPct}%
-                                          </span>
-                                          <span className="text-[10px] font-black uppercase text-brand-gold tracking-[0.2em] mt-1">ENGAGED</span>
+                                          <span className="text-3xl font-geometric font-black text-white">{engagementPct}%</span>
+                                          <span className="text-[9px] font-bold uppercase text-brand-gold/60 tracking-[0.2em] mt-1">Engaged</span>
                                         </div>
                                       </div>
                                     </div>
@@ -1712,78 +1714,125 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
 
 
-                          {/* KPIs REPORT Header - Section Title */}
-                          <div className="w-full max-w-full mt-12 mb-8">
-                            <h2 className="text-2xl sm:text-3xl font-geometric font-black text-white uppercase tracking-tight">KPIs REPORT</h2>
+                          {/* KPI Report section */}
+                          <div className="w-full max-w-full mt-8 mb-4">
+                            <div className="flex items-center gap-2.5">
+                              <BarChart3 size={16} className="text-brand-gold/50" />
+                              <h2 className="text-base font-geometric font-black text-white">KPI Report</h2>
+                              <div className="flex-grow h-px bg-white/5 ml-2" />
+                            </div>
                           </div>
 
-                          {/* Core Metrics Grid - KPI Overview - Aspect Ratios Applied */}
-                          <div className="w-full max-w-full grid grid-cols-1 gap-8 mb-12">
-                            <div className="w-full aspect-[4/3] lg:aspect-[16/9] min-h-[300px]">
-                              <FoodCostTemplateChart
-                                data={
-                                  user.role === 'admin'
-                                    ? (foodCostLogs.length > 0 ? foodCostLogs : ADMIN_MOCK_DATA)
-                                    : weeklyTrends
-                                }
+                          {/* Row 1: Food Cost + Labor Cost */}
+                          <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                            <div className="w-full h-[280px]">
+                              <KpiChart
+                                title="Food Cost"
+                                subtitle="Variance vs regional benchmark"
+                                icon={Utensils}
+                                iconColor="text-brand-gold"
+                                data={user.role === 'admin' ? (foodCostLogs.length > 0 ? foodCostLogs : ADMIN_MOCK_DATA) : weeklyTrends}
+                                dataKey="foodCost"
+                                multiSeries={user.role === 'admin'}
+                                seriesKey="outlet_code"
+                                outlets={(user.role === 'admin' && foodCostLogs.length === 0) ? DEFAULT_OUTLETS : (outlets.length > 0 ? outlets : DEFAULT_OUTLETS)}
                                 benchmark={effectiveParams.foodCostTarget}
-                                multiSeries={user.role === 'admin'}
-                                outlets={
-                                  // Ensure we use the matching outlets definition for the data source
-                                  (user.role === 'admin' && foodCostLogs.length === 0)
-                                    ? DEFAULT_OUTLETS
-                                    : (outlets.length > 0 ? outlets : DEFAULT_OUTLETS)
-                                }
+                                unit="%"
+                                yDomain={[20, 40]}
+                                yTicks={[20, 25, 30, 35, 40]}
+                                chartType="line"
                               />
                             </div>
-                            <div className="w-full aspect-[4/3] lg:aspect-[16/9] min-h-[300px]">
-                              <LaborCostTemplateChart
-                                data={
-                                  laborCostLogs.length > 0
-                                    ? laborCostLogs
-                                    : (user.role === 'admin' ? ADMIN_LABOR_MOCK_DATA : weeklyTrends)
-                                }
+                            <div className="w-full h-[280px]">
+                              <KpiChart
+                                title="Labor Cost"
+                                subtitle="Variance vs regional benchmark"
+                                icon={Users}
+                                iconColor="text-brand-gold"
+                                data={laborCostLogs.length > 0 ? laborCostLogs : (user.role === 'admin' ? ADMIN_LABOR_MOCK_DATA : weeklyTrends)}
+                                dataKey="laborCost"
                                 multiSeries={user.role === 'admin'}
-                                outlets={
-                                  (user.role === 'admin' && laborCostLogs.length === 0)
-                                    ? DEFAULT_OUTLETS
-                                    : (outlets.length > 0 ? outlets : DEFAULT_OUTLETS)
-                                }
+                                seriesKey="outlet_code"
+                                outlets={(user.role === 'admin' && laborCostLogs.length === 0) ? DEFAULT_OUTLETS : (outlets.length > 0 ? outlets : DEFAULT_OUTLETS)}
                                 benchmark={28}
+                                unit="%"
+                                yDomain={[15, 45]}
+                                yTicks={[20, 25, 30, 35, 40]}
+                                chartType="line"
                               />
                             </div>
+                          </div>
 
-                            {/* LUXURY BOUTIQUE MARGIN ROW - Full Width Placement */}
-                            <div className="w-full aspect-[4/3] lg:aspect-[16/9] min-h-[300px]">
-                              <ProfitMarginLuxuryChart
+                          {/* Row 2: Profit Margins + Total Sales */}
+                          <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                            <div className="w-full h-[280px]">
+                              <KpiChart
+                                title="Profit Margins"
+                                subtitle="Luxury boutique performance"
+                                icon={Percent}
+                                iconColor="text-brand-gold"
                                 data={profitMarginLogs}
-                                BENCHMARK_VALUE={25}
+                                dataKey="profitMargin"
+                                multiSeries={user.role === 'admin'}
+                                seriesKey="outlet_code"
                                 outlets={outlets.length > 0 ? outlets : DEFAULT_OUTLETS}
+                                benchmark={25}
+                                unit="%"
+                                yDomain={[0, 40]}
+                                yTicks={[0, 10, 20, 30, 40]}
+                                chartType="bar"
+                              />
+                            </div>
+
+                            <div className="w-full h-[280px]">
+                              <KpiChart
+                                title="Total Outlet Sales"
+                                subtitle="Weekly stacked breakdown"
+                                icon={DollarSign}
+                                iconColor="text-brand-gold"
+                                data={salesChartData}
+                                dataKey="total"
+                                benchmark={16500}
+                                unitPrefix="$"
+                                chartType="bar"
+                                stacked
+                                stackKeys={[
+                                  { key: 'food', name: 'Food', color: '#C8A413' },
+                                  { key: 'bev', name: 'Beverage', color: '#77B139' },
+                                ]}
+                                yDomain={[0, 35000]}
+                                yTicks={[0, 10000, 20000, 30000]}
+                                alertIfAbove={false}
                               />
                             </div>
                           </div>
 
-                          {/* Sales Chart Section */}
-                          <div className="w-full max-w-full grid grid-cols-1 gap-8 mb-12">
-                            <div className="w-full aspect-[4/3] lg:aspect-[16/9] min-h-[300px]">
-                              <SalesTemplateChart data={salesChartData} benchmark={16500} />
-                            </div>
-                          </div>
-
-                          {/* Customer Sentiment Section (Full Width) */}
-                          <div className="w-full max-w-full grid grid-cols-1 gap-8 mb-12">
-                            <div className="w-full aspect-[4/3] lg:aspect-[16/9] min-h-[300px]">
-                              <CustomerSentimentChart
+                          {/* Row 3: Customer Sentiment + Avg Check */}
+                          <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                            <div className="w-full h-[280px]">
+                              <KpiChart
+                                title="Customer Sentiment"
+                                subtitle="Variance vs regional benchmark"
+                                icon={Star}
+                                iconColor="text-brand-gold"
                                 data={sentimentLogs}
-                                benchmark={4.5}
+                                dataKey="rating_value"
+                                multiSeries={user.role === 'admin'}
+                                seriesKey="outlet_code"
                                 outlets={outlets.length > 0 ? outlets : DEFAULT_OUTLETS}
+                                benchmark={4.5}
+                                yDomain={[3, 5]}
+                                yTicks={[3, 3.5, 4, 4.5, 5]}
+                                chartType="line"
+                                alertIfAbove={false}
                               />
                             </div>
-                          </div>
-
-                          <div className="w-full max-w-full grid grid-cols-1 gap-8 mb-12">
-                            <div className="w-full aspect-[4/3] lg:aspect-[16/9] min-h-[300px]">
-                              <AvgCheckTemplateChart
+                            <div className="w-full h-[280px]">
+                              <KpiChart
+                                title="Avg Check"
+                                subtitle="Rolling monthly average"
+                                icon={Receipt}
+                                iconColor="text-brand-gold"
                                 data={[
                                   { day: 'Sun', restaurant: 45, bar: 32, banquets: 60, rollingAverage: 45.6 },
                                   { day: 'Mon', restaurant: 42, bar: 35, banquets: 0, rollingAverage: 44.2 },
@@ -1793,7 +1842,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   { day: 'Fri', restaurant: 55, bar: 45, banquets: 70, rollingAverage: 51.0 },
                                   { day: 'Sat', restaurant: 60, bar: 50, banquets: 80, rollingAverage: 53.5 }
                                 ]}
+                                dataKey="rollingAverage"
                                 benchmark={47}
+                                unitPrefix="$"
+                                chartType="composed"
+                                stacked
+                                stackKeys={[
+                                  { key: 'restaurant', name: 'Restaurant', color: '#C8A413' },
+                                  { key: 'bar', name: 'Bar', color: '#77B139' },
+                                  { key: 'banquets', name: 'Banquets', color: '#3B82F6' },
+                                ]}
+                                rollingAverageKey="rollingAverage"
+                                yDomain={[0, 90]}
+                                yTicks={[0, 30, 60, 90]}
+                                alertIfAbove={false}
                               />
                             </div>
                           </div>
