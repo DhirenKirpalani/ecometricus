@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Page, UserProfile } from './types';
 import Navbar from './components/Navbar';
 import LandingPage from './components/LandingPage';
@@ -11,41 +12,119 @@ import DashboardPage from './components/DashboardPage';
 import { supabase } from './lib/supabase';
 import StaffPortal from './components/StaffPortal';
 import SupervisorDashboard from './components/SupervisorDashboard';
+import AssessmentForm from './components/AssessmentForm';
+import PrivacyPage from './components/PrivacyPage';
+import TermsPage from './components/TermsPage';
+import ContactPage from './components/ContactPage';
 import Footer from './components/Footer';
 
+// ── URL ↔ Page mappings ───────────────────────────────────────────────────────
+const PAGE_TO_PATH: Record<Page, string> = {
+  [Page.HOME]:                 '/',
+  [Page.ABOUT]:                '/about',
+  [Page.FAQ]:                  '/faq',
+  [Page.SIGN_IN]:              '/login',
+  [Page.SIGN_UP]:              '/signup',
+  [Page.FORGOT_PASSWORD]:      '/forgot-password',
+  [Page.DASHBOARD]:            '/dashboard',
+  [Page.STAFF_PORTAL]:         '/staff',
+  [Page.SUPERVISOR_DASHBOARD]: '/supervisor',
+  [Page.ASSESSMENT]:           '/assessment',
+  [Page.EARLY_ACCESS]:         '/early-access',
+  [Page.PRIVACY]:              '/privacy',
+  [Page.TERMS]:                '/terms',
+  [Page.CONTACT]:              '/contact',
+};
+
+const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
+  Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page as Page])
+);
+
+const pathToPage = (pathname: string): Page =>
+  PATH_TO_PAGE[pathname] ?? Page.HOME;
+
+// ─────────────────────────────────────────────────────────────────────────────
 const App: React.FC = () => {
-  const isDev = import.meta.env.DEV;
-  
-  // 🛡️ Ironclad MVP Path Bypass (Top-Level Constant for Immediate Detection)
-  const isMVPPath = typeof window !== 'undefined' && (
-                    /mvp/i.test(window.location.pathname) || 
-                    /mvp/i.test(window.location.hash) || 
-                    /mvp/i.test(window.location.search) ||
-                    sessionStorage.getItem('ecometricus_mvp_bypass') === 'true');
+  const navigate   = useNavigate();
+  const location   = useLocation();
 
-  // Persistence: Once unlocked by URL, keep unlocked for session
-  if (typeof window !== 'undefined' && !sessionStorage.getItem('ecometricus_mvp_bypass') && isMVPPath) {
-    sessionStorage.setItem('ecometricus_mvp_bypass', 'true');
-  }
-
-  const [currentPage, setCurrentPage] = useState<Page>(Page.HOME);
+  const [currentPage, setCurrentPageState] = useState<Page>(() =>
+    pathToPage(location.pathname)
+  );
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
-  // Simple scroll to top on page change
+  // Sync state when browser back/forward is used
+  useEffect(() => {
+    const page = pathToPage(location.pathname);
+    setCurrentPageState(page);
+  }, [location.pathname]);
+
+  // Scroll to top on page change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
+  // ── Handle email confirmation redirect ──
+  // When a user clicks the confirmation link in their email, Supabase fires
+  // SIGNED_IN with event type 'EMAIL_CONFIRMED'. We detect this and route them
+  // straight to the dashboard instead of landing on the home page.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+          // Only auto-route on email confirmation (not every login, which the
+          // AuthPage handleSubmit already handles)
+          if (event === 'SIGNED_IN' && !currentUser) {
+            const authUser = session.user;
+            const meta = authUser.user_metadata || {};
+            const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
+            const role = meta.role || 'admin';
+            const position = role === 'admin' ? 'GM' : role === 'manager' ? 'Outlet Manager' : role === 'chef' ? 'Head Chef' : 'Supervisor';
+
+            const profile: UserProfile = {
+              id: authUser.id,
+              fullName,
+              email: authUser.email || '',
+              role: role as any,
+              position: position as any,
+              outletCode: meta.outlet_code || 'ROY02',
+              legal_consent: true,
+            };
+
+            setCurrentUser(profile);
+            const targetPage =
+              role === 'admin' || role === 'manager' ? Page.DASHBOARD :
+              role === 'supervisor' ? Page.SUPERVISOR_DASHBOARD :
+              Page.STAFF_PORTAL;
+            const path = PAGE_TO_PATH[targetPage];
+            navigate(path);
+            setCurrentPageState(targetPage);
+          }
+        }
+      }
+    );
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
+  // Navigation handler: updates both URL and state
+  const handleNavigate = useCallback((page: Page) => {
+    const path = PAGE_TO_PATH[page] ?? '/';
+    navigate(path);
+    setCurrentPageState(page);
+  }, [navigate]);
+
   const handleLogin = useCallback((user: UserProfile) => {
     setCurrentUser(user);
     if (user.role === 'admin' || user.role === 'manager') {
-      setCurrentPage(Page.DASHBOARD);
+      handleNavigate(Page.DASHBOARD);
     } else if (user.role === 'supervisor') {
-      setCurrentPage(Page.SUPERVISOR_DASHBOARD);
+      handleNavigate(Page.SUPERVISOR_DASHBOARD);
     } else {
-      setCurrentPage(Page.STAFF_PORTAL);
+      handleNavigate(Page.STAFF_PORTAL);
     }
-  }, []);
+  }, [handleNavigate]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -53,8 +132,6 @@ const App: React.FC = () => {
     } catch (e) {
       console.warn("Supabase signout failed", e);
     } finally {
-      // Force a hard reload to completely destroy any lingering React state loops
-      // and drop the user back at the clean authentication screen.
       window.location.href = '/';
     }
   }, []);
@@ -66,41 +143,56 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case Page.HOME:
-        // Show real app if on localhost, or if using the /MVP bypass path (url or session flag).
-        // Otherwise, show the Under Construction shield on production.
-        return (isMVPPath) ? <LandingPage onNavigate={setCurrentPage} /> : <UnderConstruction />;
+        return <LandingPage onNavigate={handleNavigate} isLoggedIn={!!currentUser} />;
+      case Page.EARLY_ACCESS:
+        return <UnderConstruction onNavigate={handleNavigate} />;
+      case Page.ASSESSMENT:
+        return <AssessmentForm onNavigate={handleNavigate} />;
       case Page.ABOUT:
         return <AboutPage />;
       case Page.FAQ:
         return <FAQPage />;
+      case Page.PRIVACY:
+        return <PrivacyPage />;
+      case Page.TERMS:
+        return <TermsPage />;
+      case Page.CONTACT:
+        return <ContactPage />;
       case Page.DASHBOARD:
-        return currentUser ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} /> : <LandingPage onNavigate={setCurrentPage} />;
+        return currentUser
+          ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
+          : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
       case Page.SUPERVISOR_DASHBOARD:
-        return currentUser ? <SupervisorDashboard user={currentUser} onLogout={handleLogout} /> : <LandingPage onNavigate={setCurrentPage} />;
+        return currentUser
+          ? <SupervisorDashboard user={currentUser} onLogout={handleLogout} />
+          : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
       case Page.STAFF_PORTAL:
-        return currentUser ? <StaffPortal user={currentUser} onLogout={handleLogout} /> : <LandingPage onNavigate={setCurrentPage} />;
+        return currentUser
+          ? <StaffPortal user={currentUser} onLogout={handleLogout} />
+          : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
       case Page.SIGN_IN:
       case Page.SIGN_UP:
       case Page.FORGOT_PASSWORD:
-        return <AuthPage currentView={currentPage} onNavigate={setCurrentPage} onLogin={handleLogin} />;
+        return <AuthPage currentView={currentPage} onNavigate={handleNavigate} onLogin={handleLogin} />;
       default:
-        return <LandingPage onNavigate={setCurrentPage} />;
+        return <LandingPage onNavigate={handleNavigate} isLoggedIn={!!currentUser} />;
     }
   };
 
-  // Nav is hidden for portals; for HOME, only hide it if we are showing UnderConstruction (non-dev)
-  const hideNavigation = currentPage === Page.STAFF_PORTAL || 
-                        currentPage === Page.SUPERVISOR_DASHBOARD || 
-                        currentPage === Page.DASHBOARD || 
-                        (currentPage === Page.HOME && !isMVPPath);
+  const hideNavigation =
+    currentPage === Page.STAFF_PORTAL ||
+    currentPage === Page.SUPERVISOR_DASHBOARD ||
+    currentPage === Page.DASHBOARD ||
+    currentPage === Page.ASSESSMENT ||
+    currentPage === Page.EARLY_ACCESS;
 
   return (
     <div className="min-h-screen flex flex-col bg-brand-dark text-white font-body selection:bg-brand-gold/30 selection:text-brand-gold">
-      {!hideNavigation && <Navbar currentPage={currentPage} onNavigate={setCurrentPage} />}
+      {!hideNavigation && <Navbar currentPage={currentPage} onNavigate={handleNavigate} isLoggedIn={!!currentUser} />}
       <main className="flex-grow">
         {renderPage()}
       </main>
-      {!hideNavigation && <Footer onNavigate={setCurrentPage} />}
+      {!hideNavigation && <Footer onNavigate={handleNavigate} currentPage={currentPage} />}
     </div>
   );
 };

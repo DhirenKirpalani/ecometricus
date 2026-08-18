@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate as useRouterNavigate } from 'react-router-dom';
 import MilaWidget from './MilaWidget';
 import GamificationHub from './GamificationHub';
 import { supabase } from '../lib/supabase';
@@ -361,6 +362,7 @@ const ADMIN_SENTIMENT_MOCK_DATA = [
 ];
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateUser }) => {
+  const routerNavigate = useRouterNavigate();
   const [activeView, setActiveView] = useState<PortalView>(PortalView.DASHBOARD);
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>(DashboardTab.SUMMARIZED);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
@@ -1214,15 +1216,30 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     }))
   }, null, 2), [company, outlets, auditReport, params, users, currentTimezone, manualOutletSettings]);
 
-  const SidebarItem: React.FC<{ view: PortalView; icon: React.ElementType; label: string }> = ({ view, icon: Icon, label }) => (
-    <button
-      onClick={() => setActiveView(view)}
-      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 group whitespace-nowrap ${activeView === view ? 'bg-brand-gold text-brand-dark shadow-lg scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-    >
-      <Icon size={16} className={activeView === view ? 'text-brand-dark' : 'text-brand-gold'} />
-      <span className="text-[9px] font-black uppercase tracking-[0.15em]">{label}</span>
-    </button>
-  );
+  const SidebarItem: React.FC<{ view: PortalView; icon: React.ElementType; label: string }> = ({ view, icon: Icon, label }) => {
+    const active = activeView === view;
+    return (
+      <button
+        onClick={() => setActiveView(view)}
+        className={`relative flex items-center gap-2.5 px-4 py-2.5 rounded-lg transition-all duration-200 whitespace-nowrap group ${
+          active
+            ? 'bg-white/6 text-white'
+            : 'text-white/35 hover:text-white/70 hover:bg-white/3'
+        }`}
+      >
+        <Icon
+          size={16}
+          className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/30 group-hover:text-white/50'}`}
+        />
+        <span className={`text-[11px] font-bold tracking-wide transition-colors ${active ? 'text-white' : ''}`}>
+          {label}
+        </span>
+        {active && (
+          <span className="absolute -bottom-px left-3 right-3 h-[2px] rounded-full bg-brand-gold shadow-[0_0_8px_rgba(200,164,19,0.6)]" />
+        )}
+      </button>
+    );
+  };
 
   // Benchmarking Engine Values derived from selected profile
   const isManualBenchmark = params.benchmarkRegion === 'Manual';
@@ -1333,118 +1350,149 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     }
   };
 
-  // 🛡️ Legal Consent Gate Logic (Admin Only)
-  // 🛡️ Legal Consent Gate Logic
-  const isPendingConsent = user.role?.toLowerCase() === 'admin' && !user.legal_consent;
+  // Legal consent is captured at sign-up via the Terms checkbox — no second modal needed.
+  const isPendingConsent = false;
 
   // STRICT RULE OVERRIDE: Spinner Lock until hydration is completed
   if (isHydrating) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#030907] text-brand-gold flex-col gap-4">
-        <Loader2 className="animate-spin" size={48} />
-        <p className="text-[10px] font-black uppercase tracking-[0.2em]">INITIALIZING SECURE DATALINK...</p>
+      <div className="min-h-screen flex items-center justify-center bg-brand-dark text-white flex-col gap-6">
+        <div className="w-12 h-12 rounded-full border-2 border-brand-gold/20 border-t-brand-gold animate-spin" />
+        <p className="text-sm font-medium text-white/40">Loading your dashboard…</p>
       </div>
     );
   }
 
   return (
     <div className={`relative min-h-screen ${isPendingConsent ? 'overflow-hidden' : ''}`}>
-      {/* 🛡️ Header Profile (Outside the blur/block layer for Exit access) */}
-      <header className="sticky top-0 z-[9999] pointer-events-auto bg-brand-dark/95 backdrop-blur-xl border-b-2 border-brand-gold/50 h-24 sm:h-32 shrink-0 shadow-lg px-4 sm:px-8">
-        <div className="max-w-[1920px] mx-auto h-full flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Logo size="md" withLabel />
-            <div className="hidden xs:block">
-              <h1 className="text-base font-geometric font-bold text-white uppercase tracking-tight">Ecometricus Portal</h1>
-              <p className="text-[8px] font-black text-brand-gold uppercase tracking-[0.4em]">Admin Command — {company.currentOutletCode || 'GLOBAL'}</p>
-            </div>
-          </div>
+      {/* ── Navbar ── */}
+      <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-white/6"
+        style={{ background: 'linear-gradient(180deg, #0e1f1c 0%, rgba(14,31,28,0.97) 100%)', backdropFilter: 'blur(20px)' }}>
 
-          <div className="flex flex-col items-end text-right">
-            <span className="text-sm font-geometric font-bold text-white uppercase tracking-tight">
-              {user.fullName} | <span className="text-brand-gold">{user.position}</span>
-            </span>
-            <span className="text-[10px] font-black text-brand-gold uppercase tracking-[0.2em] mt-0.5">
-              Outlet: <span className="text-white">{company.currentOutletName || 'All Outlets'}</span>
-            </span>
-            <div className="flex items-center gap-4 mt-1">
-              <div className="flex items-center gap-2 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em]">
-                <Clock size={12} className="text-brand-gold/60" />
-                <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {currentTime.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
-              </div>
-              <button
-                onClick={onLogout}
-                className="relative z-50 pointer-events-auto cursor-pointer flex items-center gap-2 px-3 py-1 bg-brand-dark rounded-full border border-brand-alert/30 text-brand-alert hover:bg-brand-alert hover:text-white text-[8px] font-black uppercase tracking-widest transition-all shadow-lg ml-2"
-              >
-                <LogOut size={10} /> Exit
-              </button>
+        <div className="max-w-[1920px] mx-auto h-14 px-4 sm:px-6 flex items-center justify-between gap-4">
+
+          {/* ── Left: Logo ── */}
+          <button
+            onClick={() => routerNavigate('/')}
+            className="hover:opacity-80 transition-opacity shrink-0"
+            aria-label="Go to home page"
+          >
+            <Logo size="sm" withLabel />
+          </button>
+
+          {/* ── Right: user + logout ── */}
+          <div className="flex items-center gap-3 shrink-0">
+
+            {/* Avatar */}
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
+              <span className="text-brand-gold text-sm font-black leading-none">{user.fullName?.[0] ?? 'A'}</span>
             </div>
+
+            {/* Name + role */}
+            <div className="hidden sm:block text-left leading-tight">
+              <p className="text-[13px] font-semibold text-white">{user.fullName}</p>
+              <p className="text-[10px] text-brand-gold/60 font-medium tracking-wide mt-0.5">
+                {user.position}
+              </p>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block w-px h-7 bg-white/8" />
+
+            {/* Logout */}
+            <button
+              onClick={onLogout}
+              title="Log out"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white/30 hover:text-brand-alert hover:bg-brand-alert/8 transition-all"
+            >
+              <LogOut size={14} />
+              <span className="hidden lg:inline text-[11px] font-medium">Log out</span>
+            </button>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-gold to-transparent shadow-[0_0_15px_#C8A413]"></div>
       </header>
 
       {/* Background Dashboard Container with Blur Toggle */}
       <div className={`transition-all duration-1000 flex flex-col min-h-screen ${isPendingConsent ? 'blur-2xl grayscale pointer-events-none' : ''}`}>
-        <div className="flex-grow flex flex-col bg-[#030907] text-gray-100 font-sans selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
+        <div className="flex-grow flex flex-col bg-[#0a1a17] text-gray-100 font-sans selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
 
       <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8 flex-grow overflow-hidden">
-        {/* Horizontal Navigation Menu - Stacked Layout */}
-        <div className="w-full bg-brand-dark border border-brand-gold/20 rounded-[24px] px-8 py-6 flex flex-col gap-6 shadow-xl backdrop-blur-sm shrink-0">
 
-          {/* Top Row: Title & Action Button */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-3xl sm:text-4xl font-geometric font-black text-white uppercase leading-none tracking-tight">
-                ADMINISTRATIVE <span className="text-brand-gold">CORE HUB</span>
-              </h2>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.4em] mt-2 ml-1">Access Level: Global</p>
+        {/* Greeting — below navbar, above nav tabs */}
+        {(() => {
+          const h = currentTime.getHours();
+          const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+          const firstName = user.fullName?.split(' ')[0] ?? 'there';
+          return (
+            <div className="flex items-end justify-between gap-4 shrink-0">
+              <div>
+                <h2 className="text-3xl sm:text-4xl font-geometric font-black text-white leading-none tracking-tight">
+                  {greeting}, <span className="text-brand-gold">{firstName}</span>
+                </h2>
+                <p className="text-[11px] font-medium text-white/30 mt-2 tracking-wide">
+                  {currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} · {company.currentOutletName || 'All Outlets'}
+                </p>
+              </div>
             </div>
+          );
+        })()}
 
+        {/* Top navigation card */}
+        {/* Section nav — pill tabs */}
+        <div className="w-full flex items-center justify-between gap-4 shrink-0 border-b border-white/6 pb-1">
+
+          {/* Nav tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+            <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
+            <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
+            <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
+            <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 pb-1">
+            {/* Save button */}
             {activeView !== PortalView.DASHBOARD && activeView !== PortalView.SYSTEM && (
               <button
                 onClick={handleSaveAll}
                 disabled={saveStatus !== 'idle'}
-                className={`w-full sm:w-auto bg-brand-eco text-brand-dark px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-xl ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} ${saveStatus === 'success' ? 'bg-brand-eco' : ''}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
               >
-                {saveStatus === 'saving' ? <RefreshCcw size={16} className="animate-spin" /> : saveStatus === 'success' ? <Check size={16} /> : <Save size={16} />}
-                {saveStatus === 'success' ? "Success" : activeView === PortalView.TEAM ? "Role Saved" : "Update HUB"}
+                {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
+                {saveStatus === 'success' ? 'Saved' : 'Save'}
               </button>
             )}
-          </div>
 
-          {/* Bottom Row: Navigation Tabs */}
-          <div className="w-full h-[1px] bg-brand-gold/10"></div>
-
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide w-full pb-1">
-            <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Dashboard" />
-            <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Identity" />
-            <SidebarItem view={PortalView.TEAM} icon={Users} label="Personnel" />
-            <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Parameters" />
-            <SidebarItem view={PortalView.SYSTEM} icon={Database} label="System" />
+            {/* System diagnostics — icon-only */}
+            <button
+              onClick={() => setActiveView(PortalView.SYSTEM)}
+              title="System Diagnostics"
+              className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all ${activeView === PortalView.SYSTEM ? 'bg-brand-gold/15 border-brand-gold/40 text-brand-gold' : 'border-white/8 text-white/25 hover:border-white/20 hover:text-white/50'}`}
+            >
+              <Database size={15} />
+            </button>
           </div>
         </div>
 
         <>
           <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-hidden">
-            <div className="bg-brand-dark border border-brand-gold/20 rounded-[30px] sm:rounded-[40px] p-5 sm:p-8 lg:p-12 shadow-2xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
+            <div className="bg-brand-dark border border-white/8 rounded-2xl p-5 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
               {/* Main View Header */}
-              <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8 sm:mb-12 shrink-0">
-                <div className="max-w-full">
-                  <h3 className="text-2xl sm:text-3xl font-geometric font-bold text-white uppercase tracking-tight truncate">
-                    {activeView === PortalView.DASHBOARD && "Operational Insights"}
-                    {activeView === PortalView.IDENTITY && "Company Identity"}
-                    {activeView === PortalView.TEAM && "Staff Registry"}
-                    {activeView === PortalView.PARAMETERS && "The Benchmarking Engine"}
-                    {activeView === PortalView.SYSTEM && "Diagnostics"}
-                  </h3>
-                  <p className="text-gray-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] mt-1">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6 sm:mb-8 shrink-0">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.4em] text-brand-gold/50 mb-1">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
                     {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
-                    {activeView === PortalView.PARAMETERS && "System Logic: Metric Units & KPI Thresholds"}
+                    {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
                     {activeView === PortalView.SYSTEM && "Raw System Response Stream"}
                   </p>
+                  <h3 className="text-xl sm:text-2xl font-geometric font-black text-white leading-tight">
+                    {activeView === PortalView.DASHBOARD && "Operational Insights"}
+                    {activeView === PortalView.IDENTITY && "Company Identity"}
+                    {activeView === PortalView.TEAM && "Staff Registry"}
+                    {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
+                    {activeView === PortalView.SYSTEM && "System Diagnostics"}
+                  </h3>
                 </div>
               </div>
 
@@ -1474,62 +1522,66 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {/* MILA ACTIONABLE INTELLIGENCE - ADMIN CUMULATIVE VIEW */}
                           {/* "Mount this duplicate at the absolute top of the Overview tab content... directly above the Earth Keeper Engagement % chart" */}
                           <div className="w-full max-w-full mb-8">
-                            <div className="bg-[#0f2420] border-2 border-brand-gold/60 rounded-[40px] p-8 sm:p-14 relative overflow-hidden group shadow-2xl">
-                              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                                <MessageSquare size={160} className="text-brand-gold" />
-                              </div>
-                              <div className="flex items-center gap-6 mb-12">
-                                <div className="w-16 h-16 bg-brand-gold rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(200,164,19,0.4)] border-2 border-white/20 shrink-0">
-                                  <Cpu className="text-brand-dark" size={32} />
+                            <div className="bg-[#0e1f1c] border border-brand-gold/25 rounded-2xl p-6 sm:p-8 relative overflow-hidden group shadow-xl">
+                              {/* Subtle glow */}
+                              <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'radial-gradient(ellipse at 80% 0%, rgba(200,164,19,0.05), transparent 55%)'}} />
+
+                              <div className="flex items-center gap-4 mb-6">
+                                <div className="w-11 h-11 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+                                  <Cpu className="text-brand-gold" size={20} />
                                 </div>
                                 <div>
-                                  <h3 className="text-2xl font-geometric font-black text-white uppercase tracking-tight leading-none">MILA ACTIONABLE INTELLIGENCE: SUSTAINABILITY PERFORMANCE PROPORTIONAL SCALING</h3>
-                                  <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.4em] mt-2">OPERATIONAL ESG STRATEGY HUB</p>
+                                  <p className="text-[9px] font-black text-brand-gold/60 uppercase tracking-[0.35em]">Mila Intelligence</p>
+                                  <h3 className="text-base font-geometric font-black text-white leading-tight">ESG Performance Snapshot</h3>
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10 text-left">
-                                {/* Carbon Impact from Waste */}
-                                <div className="space-y-4 p-8 bg-brand-dark/40 rounded-[32px] border-2 border-white/10 shadow-inner group/card hover:border-brand-gold/40 transition-all">
-                                  <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest flex items-center gap-3">
-                                    <Cloud size={16} /> Carbon Lifecycle
+                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10">
+                                {/* Carbon */}
+                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-brand-gold/25 transition-all group/card">
+                                  <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest flex items-center gap-2">
+                                    <Cloud size={13} /> Carbon Lifecycle
                                   </span>
-                                  <div className="text-3xl font-black text-white transition-all group-hover/card:text-brand-gold">
-                                    {impacts.carbonImpact.toFixed(1)} <span className="text-[11px] font-light text-gray-500 uppercase">KG CO2E</span>
+                                  <div className="text-2xl font-geometric font-black text-white group-hover/card:text-brand-gold transition-colors">
+                                    {impacts.carbonImpact.toFixed(1)}<span className="text-xs font-normal text-white/30 ml-1">kg CO₂e</span>
                                   </div>
-                                  <div className="flex items-center gap-2 mt-2">
-                                    <AlertTriangle className="text-brand-alert" size={14} />
-                                    <p className="text-[9px] text-brand-alert uppercase font-bold tracking-wider">OPERATIONAL DEVIATION IMPACT.</p>
+                                  <div className="flex items-center gap-1.5 mt-auto">
+                                    <AlertTriangle className="text-brand-alert" size={12} />
+                                    <p className="text-[9px] text-brand-alert/80 uppercase font-bold tracking-wide">Deviation impact</p>
                                   </div>
                                 </div>
 
-                                {/* Water Impact from Waste */}
-                                <div className="space-y-4 p-8 bg-brand-dark/40 rounded-[32px] border-2 border-white/10 shadow-inner group/card hover:border-blue-500/40 transition-all">
-                                  <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest flex items-center gap-3">
-                                    <Droplets size={16} /> Water Resource
+                                {/* Water */}
+                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-blue-500/30 transition-all group/card">
+                                  <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest flex items-center gap-2">
+                                    <Droplets size={13} /> Water Resource
                                   </span>
-                                  <div className="text-3xl font-black text-white transition-all group-hover/card:text-blue-400">
-                                    {impacts.waterFootprint.toFixed(1)} <span className="text-[11px] font-light text-gray-500 uppercase">Liters Loss</span>
+                                  <div className="text-2xl font-geometric font-black text-white group-hover/card:text-blue-400 transition-colors">
+                                    {impacts.waterFootprint.toFixed(1)}<span className="text-xs font-normal text-white/30 ml-1">L</span>
                                   </div>
-                                  <div className="flex items-center gap-2 mt-2">
-                                    <ShieldCheck className="text-brand-eco" size={14} />
-                                    <p className="text-[9px] text-brand-eco uppercase font-bold tracking-wider">AVERTED LOSS FOOTPRINT.</p>
+                                  <div className="flex items-center gap-1.5 mt-auto">
+                                    <ShieldCheck className="text-brand-eco" size={12} />
+                                    <p className="text-[9px] text-brand-eco/80 uppercase font-bold tracking-wide">Averted loss</p>
                                   </div>
                                 </div>
 
-                                {/* Financial Impact from Waste */}
-                                <div className={`space-y-4 p-8 rounded-[32px] border-4 shadow-[0_15px_40px_rgba(0,0,0,0.5)] transition-all flex flex-col justify-between ${impacts.isDeviating ? 'bg-brand-alert/10 border-brand-alert' : 'bg-brand-eco/10 border-brand-eco'}`}>
-                                  <div>
-                                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-3 ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
-                                      <DollarSign size={16} /> Financial Impact
-                                    </span>
-                                    <div className={`text-4xl font-black mt-2 ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
-                                      ${impacts.totalFinancialLoss.toFixed(2)}
+                                {/* Financial */}
+                                <div className={`flex flex-col gap-2 p-5 rounded-xl border transition-all ${impacts.isDeviating ? 'bg-brand-alert/8 border-brand-alert/40' : 'bg-brand-eco/8 border-brand-eco/30'}`}>
+                                  <span className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${impacts.isDeviating ? 'text-brand-alert/70' : 'text-brand-eco/70'}`}>
+                                    <DollarSign size={13} /> Financial Impact
+                                  </span>
+                                  <div className={`text-2xl font-geometric font-black ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
+                                    ${impacts.totalFinancialLoss.toFixed(2)}
+                                  </div>
+                                  {impacts.isDeviating ? (
+                                    <div className="mt-auto flex items-center gap-1.5">
+                                      <AlertTriangle size={11} className="text-brand-alert" />
+                                      <p className="text-[9px] text-brand-alert/80 uppercase font-bold tracking-wide">Supervisor notified</p>
                                     </div>
-                                  </div>
-                                  {impacts.isDeviating && (
-                                    <div className="bg-brand-alert text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest animate-pulse flex items-center gap-2">
-                                      <AlertTriangle size={12} /> ESCALATION TRIGGERED SUPERVISOR REPORT
+                                  ) : (
+                                    <div className="mt-auto flex items-center gap-1.5">
+                                      <ShieldCheck size={11} className="text-brand-eco" />
+                                      <p className="text-[9px] text-brand-eco/80 uppercase font-bold tracking-wide">On target</p>
                                     </div>
                                   )}
                                 </div>
@@ -1584,7 +1636,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             return (
                               <div className="w-full max-w-full mb-8">
                                 {/* "User a dark-green background with Rounded Corners (20px) and a Thin Gold Border (1px)" */}
-                                <div className="bg-[#0f2420] border border-brand-gold/60 rounded-[20px] p-6 relative overflow-hidden shadow-xl">
+                                <div className="bg-[#0f2420] border border-brand-gold/60 rounded-xl p-6 relative overflow-hidden shadow-xl">
 
                                   {/* HEADER SECTION */}
                                   <div className="flex justify-between items-start mb-6">
@@ -1778,7 +1830,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 )}
                 {activeView === PortalView.IDENTITY && (
                   <div className="space-y-8 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
-                    <div className="bg-brand-dark/40 border border-brand-gold/20 p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] space-y-6 sm:space-y-8">
+                    <div className="bg-brand-dark/40 border border-brand-gold/20 p-6 sm:p-10 rounded-2xl space-y-6 sm:space-y-8">
                       <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-brand-gold/10 border border-brand-gold/20 rounded-lg">
                           <Building2 size={24} className="text-brand-gold" />
@@ -1817,7 +1869,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                       </div>
 
-                      <div className="space-y-6 relative p-6 sm:p-8 bg-brand-dark/40 border border-brand-gold/20 rounded-[24px] sm:rounded-[40px] shadow-lg pb-24 sm:pb-28">
+                      <div className="space-y-6 relative p-6 sm:p-8 bg-brand-dark/40 border border-brand-gold/20 rounded-2xl shadow-lg">
                         <div className="space-y-2">
 
                           <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Hotel/Company Name</label>
@@ -1885,7 +1937,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                       </div>
 
-                      <div className="bg-brand-dark/40 border border-brand-gold/20 rounded-[24px] sm:rounded-[40px] p-6 sm:p-10 space-y-6 relative overflow-hidden group shadow-xl pb-24 sm:pb-28">
+                      <div className="bg-brand-dark/40 border border-brand-gold/20 rounded-2xl p-6 sm:p-10 space-y-6 relative overflow-hidden group shadow-xl">
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-2">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-brand-eco/10 border border-brand-eco/30 rounded-lg">
@@ -1984,7 +2036,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     </div >
 
                     <div className="flex flex-col gap-6 sm:gap-8 xl:h-full">
-                      <div className="bg-brand-dark/40 border border-brand-gold/20 p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] text-center flex flex-col justify-center items-center h-fit xl:sticky xl:top-0">
+                      <div className="bg-brand-dark/40 border border-brand-gold/20 p-6 sm:p-10 rounded-2xl text-center flex flex-col justify-center items-center h-fit xl:sticky xl:top-0">
                         <Globe size={48} className="text-brand-gold mb-6" />
                         <h4 className="text-xl font-bold uppercase tracking-tight mb-2 text-white">Operational Context</h4>
                         <div className="space-y-2 mb-6 w-full">
@@ -2011,7 +2063,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                 {activeView === PortalView.TEAM && (
                   <div className="space-y-8 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
-                    <div id="enrollment-form" className="bg-brand-dark/40 border border-brand-gold/20 p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] space-y-6 sm:space-y-8">
+                    <div id="enrollment-form" className="bg-brand-dark/40 border border-brand-gold/20 p-6 sm:p-10 rounded-2xl space-y-6 sm:space-y-8">
                       <div className="flex items-center justify-between">
                         <h4 className="flex items-center gap-3 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">
                           <UserPlus size={18} /> {enrollId ? "Edit Role Position" : "Enroll Personnel"}
@@ -2169,7 +2221,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <div className="space-y-3">
                           {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').map((u) => (
-                            <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-brand-gold/5 rounded-[24px] sm:rounded-[40px] border border-brand-gold/20 group hover:bg-brand-gold/10 transition-all gap-4">
+                            <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-brand-gold/5 rounded-2xl border border-brand-gold/20 group hover:bg-brand-gold/10 transition-all gap-4">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-gold/20 flex items-center justify-center text-brand-gold text-xs font-black shadow-inner border border-brand-gold/40">
                                   {u.fullName.charAt(0)}
@@ -2217,7 +2269,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="space-y-3">
                               {members.map((u) => (
-                                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-white/5 rounded-[24px] sm:rounded-[30px] border border-white/5 group hover:border-brand-gold/30 transition-all gap-4">
+                                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5 group hover:border-brand-gold/30 transition-all gap-4">
                                   <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xs font-black shadow-inner border border-brand-gold/20">
                                       {u.fullName.charAt(0)}
@@ -2269,7 +2321,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <div className="space-y-4">
                           {/* Food Waste Card */}
-                          <div className={`p-6 sm:p-8 rounded-[24px] sm:rounded-[30px] space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
+                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
                             {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={12} className="text-brand-gold" />
                               <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
@@ -2313,7 +2365,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
 
                           {/* Water Usage Card */}
-                          <div className={`p-6 sm:p-8 rounded-[24px] sm:rounded-[30px] space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
+                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
                             {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={12} className="text-brand-gold" />
                               <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
@@ -2343,7 +2395,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
 
                           {/* Energy Usage Card */}
-                          <div className={`p-6 sm:p-8 rounded-[24px] sm:rounded-[30px] space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
+                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
                             {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={12} className="text-brand-gold" />
                               <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
@@ -2382,7 +2434,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <div className="space-y-4">
                           {/* Food Cost Card */}
-                          <div className={`p-6 sm:p-8 rounded-[24px] sm:rounded-[30px] space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
+                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
                             {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={12} className="text-brand-gold" />
                               <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
@@ -2413,7 +2465,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
 
                           {/* Labor Cost Card */}
-                          <div className={`p-6 sm:p-8 rounded-[24px] sm:rounded-[30px] space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
+                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
                             {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={12} className="text-brand-gold" />
                               <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
@@ -2444,7 +2496,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
 
                           {/* Industry Benchmark Selection */}
-                          <div className="p-6 sm:p-8 bg-brand-gold/5 border border-brand-gold/20 rounded-[24px] sm:rounded-[40px] space-y-6 group relative shadow-xl">
+                          <div className="p-6 sm:p-8 bg-brand-gold/5 border border-brand-gold/20 rounded-2xl space-y-6 group relative shadow-xl">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-3">
                                 <Globe size={18} className="text-brand-gold" />
@@ -2528,7 +2580,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">Mila AI Logic Configuration</h4>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="flex items-center justify-between p-6 bg-brand-gold/5 border border-brand-gold/10 rounded-[24px] sm:rounded-[30px]">
+                          <div className="flex items-center justify-between p-6 bg-brand-gold/5 border border-brand-gold/10 rounded-2xl">
                             <div className="flex items-center gap-4">
                               <div className="p-2 bg-brand-gold/10 rounded-xl">
                                 <AlertCircle className="text-brand-gold" size={20} />
@@ -2539,7 +2591,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               {params.alertsActive ? <ToggleRight className="text-brand-eco" size={32} /> : <ToggleLeft className="text-gray-600" size={32} />}
                             </button>
                           </div>
-                          <div className="flex items-center justify-between p-6 bg-brand-eco/5 border border-brand-eco/20 rounded-[24px] sm:rounded-[30px]">
+                          <div className="flex items-center justify-between p-6 bg-brand-eco/5 border border-brand-eco/20 rounded-2xl">
                             <div className="flex items-center gap-4">
                               <div className="p-2 bg-brand-eco/10 rounded-xl">
                                 <Lightbulb className="text-brand-eco" size={20} />
@@ -2577,7 +2629,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                         </div>
 
-                        <div className="bg-brand-dark/40 border border-brand-gold/20 rounded-[24px] sm:rounded-[40px] p-6 sm:p-10 relative">
+                        <div className="bg-brand-dark/40 border border-brand-gold/20 rounded-2xl p-6 sm:p-10 relative">
                           <div className="flex justify-end mb-6">
                             {isEditingApis && (
                               <button
@@ -2660,7 +2712,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                 {activeView === PortalView.SYSTEM && (
                   <div className="animate-in fade-in duration-500 flex flex-col flex-grow min-h-0">
-                    <div className="bg-black/40 border border-white/10 rounded-[24px] sm:rounded-[40px] overflow-hidden flex flex-col flex-grow shadow-2xl">
+                    <div className="bg-black/40 border border-white/10 rounded-2xl overflow-hidden flex flex-col flex-grow shadow-2xl">
                       <div className="bg-brand-dark/80 px-6 sm:px-8 py-4 border-b border-white/5 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-4 text-[9px] sm:text-[10px] font-mono text-gray-500 uppercase tracking-widest">
                           <Terminal size={14} className="text-brand-gold" /> DIAG_LOG_CORE_V3

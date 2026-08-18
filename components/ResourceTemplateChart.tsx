@@ -73,7 +73,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
     }, [minVal, maxVal, range]);
 
     return (
-        <div className="bg-[#0f2420] border border-brand-gold/60 p-6 sm:p-8 rounded-[35px] shadow-2xl space-y-4 relative group w-full h-full flex flex-col" style={{ overflow: 'hidden' }}>
+        <div className="bg-[#0f2420] border border-brand-gold/60 p-6 sm:p-8 rounded-[35px] shadow-2xl space-y-4 relative group w-full h-full flex flex-col" style={{ overflow: 'visible' }}>
             {/* Header Section */}
             <div className="flex justify-between items-start z-20 relative">
                 <div className="flex items-center gap-4">

@@ -33,7 +33,7 @@ const SentimentTemplateChart: React.FC<SentimentTemplateChartProps> = ({ data, b
     const hasAlert = data.some(d => d.sentiment < benchmark);
 
     return (
-        <div className="bg-[#0f2420] border border-brand-gold/60 p-6 sm:p-8 rounded-[35px] shadow-2xl space-y-4 relative group w-full h-full flex flex-col" style={{ overflow: 'hidden', position: 'relative' }}>
+        <div className="bg-[#0f2420] border border-brand-gold/60 p-6 sm:p-8 rounded-[35px] shadow-2xl space-y-4 relative group w-full h-full flex flex-col" style={{ overflow: 'visible', position: 'relative' }}>
 
             {/* Header */}
             <div className="flex justify-between items-start z-20 relative shrink-0">
@@ -64,7 +64,7 @@ const SentimentTemplateChart: React.FC<SentimentTemplateChartProps> = ({ data, b
             </div>
 
             {/* Chart Container */}
-            <div className="flex-1 w-full relative min-h-0">
+            <div className="flex-1 w-full relative min-h-0 pb-8">
 
                 {/* Y-Axis Labels (3.0 - 5.0 in 0.5 steps) */}
                 <div className="absolute left-[-15px] lg:left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none">

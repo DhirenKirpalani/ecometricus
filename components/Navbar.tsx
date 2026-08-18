@@ -1,22 +1,29 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import Logo from './Logo';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, LayoutDashboard } from 'lucide-react';
 
 interface NavbarProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
+  isLoggedIn?: boolean;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
+const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = false }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const navLinks = [
-    { label: 'Home', page: Page.HOME },
+    { label: 'Home',     page: Page.HOME },
     { label: 'About Us', page: Page.ABOUT },
-    { label: 'FAQ', page: Page.FAQ },
-    { label: 'Sign Up', page: Page.SIGN_UP },
+    { label: 'Contact',  page: Page.CONTACT },
   ];
 
   const handleNavigate = (page: Page) => {
@@ -25,75 +32,136 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-brand-dark/95 backdrop-blur-2xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-32 flex items-center justify-between">
-        <div
-          className="cursor-pointer group py-2"
-          onClick={() => handleNavigate(Page.HOME)}
-        >
-          <Logo size="lg" withLabel />
-        </div>
+    <nav className={`sticky top-0 z-50 transition-all duration-300 ${
+      scrolled
+        ? 'bg-brand-dark/98 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.4)]'
+        : 'bg-brand-dark/90 backdrop-blur-xl'
+    }`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-20">
 
-        {/* Desktop Menu */}
-        <div className="flex items-center gap-4 sm:gap-8">
-          <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <button
-                key={link.page}
-                onClick={() => handleNavigate(link.page)}
-                className={`text-[10px] font-bold uppercase tracking-widest transition-all hover:text-brand-gold relative py-1 ${currentPage === link.page ? 'text-brand-gold' : 'text-gray-300'
-                  }`}
-              >
-                {link.label}
-                {currentPage === link.page && (
-                  <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-brand-gold shadow-[0_0_10px_rgba(200,164,19,0.6)]"></span>
-                )}
-              </button>
-            ))}
+          {/* Logo */}
+          <div
+            className="cursor-pointer flex-shrink-0"
+            onClick={() => handleNavigate(Page.HOME)}
+          >
+            <Logo size="md" withLabel />
           </div>
-          <button
-            onClick={() => handleNavigate(Page.SIGN_IN)}
-            className="hidden sm:block bg-brand-eco text-brand-dark px-4 sm:px-8 py-2.5 rounded-full font-bold text-xs hover:brightness-110 transition-all transform hover:scale-105 active:scale-95 shadow-[0_4px_15px_rgba(119,177,57,0.3)] uppercase tracking-widest"
-          >
-            Log In
-          </button>
 
-          {/* Mobile Toggle */}
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => {
+              const active = currentPage === link.page;
+              return (
+                <button
+                  key={link.page}
+                  onClick={() => handleNavigate(link.page)}
+                  className={`relative px-5 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] transition-all duration-200 ${
+                    active
+                      ? 'text-brand-gold bg-brand-gold/10'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {link.label}
+                  {active && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full bg-brand-gold shadow-[0_0_8px_rgba(200,164,19,0.8)]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Desktop action buttons */}
+          <div className="hidden md:flex items-center gap-3">
+            <div className="w-px h-5 bg-white/10" />
+            {isLoggedIn ? (
+              <button
+                onClick={() => handleNavigate(Page.DASHBOARD)}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-brand-eco text-brand-dark hover:brightness-110 transition-all transform hover:scale-105 shadow-[0_4px_15px_rgba(119,177,57,0.35)]"
+              >
+                <LayoutDashboard size={13} /> Dashboard
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleNavigate(Page.SIGN_IN)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-gray-300 hover:text-white border border-white/10 hover:border-white/25 transition-all duration-200"
+                >
+                  <LogIn size={13} /> Log In
+                </button>
+                <button
+                  onClick={() => handleNavigate(Page.SIGN_UP)}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-brand-eco text-brand-dark hover:brightness-110 transition-all transform hover:scale-105 shadow-[0_4px_15px_rgba(119,177,57,0.35)]"
+                >
+                  <UserPlus size={13} /> Sign Up
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Mobile toggle */}
           <button
-            className="md:hidden text-white hover:text-brand-gold transition-colors p-2"
+            className="md:hidden p-2 rounded-xl text-gray-400 hover:text-brand-gold hover:bg-white/5 transition-all"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle menu"
           >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Gold separator line */}
+      <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent" />
+
+      {/* Mobile drawer */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-20 left-0 w-full bg-brand-dark border-b border-brand-gold/20 animate-in slide-in-from-top duration-300">
-          <div className="flex flex-col p-6 space-y-6">
-            {navLinks.map((link) => (
-              <button
-                key={link.page}
-                onClick={() => handleNavigate(link.page)}
-                className={`text-sm font-bold uppercase tracking-[0.2em] text-left transition-all ${currentPage === link.page ? 'text-brand-gold' : 'text-gray-300'
+        <div className="md:hidden absolute top-full left-0 w-full bg-brand-dark/98 backdrop-blur-xl border-b border-brand-gold/20 animate-in slide-in-from-top duration-200 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
+          <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-2">
+            {navLinks.map((link) => {
+              const active = currentPage === link.page;
+              return (
+                <button
+                  key={link.page}
+                  onClick={() => handleNavigate(link.page)}
+                  className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-[0.15em] transition-all ${
+                    active
+                      ? 'text-brand-gold bg-brand-gold/10'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}
-              >
-                {link.label}
-              </button>
-            ))}
-            <button
-              onClick={() => handleNavigate(Page.SIGN_IN)}
-              className="bg-brand-eco text-brand-dark w-full py-4 rounded-xl font-bold text-xs uppercase tracking-widest"
-            >
-              Log In
-            </button>
+                >
+                  {link.label}
+                </button>
+              );
+            })}
+            <div className="h-px bg-white/5 my-2" />
+            <div className="flex flex-col gap-3">
+              {isLoggedIn ? (
+                <button
+                  onClick={() => handleNavigate(Page.DASHBOARD)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-brand-eco text-brand-dark shadow-[0_4px_15px_rgba(119,177,57,0.3)]"
+                >
+                  <LayoutDashboard size={14} /> Dashboard
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleNavigate(Page.SIGN_IN)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 hover:border-white/25 transition-all"
+                  >
+                    <LogIn size={14} /> Log In
+                  </button>
+                  <button
+                    onClick={() => handleNavigate(Page.SIGN_UP)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-brand-eco text-brand-dark shadow-[0_4px_15px_rgba(119,177,57,0.3)]"
+                  >
+                    <UserPlus size={14} /> Sign Up
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
-
-      {/* Universal Golden Line Separator */}
-      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-gold to-transparent shadow-[0_1px_10px_rgba(200,164,19,0.5)]"></div>
     </nav>
   );
 };

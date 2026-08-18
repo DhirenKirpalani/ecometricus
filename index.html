@@ -4,6 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <title>Ecometricus | Luxury Sustainability Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -51,6 +55,22 @@
         .metric-card:hover {
             border-color: #C8A413;
             box-shadow: 0 0 15px rgba(200, 164, 19, 0.2);
+        }
+
+        /* ── Force dark autofill on all inputs ── */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active,
+        textarea:-webkit-autofill,
+        select:-webkit-autofill {
+            -webkit-box-shadow: 0 0 0 1000px #0e1f1c inset !important;
+            box-shadow:         0 0 0 1000px #0e1f1c inset !important;
+            -webkit-text-fill-color: #ffffff !important;
+            caret-color: #ffffff !important;
+            border-color: rgba(200, 164, 19, 0.25) !important;
+            /* Delay transition so the flash never shows */
+            transition: background-color 9999s ease-in-out 0s !important;
         }
     </style>
 <script type="importmap">

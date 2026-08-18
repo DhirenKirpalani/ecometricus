@@ -1,7 +1,12 @@
 import React from 'react';
 import Logo from './Logo';
+import { Page } from '../types';
 
-const UnderConstruction: React.FC = () => {
+interface UnderConstructionProps {
+    onNavigate: (page: Page) => void;
+}
+
+const UnderConstruction: React.FC<UnderConstructionProps> = ({ onNavigate }) => {
     return (
         <div className="min-h-screen bg-[#152E2A] flex flex-col items-center justify-center p-4">
             <div className="text-center space-y-6 animate-in fade-in zoom-in duration-500">
@@ -35,9 +40,9 @@ const UnderConstruction: React.FC = () => {
                             </span>
                         </div>
 
-                        <a 
-                            href="https://tally.so/r/aQ0ZOZ" 
-                            target="_blank" 
+                        <a
+                            href="https://tally.so/r/aQ0ZOZ"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="inline-block w-full md:w-auto px-8 py-4 bg-[#22c55e] hover:bg-[#16a34a] text-white font-geometric font-bold tracking-wide uppercase text-sm md:text-base rounded-full transition-all duration-300 shadow-[0_4px_14px_0_rgba(34,197,94,0.39)] hover:shadow-[0_6px_20px_rgba(34,197,94,0.23)] hover:-translate-y-0.5"
                         >
@@ -45,26 +50,12 @@ const UnderConstruction: React.FC = () => {
                         </a>
                     </div>
 
-                    {/* Failsafe Manual Bypass Button (Only visible on /MVP path) */}
-                    {(typeof window !== 'undefined' && /mvp/i.test(window.location.pathname)) && (
-                        <div className="pt-8 border-t border-white/5 animate-bounce">
-                            <button 
-                                onClick={() => {
-                                    sessionStorage.setItem('ecometricus_mvp_bypass', 'true');
-                                    window.location.href = '/mvp';
-                                }}
-                                className="group relative px-10 py-5 bg-brand-gold hover:bg-brand-gold/90 text-brand-dark font-black tracking-widest uppercase text-xs rounded-full transition-all shadow-[0_0_30px_rgba(212,175,55,0.3)]"
-                            >
-                                <span className="relative z-10 flex items-center gap-3">
-                                    Click Here to Enter MVP Portal
-                                    <div className="w-5 h-5 rounded-full border-2 border-brand-dark/30 border-t-brand-dark animate-spin"></div>
-                                </span>
-                            </button>
-                            <p className="mt-4 text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold animate-pulse">
-                                Authorized Test Access Path Detected
-                            </p>
-                        </div>
-                    )}
+                    <button
+                        onClick={() => onNavigate(Page.HOME)}
+                        className="mt-8 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-brand-gold transition-colors"
+                    >
+                        &larr; Back to Home
+                    </button>
                 </div>
                 
                 <p className="mt-8 text-[8px] font-black uppercase tracking-[0.4em] text-white/10 text-center">

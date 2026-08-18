@@ -8,7 +8,12 @@ export enum Page {
   FORGOT_PASSWORD = 'forgot',
   DASHBOARD = 'dashboard',
   STAFF_PORTAL = 'staff_portal',
-  SUPERVISOR_DASHBOARD = 'supervisor_dashboard'
+  SUPERVISOR_DASHBOARD = 'supervisor_dashboard',
+  ASSESSMENT = 'assessment',
+  EARLY_ACCESS = 'early_access',
+  PRIVACY = 'privacy',
+  TERMS = 'terms',
+  CONTACT = 'contact'
 }
 
 export type UserRole = 'admin' | 'supervisor' | 'chef' | 'manager' | 'basic';

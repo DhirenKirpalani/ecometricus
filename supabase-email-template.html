@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirm your Ecometricus account</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0f1f1c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+
+  <!-- Outer wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0f1f1c;padding:40px 16px;">
+    <tr>
+      <td align="center">
+
+        <!-- Card -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#152E2A;border:1px solid rgba(200,164,19,0.25);border-radius:20px;overflow:hidden;">
+
+          <!-- Header bar -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#152E2A 0%,#1a3d37 100%);padding:36px 40px 28px;border-bottom:1px solid rgba(200,164,19,0.15);text-align:center;">
+              <!-- Logo mark (inline SVG leaf) -->
+              <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:rgba(200,164,19,0.1);border:1px solid rgba(200,164,19,0.3);border-radius:12px;margin-bottom:16px;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l6.59-6.58L19 9l-8 8z" fill="#C8A413"/>
+                  <path d="M17 8c-2.76 0-5 2.24-5 5 0 1.38.56 2.63 1.46 3.54L17 13l3.54 3.54C21.44 15.63 22 14.38 22 13c0-2.76-2.24-5-5-5z" fill="#77B139" opacity="0.7"/>
+                </svg>
+              </div>
+              <div style="margin:0;">
+                <span style="font-size:11px;font-weight:800;letter-spacing:0.4em;color:#C8A413;text-transform:uppercase;display:block;margin-bottom:4px;">Ecometricus</span>
+                <span style="font-size:10px;letter-spacing:0.2em;color:rgba(255,255,255,0.3);text-transform:uppercase;">Sustainability Intelligence Platform</span>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+
+              <!-- Label -->
+              <p style="margin:0 0 8px;font-size:10px;font-weight:800;letter-spacing:0.35em;color:rgba(200,164,19,0.7);text-transform:uppercase;">Account Confirmation</p>
+
+              <!-- Headline -->
+              <h2 style="margin:0 0 16px;font-size:26px;font-weight:800;color:#ffffff;line-height:1.2;">
+                Confirm your account
+              </h2>
+
+              <!-- Subtext -->
+              <p style="margin:0 0 32px;font-size:14px;color:rgba(255,255,255,0.45);line-height:1.7;">
+                You're one step away from accessing the Ecometricus benchmarking engine. Click the button below to verify your email address and activate your workspace.
+              </p>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center">
+                    <a href="{{ .ConfirmationURL }}"
+                       style="display:inline-block;background-color:#77B139;color:#152E2A;text-decoration:none;font-size:11px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;padding:16px 40px;border-radius:50px;box-shadow:0 8px 24px rgba(119,177,57,0.35);">
+                      Confirm Email &amp; Access Dashboard
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:32px 0;">
+                <tr>
+                  <td style="border-top:1px solid rgba(255,255,255,0.07);font-size:0;">&nbsp;</td>
+                </tr>
+              </table>
+
+              <!-- Security note -->
+              <p style="margin:0 0 8px;font-size:11px;color:rgba(255,255,255,0.25);line-height:1.6;">
+                This link expires in <strong style="color:rgba(255,255,255,0.4);">24 hours</strong>. If you did not create an Ecometricus account, you can safely ignore this email.
+              </p>
+              <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.18);line-height:1.6;word-break:break-all;">
+                Or copy this link into your browser:<br/>
+                <span style="color:rgba(200,164,19,0.5);">{{ .ConfirmationURL }}</span>
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 40px;border-top:1px solid rgba(255,255,255,0.05);background-color:rgba(0,0,0,0.15);text-align:center;">
+              <p style="margin:0;font-size:9px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.15);">
+                Ecometricus &copy; 2025 &nbsp;&middot;&nbsp; Secured by Us+AI Bureau &nbsp;&middot;&nbsp; GDPR Compliant
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Card -->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
