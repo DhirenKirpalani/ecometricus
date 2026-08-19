@@ -34,9 +34,9 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16">
 
           {/* Brand */}
-          <div className="space-y-4">
-            <Logo size="sm" withLabel />
-            <p className="text-xs text-gray-500 leading-relaxed max-w-[200px]">
+          <div className="space-y-5">
+            <Logo size="md" withLabel />
+            <p className="text-xs text-gray-500 leading-relaxed max-w-[220px]">
               AI-powered sustainability intelligence for luxury F&B operations.
             </p>
             <p className="text-[10px] text-gray-700 uppercase tracking-widest leading-relaxed">
@@ -46,7 +46,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
 
           {/* Navigate */}
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold mb-4">Navigate</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-4">Navigate</p>
             <ul className="space-y-2.5">
               {navLinks.map((link) => {
                 const active = currentPage === link.page;
@@ -54,7 +54,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
                   <li key={link.page}>
                     <button
                       onClick={() => onNavigate(link.page)}
-                      className={`text-xs transition-colors duration-200 flex items-center gap-1.5 ${active ? 'text-brand-gold font-bold' : 'text-gray-500 hover:text-white'}`}
+                      className={`text-xs transition-colors duration-200 flex items-center gap-1.5 ${active ? 'text-brand-gold font-bold' : 'text-white/70 hover:text-white'}`}
                     >
                       {active && <span className="w-1 h-1 rounded-full bg-brand-gold" />}
                       {link.label}
@@ -67,7 +67,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
 
           {/* Legal */}
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold mb-4">Legal & Contact</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-4">Legal & Contact</p>
             <ul className="space-y-2.5">
               {legalLinks.map((item) => {
                 const active = currentPage === item.page;
@@ -75,7 +75,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
                   <li key={item.label}>
                     <button
                       onClick={() => onNavigate(item.page)}
-                      className={`text-xs transition-colors duration-200 flex items-center gap-1.5 ${active ? 'text-brand-gold font-bold' : 'text-gray-500 hover:text-white'}`}
+                      className={`text-xs transition-colors duration-200 flex items-center gap-1.5 ${active ? 'text-brand-gold font-bold' : 'text-white/70 hover:text-white'}`}
                     >
                       {active && <span className="w-1 h-1 rounded-full bg-brand-gold" />}
                       {item.label}
