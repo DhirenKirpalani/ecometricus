@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import Logo from './Logo';
-import { Menu, X, LogIn, UserPlus, LayoutDashboard } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, LayoutDashboard, UserCircle2 } from 'lucide-react';
 
 interface NavbarProps {
   currentPage: Page;
@@ -76,12 +76,21 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
           <div className="hidden md:flex items-center gap-3">
             <div className="w-px h-5 bg-white/10" />
             {isLoggedIn ? (
-              <button
-                onClick={() => handleNavigate(Page.DASHBOARD)}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-brand-eco text-brand-dark hover:brightness-110 transition-all transform hover:scale-105 shadow-[0_4px_15px_rgba(119,177,57,0.35)]"
-              >
-                <LayoutDashboard size={13} /> Dashboard
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleNavigate(Page.DASHBOARD)}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-brand-eco text-brand-dark hover:brightness-110 transition-all transform hover:scale-105 shadow-[0_4px_15px_rgba(119,177,57,0.35)]"
+                >
+                  <LayoutDashboard size={13} /> Dashboard
+                </button>
+                <button
+                  onClick={() => handleNavigate(Page.DASHBOARD)}
+                  className="w-9 h-9 rounded-full border border-brand-eco/40 bg-brand-eco/10 flex items-center justify-center text-brand-eco hover:bg-brand-eco/20 hover:border-brand-eco/70 transition-all duration-200"
+                  aria-label="Profile"
+                >
+                  <UserCircle2 size={18} />
+                </button>
+              </div>
             ) : (
               <>
                 <button
@@ -137,12 +146,21 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
             <div className="h-px bg-white/5 my-2" />
             <div className="flex flex-col gap-3">
               {isLoggedIn ? (
-                <button
-                  onClick={() => handleNavigate(Page.DASHBOARD)}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-brand-eco text-brand-dark shadow-[0_4px_15px_rgba(119,177,57,0.3)]"
-                >
-                  <LayoutDashboard size={14} /> Dashboard
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleNavigate(Page.DASHBOARD)}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-brand-eco text-brand-dark shadow-[0_4px_15px_rgba(119,177,57,0.3)]"
+                  >
+                    <LayoutDashboard size={14} /> Dashboard
+                  </button>
+                  <button
+                    onClick={() => handleNavigate(Page.DASHBOARD)}
+                    className="w-12 h-12 rounded-xl border border-brand-eco/40 bg-brand-eco/10 flex items-center justify-center text-brand-eco hover:bg-brand-eco/20 transition-all"
+                    aria-label="Profile"
+                  >
+                    <UserCircle2 size={20} />
+                  </button>
+                </div>
               ) : (
                 <>
                   <button
