@@ -45,7 +45,7 @@ const AboutPage: React.FC = () => {
             <h1 className="text-4xl sm:text-6xl font-geometric font-black text-white uppercase leading-tight mb-6">
               The<br /><span className="text-brand-gold">Vision</span>
             </h1>
-            <p className="text-base sm:text-lg text-gray-300 font-light leading-relaxed mb-8 max-w-lg">
+            <p className="text-base sm:text-lg text-gray-300 font-bold leading-relaxed mb-8 max-w-lg">
               Empowering the hotel Food & Beverage industry with a comprehensive, intelligent platform for optimizing performance and enhancing profitability.
             </p>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-eco">
