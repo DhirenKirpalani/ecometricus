@@ -10,7 +10,7 @@ interface SeoMeta {
 }
 
 const BASE_URL = 'https://www.ecometricus.com';
-const DEFAULT_IMAGE = `${BASE_URL}/assets/Open kitchen Image.png`;
+const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
 
 const PAGE_META: Record<Page, SeoMeta> = {
   [Page.HOME]: {
