@@ -1,8 +1,27 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Target, Cpu, Scale, BarChart3, Globe2, BookOpen, Award, Trash2, Droplets, Zap, Cloud, ArrowRight } from 'lucide-react';
 
+const heroImages = [
+  '/assets/Open kitchen Image.png',
+  '/assets/6 Chef outcome.png',
+];
+
 const AboutPage: React.FC = () => {
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFading(true);
+      setTimeout(() => {
+        setHeroIndex(i => (i + 1) % heroImages.length);
+        setFading(false);
+      }, 700);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
   const gorillaMetrics = [
     { value: '50–70%', label: "of a hotel's total", category: 'Solid Waste', icon: <Trash2 size={26} className="text-brand-dark" /> },
     { value: '15–30%', label: 'of total', category: 'Water Consumption', icon: <Droplets size={26} className="text-brand-dark" /> },
@@ -28,14 +47,32 @@ const AboutPage: React.FC = () => {
 
       {/* ─── Hero ─────────────────────────────────────────── */}
       <section className="relative overflow-hidden border-b border-white/5 min-h-[420px] sm:min-h-[500px] flex items-center">
-        {/* Background image */}
+        {/* Background slideshow */}
         <div className="absolute inset-0 z-0">
           <img
-            src="/assets/hero-kitchen.png"
-            alt="Kitchen background"
-            className="w-full h-full object-cover opacity-30 brightness-50"
+            key={heroIndex}
+            src={heroImages[heroIndex]}
+            alt="About hero background"
+            className="w-full h-full object-cover object-center"
+            style={{
+              opacity: fading ? 0 : 0.35,
+              filter: 'brightness(0.5)',
+              transition: 'opacity 0.7s ease-in-out',
+            }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-dark/95 via-brand-dark/70 to-brand-dark/40" />
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-dark/95 via-brand-dark/75 to-brand-dark/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/60 via-transparent to-transparent" />
+        </div>
+
+        {/* Slide dots */}
+        <div className="absolute bottom-5 right-6 z-10 flex gap-2">
+          {heroImages.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setFading(true); setTimeout(() => { setHeroIndex(i); setFading(false); }, 300); }}
+              className={`h-1 rounded-full transition-all duration-300 ${i === heroIndex ? 'w-5 bg-brand-gold' : 'w-1.5 bg-white/20 hover:bg-white/40'}`}
+            />
+          ))}
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 sm:py-28 w-full">
           <div className="max-w-2xl">
