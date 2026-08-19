@@ -1,26 +1,177 @@
 
-import React, { useState } from 'react';
-import { Mail, CalendarCheck, MessageSquare, MapPin, Send, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Mail, CalendarCheck, MessageSquare, MapPin, Send, Check, ChevronDown, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 
+// ─── Toast ────────────────────────────────────────────────────────────────────
+type ToastType = 'success' | 'error';
+interface Toast { id: number; type: ToastType; msg: string }
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onDismiss: (id: number) => void }> = ({ toasts, onDismiss }) => (
+  <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none">
+    {toasts.map(t => (
+      <div
+        key={t.id}
+        className={`flex items-start gap-3 px-4 py-3.5 rounded-xl border shadow-xl backdrop-blur-xl max-w-xs pointer-events-auto animate-in slide-in-from-right-4 fade-in duration-300 ${
+          t.type === 'success'
+            ? 'bg-brand-dark/95 border-brand-eco/40 text-white'
+            : 'bg-brand-dark/95 border-brand-alert/40 text-white'
+        }`}
+      >
+        {t.type === 'success'
+          ? <CheckCircle2 size={16} className="text-brand-eco shrink-0 mt-0.5" />
+          : <AlertCircle size={16} className="text-brand-alert shrink-0 mt-0.5" />
+        }
+        <p className="text-xs leading-relaxed flex-1">{t.msg}</p>
+        <button onClick={() => onDismiss(t.id)} className="text-white/30 hover:text-white/60 transition-colors shrink-0">
+          <X size={12} />
+        </button>
+      </div>
+    ))}
+  </div>
+);
+
+// ─── Custom Select ─────────────────────────────────────────────────────────────
+const subjects = [
+  { value: 'demo',        label: 'Book a Demo' },
+  { value: 'pricing',     label: 'Pricing & Plans' },
+  { value: 'support',     label: 'Technical Support' },
+  { value: 'partnership', label: 'Partnership Enquiry' },
+  { value: 'press',       label: 'Press / Media' },
+  { value: 'other',       label: 'Other' },
+];
+
+interface CustomSelectProps {
+  value: string;
+  onChange: (v: string) => void;
+  error?: boolean;
+}
+
+const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = subjects.find(s => s.value === value);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`w-full flex items-center justify-between bg-white/5 border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
+          open ? 'border-brand-gold bg-white/8' : error ? 'border-brand-alert/60' : 'border-white/10 hover:border-white/20'
+        }`}
+      >
+        <span className={selected ? 'text-white' : 'text-white/25'}>
+          {selected ? selected.label : 'Select a topic'}
+        </span>
+        <ChevronDown
+          size={15}
+          className={`text-white/40 transition-transform duration-200 ${open ? 'rotate-180 text-brand-gold' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full mt-1.5 w-full bg-[#0e1f1c] border border-brand-gold/25 rounded-xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-top-2 duration-150">
+          {subjects.map(s => (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => { onChange(s.value); setOpen(false); }}
+              className={`w-full text-left px-4 py-3 text-sm transition-all flex items-center gap-3 ${
+                value === s.value
+                  ? 'bg-brand-gold/10 text-brand-gold font-bold'
+                  : 'text-white/70 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              {value === s.value && <span className="w-1 h-1 rounded-full bg-brand-gold shrink-0" />}
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 const ContactPage: React.FC = () => {
   const [form, setForm] = useState({ name: '', email: '', property: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const [attempted, setAttempted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastCounter = useRef(0);
 
-  const isValid = form.name.trim() && form.email.trim() && form.message.trim();
+  const addToast = (type: ToastType, msg: string) => {
+    const id = ++toastCounter.current;
+    setToasts(prev => [...prev, { id, type, msg }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4500);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const dismissToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
+
+  // ── Client-side validation ──
+  const validate = (): string | null => {
+    if (!form.name.trim()) return 'Full name is required.';
+    if (!form.email.trim()) return 'Email address is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return 'Please enter a valid email address.';
+    if (!form.message.trim()) return 'Message cannot be empty.';
+    if (form.message.trim().length < 10) return 'Message must be at least 10 characters.';
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) { setAttempted(true); return; }
-    // Persist locally as placeholder until backend is wired
+    setAttempted(true);
+
+    // Client validation
+    const clientError = validate();
+    if (clientError) {
+      addToast('error', clientError);
+      return;
+    }
+
+    setLoading(true);
+
+    // Simulated server-side save (localStorage as placeholder until backend is wired)
     try {
+      await new Promise(r => setTimeout(r, 800)); // simulate network latency
       const existing = JSON.parse(localStorage.getItem('ecometricus_contact_submissions') || '[]');
+      // Server-side check: duplicate submission within 60s
+      const recent = existing.find((s: { email: string; submittedAt: string }) =>
+        s.email === form.email.trim() &&
+        Date.now() - new Date(s.submittedAt).getTime() < 60_000
+      );
+      if (recent) {
+        addToast('error', 'You already sent a message recently. Please wait a moment before submitting again.');
+        setLoading(false);
+        return;
+      }
       existing.push({ ...form, submittedAt: new Date().toISOString() });
       localStorage.setItem('ecometricus_contact_submissions', JSON.stringify(existing));
-    } catch (_) {}
-    setSubmitted(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+      addToast('success', 'Message sent! We\'ll get back to you within 1–2 business days.');
+      setSubmitted(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (_) {
+      addToast('error', 'Something went wrong on our end. Please try again or email us directly.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const inputClass = (field: string) =>
+    `w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:bg-white/8 focus:border-brand-gold ${
+      attempted && !(form as Record<string, string>)[field]?.trim()
+        ? 'border-brand-alert/60'
+        : 'border-white/10'
+    }`;
 
   const channels = [
     {
@@ -46,15 +197,10 @@ const ContactPage: React.FC = () => {
     },
   ];
 
-  const inputClass = (field: string) =>
-    `w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:bg-white/8 focus:border-brand-gold ${
-      attempted && !(form as Record<string, string>)[field]?.trim()
-        ? 'border-brand-alert/60'
-        : 'border-white/10'
-    }`;
-
   return (
     <div className="min-h-screen bg-brand-dark">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
       {/* Hero header */}
       <div className="relative overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 100%, rgba(200,164,19,0.07), transparent 55%)' }} />
@@ -149,16 +295,16 @@ const ContactPage: React.FC = () => {
             </div>
 
             {/* Right form */}
-            <form onSubmit={handleSubmit} className="lg:col-span-3 bg-brand-dark/60 border border-white/5 rounded-2xl p-6 sm:p-8 space-y-5">
+            <form onSubmit={handleSubmit} noValidate className="lg:col-span-3 bg-brand-dark/60 border border-white/5 rounded-2xl p-6 sm:p-8 space-y-5">
               <h2 className="text-lg font-geometric font-black text-white uppercase tracking-widest mb-2">Send a Message</h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Full Name <span className="text-brand-alert">*</span></label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Full Name</label>
                   <input type="text" placeholder="Jane Doe" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputClass('name')} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Email <span className="text-brand-alert">*</span></label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Email</label>
                   <input type="email" placeholder="jane@property.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={inputClass('email')} />
                 </div>
               </div>
@@ -170,19 +316,14 @@ const ContactPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Subject</label>
-                <select value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-gold">
-                  <option value="" className="bg-brand-dark">Select a topic</option>
-                  <option value="demo" className="bg-brand-dark">Book a Demo</option>
-                  <option value="pricing" className="bg-brand-dark">Pricing & Plans</option>
-                  <option value="support" className="bg-brand-dark">Technical Support</option>
-                  <option value="partnership" className="bg-brand-dark">Partnership Enquiry</option>
-                  <option value="press" className="bg-brand-dark">Press / Media</option>
-                  <option value="other" className="bg-brand-dark">Other</option>
-                </select>
+                <CustomSelect
+                  value={form.subject}
+                  onChange={v => setForm(p => ({ ...p, subject: v }))}
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Message <span className="text-brand-alert">*</span></label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Message</label>
                 <textarea
                   rows={5}
                   placeholder="Tell us how we can help..."
@@ -192,15 +333,17 @@ const ContactPage: React.FC = () => {
                 />
               </div>
 
-              {attempted && !isValid && (
-                <p className="text-xs text-brand-alert">Please fill in all required fields.</p>
-              )}
-
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-3 bg-brand-gold text-brand-dark hover:brightness-110 py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all transform hover:scale-[1.02] shadow-[0_10px_25px_rgba(200,164,19,0.3)]"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 bg-brand-gold text-brand-dark hover:brightness-110 py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all transform hover:scale-[1.02] shadow-[0_10px_25px_rgba(200,164,19,0.3)] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                <Send size={15} /> Send Message
+                {loading ? (
+                  <span className="w-4 h-4 rounded-full border-2 border-brand-dark/30 border-t-brand-dark animate-spin" />
+                ) : (
+                  <Send size={15} />
+                )}
+                {loading ? 'Sending…' : 'Send Message'}
               </button>
             </form>
           </div>
