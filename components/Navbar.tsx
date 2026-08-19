@@ -2,16 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import Logo from './Logo';
-import { Menu, X, LogIn, UserPlus } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
   isLoggedIn?: boolean;
   userInitial?: string;
+  onLogout?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = false, userInitial = 'A' }) => {
+const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = false, userInitial = 'A', onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -77,13 +78,22 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
           <div className="hidden md:flex items-center gap-3">
             <div className="w-px h-5 bg-white/10" />
             {isLoggedIn ? (
-              <button
-                onClick={() => handleNavigate(Page.DASHBOARD)}
-                className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center hover:border-brand-gold/60 transition-all duration-200"
-                aria-label="Go to dashboard"
-              >
-                <span className="text-brand-gold text-sm font-black leading-none">{userInitial.toUpperCase()}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleNavigate(Page.DASHBOARD)}
+                  className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center hover:border-brand-gold/60 transition-all duration-200"
+                  aria-label="Go to dashboard"
+                >
+                  <span className="text-brand-gold text-sm font-black leading-none">{userInitial.toUpperCase()}</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="w-9 h-9 rounded-full border border-white/10 bg-white/3 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/25 hover:bg-white/8 transition-all duration-200"
+                  aria-label="Log out"
+                >
+                  <LogOut size={14} />
+                </button>
+              </div>
             ) : (
               <>
                 <button
@@ -139,15 +149,24 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
             <div className="h-px bg-white/5 my-2" />
             <div className="flex flex-col gap-3">
               {isLoggedIn ? (
-                <button
-                  onClick={() => handleNavigate(Page.DASHBOARD)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-brand-gold/20 bg-brand-gold/5 hover:bg-brand-gold/10 transition-all"
-                >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
-                    <span className="text-brand-gold text-sm font-black leading-none">{userInitial.toUpperCase()}</span>
-                  </div>
-                  <span className="text-sm font-bold text-white/80 uppercase tracking-widest">My Dashboard</span>
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleNavigate(Page.DASHBOARD)}
+                    className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border border-brand-gold/20 bg-brand-gold/5 hover:bg-brand-gold/10 transition-all"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                      <span className="text-brand-gold text-sm font-black leading-none">{userInitial.toUpperCase()}</span>
+                    </div>
+                    <span className="text-sm font-bold text-white/80 uppercase tracking-widest">My Dashboard</span>
+                  </button>
+                  <button
+                    onClick={onLogout}
+                    className="w-12 flex items-center justify-center rounded-xl border border-white/10 bg-white/3 text-gray-400 hover:text-white hover:border-white/25 transition-all"
+                    aria-label="Log out"
+                  >
+                    <LogOut size={16} />
+                  </button>
+                </div>
               ) : (
                 <>
                   <button
