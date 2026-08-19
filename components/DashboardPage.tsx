@@ -1891,229 +1891,258 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   </div>
                 )}
                 {activeView === PortalView.IDENTITY && (
-                  <div className="space-y-8 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
-                    <div className="bg-brand-dark/40 border border-brand-gold/20 p-6 sm:p-10 rounded-2xl space-y-6 sm:space-y-8">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-brand-gold/10 border border-brand-gold/20 rounded-lg">
-                          <Building2 size={24} className="text-brand-gold" />
+                  <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
+
+                    {/* ── Company Identity Card ── */}
+                    <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.05)]">
+                      {/* Card header */}
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-6 sm:px-8 py-5 flex items-center justify-between border-b border-brand-gold/15">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <Building2 size={18} className="text-brand-gold" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Profile Settings</p>
+                            <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Company Identity</h4>
+                          </div>
                         </div>
-                        <h4 className="text-2xl sm:text-3xl font-geometric font-bold text-white uppercase tracking-tight">Company Identity</h4>
+                        <button
+                          onClick={() => setIsEditingIdentity(!isEditingIdentity)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                        >
+                          {isEditingIdentity ? <Unlock size={12} /> : <Edit2 size={12} />}
+                          {isEditingIdentity ? 'Lock' : 'Edit'}
+                        </button>
                       </div>
 
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <div className="space-y-2 relative">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Region</label>
-                          <select
-                            value={company.region}
-                            onChange={(e) => {
-                              const newRegion = e.target.value;
-                              setCompany({ ...company, region: newRegion, city: REGION_DATA[newRegion][0] });
-                            }}
-                            disabled={!isEditingIdentity}
-                            className={`w-full bg-brand-dark/60 border border-white/10 rounded-xl sm:rounded-2xl py-3 px-4 sm:py-4 sm:px-6 text-sm text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-50' : ''}`}
-                          >
-                            {Object.keys(REGION_DATA).map(r => <option key={r} value={r} className="bg-brand-dark text-white">{r}</option>)}
-                          </select>
-                          <ChevronDown className="absolute right-4 bottom-4 text-brand-gold pointer-events-none" size={16} />
+                      <div className="p-6 sm:p-8 space-y-6 bg-brand-dark/40">
+                        {/* Location group */}
+                        <div className="space-y-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
+                            <span className="w-3 h-px bg-white/20" />Location
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5 relative">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Region</label>
+                              <select
+                                value={company.region}
+                                onChange={(e) => {
+                                  const newRegion = e.target.value;
+                                  setCompany({ ...company, region: newRegion, city: REGION_DATA[newRegion][0] });
+                                }}
+                                disabled={!isEditingIdentity}
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                              >
+                                {Object.keys(REGION_DATA).map(r => <option key={r} value={r} className="bg-brand-dark text-white">{r}</option>)}
+                              </select>
+                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                            </div>
+                            <div className="space-y-1.5 relative">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">City / Country</label>
+                              <select
+                                value={company.city}
+                                onChange={e => setCompany({ ...company, city: e.target.value })}
+                                disabled={!isEditingIdentity}
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                              >
+                                {REGION_DATA[company.region]?.map(c => <option key={c} value={c} className="bg-brand-dark text-white">{c}</option>)}
+                              </select>
+                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                            </div>
+                          </div>
                         </div>
-                        <div className="space-y-2 relative">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">City / Country</label>
-                          <select
-                            value={company.city}
-                            onChange={e => setCompany({ ...company, city: e.target.value })}
-                            disabled={!isEditingIdentity}
-                            className={`w-full bg-brand-dark/60 border border-white/10 rounded-xl sm:rounded-2xl py-3 px-4 sm:py-4 sm:px-6 text-sm text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-50' : ''}`}
-                          >
-                            {REGION_DATA[company.region]?.map(c => <option key={c} value={c} className="bg-brand-dark text-white">{c}</option>)}
-                          </select>
-                          <ChevronDown className="absolute right-4 bottom-4 text-brand-gold pointer-events-none" size={16} />
-                        </div>
-                      </div>
 
-                      <div className="space-y-6 relative p-6 sm:p-8 bg-brand-dark/40 border border-brand-gold/20 rounded-2xl shadow-lg">
-                        <div className="space-y-2">
+                        <div className="h-px bg-white/5" />
 
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Hotel/Company Name</label>
-                          <input
-                            type="text"
-                            value={company.name}
-                            onChange={e => setCompany({ ...company, name: e.target.value })}
-                            className={`w-full bg-brand-dark/60 border border-white/10 rounded-xl sm:rounded-2xl py-3 px-4 sm:py-4 sm:px-6 text-sm text-white outline-none focus:border-brand-gold transition-all ${!isEditingIdentity ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            readOnly={!isEditingIdentity}
-                          />
-
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                          <div className="space-y-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Add Outlet Name</label>
+                        {/* Property group */}
+                        <div className="space-y-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
+                            <span className="w-3 h-px bg-white/20" />Property
+                          </p>
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Hotel / Company Name</label>
                             <input
                               type="text"
-                              value={company.currentOutletName}
-                              onChange={e => setCompany({ ...company, currentOutletName: e.target.value })}
-                              className={`w-full bg-brand-dark/60 border border-white/10 rounded-xl sm:rounded-2xl py-3 px-4 sm:py-4 sm:px-6 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-gray-700 ${!isEditingIdentity ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              placeholder="e.g. Skyline Lounge"
+                              value={company.name}
+                              onChange={e => setCompany({ ...company, name: e.target.value })}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
                               readOnly={!isEditingIdentity}
                             />
                           </div>
-                          <div className="space-y-2 relative">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Generated Code</label>
-                            <div className="flex items-center gap-2">
-                              <input type="text" value={company.currentOutletCode} className="flex-grow bg-brand-dark/80 border border-brand-gold/40 rounded-xl sm:rounded-2xl py-3 px-4 sm:py-4 sm:px-6 text-sm text-brand-gold font-bold font-mono outline-none" readOnly />
-                              <button
-                                onClick={handleAddOutlet}
-                                disabled={!isEditingIdentity}
-                                className={`bg-brand-eco p-3.5 sm:p-4 rounded-xl sm:rounded-2xl text-brand-dark hover:brightness-110 active:scale-95 transition-all shadow-lg flex items-center justify-center shrink-0 ${!isEditingIdentity ? 'opacity-50' : ''}`}
-                              >
-                                <Plus size={20} strokeWidth={3} />
-                              </button>
+                        </div>
+
+                        <div className="h-px bg-white/5" />
+
+                        {/* Outlet registration */}
+                        <div className="space-y-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
+                            <span className="w-3 h-px bg-white/20" />Outlets
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Add Outlet Name</label>
+                              <input
+                                type="text"
+                                value={company.currentOutletName}
+                                onChange={e => setCompany({ ...company, currentOutletName: e.target.value })}
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-gray-700 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                                placeholder="e.g. Skyline Lounge"
+                                readOnly={!isEditingIdentity}
+                              />
                             </div>
-                          </div>
-                        </div>
-
-                        <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2">
-                          <button
-                            onClick={() => setIsEditingIdentity(!isEditingIdentity)}
-                            className={`px-6 sm:px-10 py-2.5 sm:py-3.5 rounded-full flex items-center gap-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-xl transition-all ${isEditingIdentity ? 'bg-brand-eco text-brand-dark scale-105 shadow-brand-eco/20' : 'bg-brand-gold text-brand-dark hover:scale-110 shadow-brand-gold/20'}`}
-                          >
-                            {isEditingIdentity ? <Unlock size={14} /> : <Edit2 size={14} />}
-                            {isEditingIdentity ? 'Lock Identity' : 'Edit Identity'}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Registry Sessions (Active Outlets)</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                          {outlets.map((o) => (
-                            <div key={o.code} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl sm:rounded-2xl group hover:border-brand-gold/20 transition-all">
-                              <div>
-                                <div className="text-[10px] font-bold text-white uppercase tracking-tight">{o.name}</div>
-                                <div className="text-[9px] font-mono text-brand-gold font-bold">{o.code}</div>
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Generated Code</label>
+                              <div className="flex items-center gap-2">
+                                <input type="text" value={company.currentOutletCode} className="flex-grow bg-brand-dark/80 border border-brand-gold/20 rounded-xl py-3 px-4 text-sm text-brand-gold font-bold font-mono outline-none" readOnly />
+                                <button
+                                  onClick={handleAddOutlet}
+                                  disabled={!isEditingIdentity}
+                                  className={`w-10 h-10 rounded-xl bg-brand-eco text-brand-dark hover:brightness-110 active:scale-95 transition-all shadow-lg flex items-center justify-center shrink-0 ${!isEditingIdentity ? 'opacity-40' : ''}`}
+                                >
+                                  <Plus size={18} strokeWidth={3} />
+                                </button>
                               </div>
-                              <button onClick={() => handleRemoveOutlet(o.code)} className="text-gray-600 hover:text-brand-alert p-2 transition-colors">
-                                <Trash2 size={16} />
-                              </button>
                             </div>
-                          ))}
+                          </div>
+
+                          {/* Active outlets */}
+                          {outlets.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              {outlets.map((o) => (
+                                <div key={o.code} className="flex items-center justify-between px-4 py-3 bg-brand-gold/5 border border-brand-gold/15 rounded-xl group hover:border-brand-gold/35 transition-all">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-brand-eco" />
+                                    <div>
+                                      <div className="text-[10px] font-bold text-white uppercase tracking-tight">{o.name}</div>
+                                      <div className="text-[9px] font-mono text-brand-gold/70">{o.code}</div>
+                                    </div>
+                                  </div>
+                                  <button onClick={() => handleRemoveOutlet(o.code)} className="text-white/20 hover:text-brand-alert p-1.5 rounded-lg hover:bg-brand-alert/10 transition-all">
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
+                    </div>
 
-                      <div className="bg-brand-dark/40 border border-brand-gold/20 rounded-2xl p-6 sm:p-10 space-y-6 relative overflow-hidden group shadow-xl">
-                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-2">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-brand-eco/10 border border-brand-eco/30 rounded-lg">
-                              <FileText size={20} className="text-brand-eco" />
-                            </div>
-                            <h4 className="text-2xl sm:text-3xl font-geometric font-bold text-white uppercase tracking-tight">Audit Report</h4>
+                    {/* ── Audit Report Card ── */}
+                    <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_40px_rgba(119,177,57,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-6 sm:px-8 py-5 flex items-center justify-between border-b border-brand-eco/15">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center shrink-0">
+                            <FileText size={18} className="text-brand-eco" />
                           </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Compliance</p>
+                            <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Audit Report</h4>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setIsEditingAudit(!isEditingAudit)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-white/5 border border-white/10 text-white/50 hover:border-white/25 hover:text-white/80'}`}
+                          >
+                            {isEditingAudit ? <Unlock size={12} /> : <Edit2 size={12} />}
+                            {isEditingAudit ? 'Lock' : 'Edit'}
+                          </button>
                           <button
                             onClick={handleGetReport}
-                            className="w-full sm:w-auto bg-brand-eco text-brand-dark px-6 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-xl"
+                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-eco text-brand-dark text-[9px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all"
                           >
                             Get Report
                           </button>
                         </div>
+                      </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                          <div className="space-y-2 relative">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Report Cycle</label>
+                      <div className="p-6 sm:p-8 space-y-5 bg-brand-dark/40">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5 relative">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Report Cycle</label>
                             <select
                               value={auditReport.cycle}
                               onChange={e => setAuditReport({ ...auditReport, cycle: e.target.value })}
                               disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/60 border border-white/10 rounded-xl sm:rounded-2xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer text-xs ${!isEditingAudit ? 'opacity-50' : ''}`}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
                             >
                               {['Daily', 'Weekly', 'Monthly', 'Quarterly'].map(cycle => <option key={cycle} value={cycle} className="bg-brand-dark">{cycle}</option>)}
                             </select>
-                            <ChevronDown className="absolute right-4 bottom-3.5 text-brand-gold pointer-events-none" size={14} />
+                            <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
                           </div>
-                          <div className="space-y-2 relative">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Outlet Selection</label>
+                          <div className="space-y-1.5 relative">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Outlet Selection</label>
                             <select
                               value={auditReport.outletSelection}
                               onChange={e => setAuditReport({ ...auditReport, outletSelection: e.target.value })}
                               disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/60 border border-white/10 rounded-xl sm:rounded-2xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer text-xs ${!isEditingAudit ? 'opacity-50' : ''}`}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
                             >
                               <option value="All outlets" className="bg-brand-dark">All outlets</option>
                               {outlets.map(o => (
                                 <option key={o.code} value={o.code}>{o.name} ({o.code})</option>
                               ))}
                             </select>
-                            <ChevronDown className="absolute right-4 bottom-3.5 text-brand-gold pointer-events-none" size={14} />
+                            <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                          <div className="space-y-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">From Date</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">From Date</label>
                             <div className="relative">
-                              <input
-                                type="date"
-                                value={auditReport.fromDate}
-                                onChange={e => setAuditReport({ ...auditReport, fromDate: e.target.value })}
-                                disabled={!isEditingAudit}
-                                className={`w-full bg-brand-dark/60 border border-white/10 rounded-xl sm:rounded-2xl py-3 px-4 pl-10 text-white outline-none focus:border-brand-gold transition-all text-xs ${!isEditingAudit ? 'opacity-50' : ''}`}
-                              />
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold pointer-events-none" size={14} />
+                              <input type="date" value={auditReport.fromDate} onChange={e => setAuditReport({ ...auditReport, fromDate: e.target.value })} disabled={!isEditingAudit} className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 pl-9 text-white outline-none focus:border-brand-gold transition-all text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`} />
+                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/60 pointer-events-none" size={13} />
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">To Date</label>
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">To Date</label>
                             <div className="relative">
-                              <input
-                                type="date"
-                                value={auditReport.toDate}
-                                onChange={e => setAuditReport({ ...auditReport, toDate: e.target.value })}
-                                disabled={!isEditingAudit}
-                                className={`w-full bg-brand-dark/60 border border-white/10 rounded-xl sm:rounded-2xl py-3 px-4 pl-10 text-white outline-none focus:border-brand-gold transition-all text-xs ${!isEditingAudit ? 'opacity-50' : ''}`}
-                              />
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold pointer-events-none" size={14} />
+                              <input type="date" value={auditReport.toDate} onChange={e => setAuditReport({ ...auditReport, toDate: e.target.value })} disabled={!isEditingAudit} className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 pl-9 text-white outline-none focus:border-brand-gold transition-all text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`} />
+                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/60 pointer-events-none" size={13} />
                             </div>
                           </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Audit Comments</label>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Audit Comments</label>
                           <textarea
                             placeholder="Add operational notes or compliance details for the current reporting cycle..."
                             value={auditReport.comments}
                             onChange={e => setAuditReport({ ...auditReport, comments: e.target.value })}
                             disabled={!isEditingAudit}
-                            className={`w-full bg-brand-dark/60 border border-white/10 rounded-xl sm:rounded-2xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[100px] resize-none ${!isEditingAudit ? 'opacity-50' : ''}`}
+                            className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
                           />
                         </div>
+                      </div>
+                    </div>
 
-                        <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2">
-                          <button
-                            onClick={() => setIsEditingAudit(!isEditingAudit)}
-                            className={`px-6 sm:px-10 py-2.5 sm:py-3.5 rounded-full flex items-center gap-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-xl transition-all ${isEditingAudit ? 'bg-brand-eco text-brand-dark scale-105 shadow-brand-eco/20' : 'bg-brand-gold text-brand-dark hover:scale-110 shadow-brand-gold/20'}`}
-                          >
-                            {isEditingAudit ? <Unlock size={14} /> : <Edit2 size={14} />}
-                            {isEditingAudit ? 'Lock Parameters' : 'Edit Audit Settings'}
-                          </button>
+                    {/* ── Operational Context ── */}
+                    <div className="rounded-2xl overflow-hidden border border-white/8">
+                      <div className="bg-gradient-to-r from-white/5 to-transparent px-6 sm:px-8 py-5 border-b border-white/8 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
+                          <Globe size={17} className="text-brand-gold" />
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Live</p>
+                          <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Operational Context</h4>
                         </div>
                       </div>
-                    </div >
-
-                    <div className="flex flex-col gap-6 sm:gap-8 xl:h-full">
-                      <div className="bg-brand-dark/40 border border-brand-gold/20 p-6 sm:p-10 rounded-2xl text-center flex flex-col justify-center items-center h-fit xl:sticky xl:top-0">
-                        <Globe size={48} className="text-brand-gold mb-6" />
-                        <h4 className="text-xl font-bold uppercase tracking-tight mb-2 text-white">Operational Context</h4>
-                        <div className="space-y-2 mb-6 w-full">
-                          <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Dynamic Timezone Adjustment</p>
-                          <div className="flex flex-col items-center gap-3">
-                            <span className="text-[11px] text-gray-400 uppercase tracking-[0.2em] font-medium">{company.city}, {company.region}</span>
-                            <div className="px-6 py-2 bg-brand-eco/10 border border-brand-eco/30 rounded-full inline-flex items-center gap-3">
-                              <Clock size={16} className="text-brand-eco" />
-                              <span className="text-[12px] font-black text-brand-eco uppercase tracking-widest">{currentTimezone}</span>
+                      <div className="p-6 sm:p-8 bg-brand-dark/40 flex flex-col sm:flex-row items-center gap-6">
+                        <div className="flex-1 space-y-3 w-full">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Dynamic Timezone Adjustment</p>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-sm font-bold text-white">{company.city}, {company.region}</span>
+                            <div className="px-3 py-1.5 bg-brand-eco/10 border border-brand-eco/30 rounded-full inline-flex items-center gap-2">
+                              <Clock size={12} className="text-brand-eco" />
+                              <span className="text-[10px] font-black text-brand-eco uppercase tracking-widest">{currentTimezone}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 text-gray-400 mb-8">
-                          <Activity size={14} className="text-brand-gold" />
-                          <p className="text-[10px] font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em]">Next Data Sync: 12:00 AM {currentTimezone.split(' ')[0]}</p>
+                        <div className="flex items-center gap-2 text-white/30 shrink-0">
+                          <Activity size={13} className="text-brand-gold/60" />
+                          <p className="text-[9px] font-bold uppercase tracking-widest">Next Sync: 12:00 AM {currentTimezone.split(' ')[0]}</p>
                         </div>
                       </div>
                     </div>
@@ -2124,151 +2153,153 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
 
                 {activeView === PortalView.TEAM && (
-                  <div className="space-y-8 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
-                    <div id="enrollment-form" className="bg-brand-dark/40 border border-brand-gold/20 p-6 sm:p-10 rounded-2xl space-y-6 sm:space-y-8">
-                      <div className="flex items-center justify-between">
-                        <h4 className="flex items-center gap-3 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">
-                          <UserPlus size={18} /> {enrollId ? "Edit Role Position" : "Enroll Personnel"}
-                        </h4>
+                  <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
+
+                    {/* ── Enroll / Edit card ── */}
+                    <div id="enrollment-form" className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.04)]">
+                      {/* Card header */}
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-6 sm:px-8 py-5 flex items-center justify-between border-b border-brand-gold/15">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <UserPlus size={17} className="text-brand-gold" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Role & Permission Registry</p>
+                            <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">
+                              {enrollId ? 'Edit Role Position' : 'Enroll Personnel'}
+                            </h4>
+                          </div>
+                        </div>
                         {enrollId && (
                           <button
                             onClick={() => {
-                              setEnrollId(null);
-                              setEnrollName('');
-                              setEnrollEmail('');
-                              setEnrollPosition('');
-                              setEnrollOutlet('');
-                              setEnrollRole('');
-                              setEnrollPermissions([]);
-                              setGenPassword('');
-                              setGenLink('');
+                              setEnrollId(null); setEnrollName(''); setEnrollEmail('');
+                              setEnrollPosition(''); setEnrollOutlet(''); setEnrollRole('');
+                              setEnrollPermissions([]); setGenPassword(''); setGenLink('');
                             }}
-                            className="text-[9px] font-black text-brand-gold uppercase tracking-widest hover:text-white transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white/70 hover:border-white/20 transition-all"
                           >
-                            Cancel Edit
+                            <X size={10} /> Cancel
                           </button>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Full Name</label>
-                          <input
-                            type="text"
-                            value={enrollName}
-                            onChange={e => setEnrollName(e.target.value)}
-                            placeholder="Hotel Staff Name"
-                            className="w-full bg-brand-dark border border-white/10 rounded-xl sm:rounded-2xl py-3.5 px-5 text-sm text-white outline-none focus:border-brand-gold placeholder:text-gray-700 transition-all"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Corporate Email</label>
-                          <input
-                            type="email"
-                            value={enrollEmail}
-                            onChange={e => setEnrollEmail(e.target.value)}
-                            placeholder="staff@hotel.com"
-                            className="w-full bg-brand-dark border border-white/10 rounded-xl sm:rounded-2xl py-3.5 px-5 text-sm text-white outline-none focus:border-brand-gold placeholder:text-gray-700 transition-all"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
-                        <div className="space-y-2 relative">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Position</label>
-                          <select
-                            value={enrollPosition}
-                            onChange={e => setEnrollPosition(e.target.value)}
-                            className="w-full bg-brand-dark border border-white/10 rounded-xl sm:rounded-2xl py-3.5 px-5 text-sm text-brand-gold font-black uppercase outline-none appearance-none cursor-pointer transition-all"
-                          >
-                            <option value="" disabled>Select Position</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Exec Chef">Exec Chef</option>
-                            <option value="Outlet Manager">Outlet Manager</option>
-                            <option value="Chef Prep">Chef Prep</option>
-                            <option value="GM">GM</option>
-                          </select>
-                          <ChevronDown className="absolute right-4 bottom-3.5 text-brand-gold pointer-events-none" size={14} />
-                        </div>
-                        <div className="space-y-2 relative">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2 block">Assign Primary Outlet Link</label>
-                          <select
-                            value={enrollOutlet}
-                            onChange={e => setEnrollOutlet(e.target.value)}
-                            className="w-full bg-brand-dark border border-white/10 rounded-xl sm:rounded-2xl py-3.5 px-5 text-sm text-white font-black uppercase appearance-none cursor-pointer transition-all"
-                          >
-                            <option value="" disabled>Select Outlet</option>
-                            {outlets.map(o => <option key={o.code} value={o.code}>{o.name} ({o.code})</option>)}
-                          </select>
-                          <ChevronDown className="absolute right-4 bottom-3.5 text-brand-gold pointer-events-none" size={16} />
-                        </div>
-                      </div>
 
-                      <div className="space-y-4 relative" ref={permRef}>
-                        <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Role Permissions (Drop Menu)</label>
-                        <button
-                          onClick={() => setIsPermDropdownOpen(!isPermDropdownOpen)}
-                          className="w-full bg-brand-dark border border-white/10 rounded-xl sm:rounded-2xl py-3.5 px-5 text-sm text-left flex items-center justify-between group hover:border-brand-gold/40 transition-all"
-                        >
-                          <span className="text-gray-400 font-bold truncate">
-                            {enrollPermissions.length === 0
-                              ? "Select Permissions"
-                              : `${enrollPermissions.length} Permissions Selected`}
-                          </span>
-                          {isPermDropdownOpen ? <ChevronUp size={18} className="text-brand-gold" /> : <ChevronDown size={18} className="text-brand-gold" />}
-                        </button>
-
-                        {isPermDropdownOpen && (
-                          <div className="absolute top-full left-0 w-full mt-2 bg-brand-dark/95 backdrop-blur-xl border border-brand-gold/40 rounded-2xl shadow-2xl z-[100] max-h-[300px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-200">
-                            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-                              {AVAILABLE_PERMISSIONS.map(p => (
-                                <button
-                                  key={p}
-                                  onClick={() => togglePermission(p)}
-                                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left group ${enrollPermissions.includes(p) ? 'bg-brand-gold/10 border-brand-gold/40 text-brand-gold' : 'bg-transparent border-white/5 text-gray-600 hover:border-white/10'}`}
-                                >
-                                  {enrollPermissions.includes(p) ? <CheckSquare size={16} /> : <Square size={16} />}
-                                  <span className="text-[9px] font-bold uppercase tracking-tight">{p}</span>
-                                </button>
-                              ))}
+                      <div className="p-6 sm:p-8 space-y-5 bg-brand-dark/40">
+                        {/* Name + Email */}
+                        <div className="space-y-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
+                            <span className="w-3 h-px bg-white/20" />Identity
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Full Name</label>
+                              <input type="text" value={enrollName} onChange={e => setEnrollName(e.target.value)} placeholder="Hotel Staff Name"
+                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-gray-700 hover:border-brand-gold/40 transition-all" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Corporate Email</label>
+                              <input type="email" value={enrollEmail} onChange={e => setEnrollEmail(e.target.value)} placeholder="staff@hotel.com"
+                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-gray-700 hover:border-brand-gold/40 transition-all" />
                             </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-4">
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Generated Password</label>
-                          <div className="relative group">
-                            <input
-                              type="text"
-                              readOnly
-                              value={genPassword}
-                              placeholder="Generated upon save..."
-                              className="w-full bg-brand-dark/40 border border-brand-gold/20 rounded-xl sm:rounded-2xl py-3.5 px-10 text-brand-gold font-mono font-bold text-sm outline-none"
-                            />
-                            <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold opacity-50" />
+                        <div className="h-px bg-white/5" />
+
+                        {/* Position + Outlet */}
+                        <div className="space-y-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
+                            <span className="w-3 h-px bg-white/20" />Assignment
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5 relative">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Position</label>
+                              <select value={enrollPosition} onChange={e => setEnrollPosition(e.target.value)}
+                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-brand-gold font-black uppercase outline-none appearance-none cursor-pointer hover:border-brand-gold/40 transition-all">
+                                <option value="" disabled>Select Position</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Exec Chef">Exec Chef</option>
+                                <option value="Outlet Manager">Outlet Manager</option>
+                                <option value="Chef Prep">Chef Prep</option>
+                                <option value="GM">GM</option>
+                              </select>
+                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                            </div>
+                            <div className="space-y-1.5 relative">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Primary Outlet</label>
+                              <select value={enrollOutlet} onChange={e => setEnrollOutlet(e.target.value)}
+                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white font-black uppercase appearance-none cursor-pointer hover:border-brand-gold/40 transition-all">
+                                <option value="" disabled>Select Outlet</option>
+                                {outlets.map(o => <option key={o.code} value={o.code}>{o.name} ({o.code})</option>)}
+                              </select>
+                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                            </div>
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-2">Generated Link</label>
-                          <div className="relative group">
-                            <input
-                              type="text"
-                              readOnly
-                              value={genLink}
-                              placeholder="Generated upon save..."
-                              className="w-full bg-brand-dark/40 border border-brand-gold/20 rounded-xl sm:rounded-2xl py-3.5 px-10 text-brand-gold font-mono font-bold text-[10px] outline-none truncate"
-                            />
-                            <Link2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold opacity-50" />
+
+                        <div className="h-px bg-white/5" />
+
+                        {/* Permissions */}
+                        <div className="space-y-3 relative" ref={permRef}>
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
+                            <span className="w-3 h-px bg-white/20" />Permissions
+                          </p>
+                          <button
+                            onClick={() => setIsPermDropdownOpen(!isPermDropdownOpen)}
+                            className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-left flex items-center justify-between hover:border-brand-gold/40 transition-all"
+                          >
+                            <span className={enrollPermissions.length ? 'text-brand-gold font-black text-xs uppercase tracking-widest' : 'text-white/25 text-sm'}>
+                              {enrollPermissions.length === 0 ? 'Select Permissions' : `${enrollPermissions.length} Permission${enrollPermissions.length > 1 ? 's' : ''} Selected`}
+                            </span>
+                            {isPermDropdownOpen ? <ChevronUp size={15} className="text-brand-gold" /> : <ChevronDown size={15} className="text-brand-gold/60" />}
+                          </button>
+                          {isPermDropdownOpen && (
+                            <div className="absolute top-full left-0 w-full mt-1.5 bg-[#0e1f1c] border border-brand-gold/25 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] z-[100] max-h-[280px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150">
+                              <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                                {AVAILABLE_PERMISSIONS.map(p => (
+                                  <button key={p} onClick={() => togglePermission(p)}
+                                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-all text-left ${enrollPermissions.includes(p) ? 'bg-brand-gold/10 border-brand-gold/30 text-brand-gold' : 'border-transparent text-white/40 hover:bg-white/5 hover:text-white/70'}`}>
+                                    {enrollPermissions.includes(p) ? <CheckSquare size={14} /> : <Square size={14} />}
+                                    <span className="text-[9px] font-bold uppercase tracking-tight">{p}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="h-px bg-white/5" />
+
+                        {/* Generated credentials */}
+                        <div className="space-y-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
+                            <span className="w-3 h-px bg-white/20" />Generated Credentials
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Password</label>
+                              <div className="relative">
+                                <input type="text" readOnly value={genPassword} placeholder="Generated upon save…"
+                                  className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3 px-4 pl-9 text-brand-gold font-mono font-bold text-sm outline-none placeholder:text-white/20" />
+                                <Key size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/40" />
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Login Link</label>
+                              <div className="relative">
+                                <input type="text" readOnly value={genLink} placeholder="Generated upon save…"
+                                  className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3 px-4 pl-9 text-brand-gold font-mono font-bold text-[10px] outline-none truncate placeholder:text-white/20" />
+                                <Link2 size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/40" />
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <button
-                        onClick={handleEnroll}
-                        className="w-full py-4 bg-brand-eco text-brand-dark rounded-xl sm:rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:brightness-110 active:scale-[0.98] transition-all"
-                      >
-                        {enrollId ? "Save Role Changes" : "Enroll & Generate Access"}
-                      </button>
+                        <button onClick={handleEnroll}
+                          className="w-full py-3.5 bg-brand-eco text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_6px_20px_rgba(119,177,57,0.3)] hover:brightness-110 active:scale-[0.98] transition-all">
+                          {enrollId ? 'Save Role Changes' : 'Enroll & Generate Access'}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-12">
