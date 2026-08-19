@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Page, UserProfile } from './types';
+import { useSeo } from './lib/useSeo';
 import Navbar from './components/Navbar';
 import LandingPage from './components/LandingPage';
 import UnderConstruction from './components/UnderConstruction';
@@ -52,6 +53,9 @@ const App: React.FC = () => {
     pathToPage(location.pathname)
   );
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  // Per-page SEO meta tags
+  useSeo(currentPage);
 
   // Sync state when browser back/forward is used
   useEffect(() => {

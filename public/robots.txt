@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /signin
+Disallow: /signup
+Disallow: /forgot
+Disallow: /staff-portal
+Disallow: /supervisor-dashboard
+Disallow: /assessment
+
+Sitemap: https://www.ecometricus.com/sitemap.xml
