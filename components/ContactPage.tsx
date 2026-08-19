@@ -108,8 +108,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error }) =
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center justify-between bg-white/5 border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
-          open ? 'border-brand-gold bg-white/8' : error ? 'border-brand-alert/60' : 'border-white/10 hover:border-white/20'
+        className={`w-full flex items-center justify-between bg-brand-dark border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
+          open ? 'border-brand-gold' : error ? 'border-brand-alert/60' : 'border-white/12 hover:border-white/25'
         }`}
       >
         <span className={selected ? 'text-white' : 'text-white/25'}>
@@ -211,10 +211,10 @@ const ContactPage: React.FC = () => {
   };
 
   const inputClass = (field: string) =>
-    `w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:bg-white/8 focus:border-brand-gold ${
+    `w-full bg-brand-dark border rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-brand-gold ${
       attempted && !(form as Record<string, string>)[field]?.trim()
         ? 'border-brand-alert/60'
-        : 'border-white/10'
+        : 'border-white/12'
     }`;
 
   const channels = [
@@ -222,8 +222,8 @@ const ContactPage: React.FC = () => {
       icon: <Mail className="text-brand-gold" size={24} />,
       title: 'Email Us',
       desc: 'For general enquiries, partnerships, or support.',
-      action: 'hello@ecometricus.com',
-      href: 'mailto:hello@ecometricus.com',
+      action: 'earth@urbanseed.net',
+      href: 'mailto:earth@urbanseed.net',
     },
     {
       icon: <CalendarCheck className="text-brand-eco" size={24} />,
@@ -267,8 +267,8 @@ const ContactPage: React.FC = () => {
         {/* Contact channel cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-16">
           {channels.map((ch, i) => (
-            <div key={i} className="bg-brand-dark/60 border border-white/5 rounded-2xl p-6 hover:border-brand-gold/20 transition-all duration-300 flex flex-col gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
+            <div key={i} className="bg-[#0e1f1c] border border-white/10 rounded-2xl p-6 hover:border-brand-gold/30 transition-all duration-300 flex flex-col gap-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <div className="w-12 h-12 rounded-xl bg-white/8 border border-white/8 flex items-center justify-center">
                 {ch.icon}
               </div>
               <div>
@@ -313,7 +313,7 @@ const ContactPage: React.FC = () => {
 
             {/* Left info panel */}
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-2xl p-6 sm:p-8">
+              <div className="bg-[#0e1f1c] border border-brand-gold/20 rounded-2xl p-6 sm:p-8 shadow-[inset_0_1px_0_rgba(200,164,19,0.06)]">
                 <h2 className="text-lg font-geometric font-black text-white uppercase tracking-widest mb-4">
                   Why Reach Out?
                 </h2>
@@ -332,14 +332,14 @@ const ContactPage: React.FC = () => {
                   ))}
                 </ul>
               </div>
-              <div className="bg-white/3 border border-white/5 rounded-2xl p-6">
+              <div className="bg-[#0e1f1c] border border-white/10 rounded-2xl p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand-eco mb-2">Response Time</p>
                 <p className="text-sm text-gray-400 leading-relaxed">We typically respond within <span className="text-white font-semibold">1–2 business days</span>. For urgent matters, please book a demo directly via Calendly.</p>
               </div>
             </div>
 
             {/* Right form */}
-            <form onSubmit={handleSubmit} noValidate className="lg:col-span-3 bg-brand-dark/60 border border-white/5 rounded-2xl p-6 sm:p-8 space-y-5">
+            <form onSubmit={handleSubmit} noValidate className="lg:col-span-3 bg-[#0e1f1c] border border-white/10 rounded-2xl p-6 sm:p-8 space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <h2 className="text-lg font-geometric font-black text-white uppercase tracking-widest mb-2">Send a Message</h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -355,7 +355,7 @@ const ContactPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Property / Company</label>
-                <input type="text" placeholder="The Grand Hotel" value={form.property} onChange={e => setForm(p => ({ ...p, property: e.target.value }))} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:bg-white/8 focus:border-brand-gold" />
+                <input type="text" placeholder="The Grand Hotel" value={form.property} onChange={e => setForm(p => ({ ...p, property: e.target.value }))} className="w-full bg-brand-dark border border-white/12 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-brand-gold" />
               </div>
 
               <div>

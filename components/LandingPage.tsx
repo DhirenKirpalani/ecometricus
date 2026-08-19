@@ -315,7 +315,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
             Where does your <span className="text-brand-gold">F&B operation</span> stand?
           </h2>
           <p className="text-base text-gray-400 font-light leading-relaxed mb-10 max-w-md mx-auto">
-            Curious how your operation measures up? This optional assessment gives you a clear picture of where you stand — no sign-up required.
+            Curious how your operation measures up? This assessment gives you a clear picture of where you stand — no sign-up required.
           </p>
           <a
             href="https://tally.so/r/aQ0ZOZ"

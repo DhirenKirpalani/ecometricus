@@ -184,7 +184,10 @@ const App: React.FC = () => {
     currentPage === Page.SUPERVISOR_DASHBOARD ||
     currentPage === Page.DASHBOARD ||
     currentPage === Page.ASSESSMENT ||
-    currentPage === Page.EARLY_ACCESS;
+    currentPage === Page.EARLY_ACCESS ||
+    currentPage === Page.SIGN_IN ||
+    currentPage === Page.SIGN_UP ||
+    currentPage === Page.FORGOT_PASSWORD;
 
   return (
     <div className="min-h-screen flex flex-col bg-brand-dark text-white font-body selection:bg-brand-gold/30 selection:text-brand-gold">

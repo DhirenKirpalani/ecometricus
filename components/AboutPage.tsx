@@ -28,24 +28,26 @@ const AboutPage: React.FC = () => {
     <div className="min-h-screen bg-brand-dark">
 
       {/* ─── Hero ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-white/5 min-h-[420px] sm:min-h-[500px] flex items-center">
-        {/* Background image */}
-        <div className="absolute inset-0 z-0">
+      <section className="relative overflow-hidden border-b border-white/5 min-h-[480px] sm:min-h-[540px] flex items-center">
+
+        {/* Right — image covers right half */}
+        <div className="absolute inset-y-0 right-0 w-1/2 hidden lg:block">
           <img
             src="/assets/Open kitchen Image.png"
-            alt="About hero background"
-            className="w-full h-full object-cover object-center opacity-20 brightness-50"
+            alt="Kitchen vision"
+            className="w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-dark/97 via-brand-dark/80 to-brand-dark/50" />
-          <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/70 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-dark via-brand-dark/20 to-transparent" />
         </div>
+
+        {/* Left — text */}
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 sm:py-28 w-full">
-          <div className="max-w-2xl">
+          <div className="max-w-xl lg:max-w-[45%]">
             <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">Powered by Us+AI Bureau</p>
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-geometric font-bold text-white uppercase leading-[1.1] mb-6 drop-shadow-2xl">
-              The<br /><span className="text-brand-gold">Vision</span>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-geometric font-bold text-white uppercase leading-[1.1] mb-6">
+              The <span className="text-brand-gold">Vision</span>
             </h1>
-            <p className="text-lg sm:text-2xl text-gray-100 font-light leading-relaxed mb-8 max-w-xl drop-shadow-lg">
+            <p className="text-lg sm:text-2xl text-gray-300 font-light leading-relaxed mb-8">
               Empowering the hotel Food & Beverage industry with a comprehensive, intelligent platform for optimizing performance and enhancing profitability.
             </p>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-eco">
@@ -54,6 +56,7 @@ const AboutPage: React.FC = () => {
             </div>
           </div>
         </div>
+
       </section>
 
       {/* ─── 800-Pound Gorilla ─────────────────────────────── */}
