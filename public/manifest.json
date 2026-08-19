@@ -1,0 +1,28 @@
+{
+  "name": "Ecometricus — AI-Powered ESG Intelligence",
+  "short_name": "Ecometricus",
+  "description": "AI-powered ESG intelligence platform for luxury hotel Food & Beverage operations. Measure food waste, water, energy, and carbon in real time.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#152E2A",
+  "theme_color": "#152E2A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "1024x578",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    }
+  ]
+}
