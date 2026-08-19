@@ -41,11 +41,11 @@ const AboutPage: React.FC = () => {
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 sm:py-28 w-full">
           <div className="max-w-2xl">
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">Powered by Us+AI Bureau</p>
-            <h1 className="text-4xl sm:text-6xl font-geometric font-black text-white uppercase leading-tight mb-6">
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">Powered by Us+AI Bureau</p>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-geometric font-bold text-white uppercase leading-[1.1] mb-6 drop-shadow-2xl">
               The<br /><span className="text-brand-gold">Vision</span>
             </h1>
-            <p className="text-base sm:text-lg text-gray-300 font-bold leading-relaxed mb-8 max-w-lg">
+            <p className="text-lg sm:text-2xl text-gray-100 font-light leading-relaxed mb-8 max-w-xl drop-shadow-lg">
               Empowering the hotel Food & Beverage industry with a comprehensive, intelligent platform for optimizing performance and enhancing profitability.
             </p>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-eco">
