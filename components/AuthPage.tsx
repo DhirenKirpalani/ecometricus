@@ -3,9 +3,8 @@ import React, { useState, useRef } from 'react';
 import { Page, UserProfile } from '../types';
 import Logo from './Logo';
 import {
-  ArrowLeft,
   CheckCircle2, Eye, EyeOff, Lock, Mail, User,
-  Leaf, Droplets, Zap, Globe, ShieldCheck, Send
+  ShieldCheck, Send
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -77,14 +76,6 @@ const PasswordStrength: React.FC<{ password: string }> = ({ password }) => {
     </div>
   );
 };
-
-// ─── Left decorative panel stats ────────────────────────────────────────────
-const sideStats = [
-  { icon: <Leaf size={15} className="text-brand-gold" />, value: '5,675 kg', label: 'Food Waste Saved' },
-  { icon: <Droplets size={15} className="text-brand-eco" />, value: '895 Lts', label: 'Water Saved' },
-  { icon: <Zap size={15} className="text-brand-energy" />, value: '13,000 kWh', label: 'Energy Reduced' },
-  { icon: <Globe size={15} className="text-brand-gold" />, value: '2,890 kg', label: 'CO₂ Avoided' },
-];
 
 // ─── Shared input base class ─────────────────────────────────────────────────
 const inputBase = 'w-full bg-[#0e1f1c] border border-brand-gold/20 focus:border-brand-gold rounded-xl py-3.5 text-sm text-white outline-none transition-all placeholder:text-white/20 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]';
@@ -310,329 +301,250 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
 
 
 
+  // Left panel bullet points
+  const leftBullets = isSignIn
+    ? [
+        'Real-time ESG intelligence for your F&B operation',
+        'Track food waste, energy & water in one platform',
+        'AI-powered insights tailored to your property',
+      ]
+    : [
+        'No credit card required to start',
+        'Full dashboard access from day one',
+        'Set up your operation in under 10 minutes',
+      ];
+
   return (
-    <div className="min-h-screen bg-brand-dark flex overflow-hidden">
+    <div className="min-h-screen flex overflow-hidden">
 
       {/* ── Left branding panel (desktop only) ─── */}
-      <div className="hidden lg:flex lg:w-[42%] xl:w-[40%] flex-col relative overflow-hidden bg-[#0a1a17]">
-        {/* Layered background */}
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 30%, rgba(200,164,19,0.07), transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(119,177,57,0.06), transparent 45%)' }} />
-        {/* Decorative grid pattern */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(200,164,19,1) 1px, transparent 1px), linear-gradient(90deg, rgba(200,164,19,1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-        {/* Bottom gradient fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#0a1a17] to-transparent pointer-events-none" />
+      <div className="hidden lg:flex lg:w-[45%] xl:w-[42%] flex-col relative overflow-hidden bg-[#0a1a17]">
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 30% 60%, rgba(119,177,57,0.08), transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(200,164,19,0.05), transparent 50%)' }} />
+        <div className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-white/8 to-transparent" />
 
-        <div className="relative flex flex-col h-full p-10 gap-8">
+        <div className="relative flex flex-col h-full px-12 py-10">
 
-          {/* Back link */}
-          <button
-            onClick={() => onNavigate(Page.HOME)}
-            className="self-start flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/30 hover:text-white transition-colors"
-          >
-            <ArrowLeft size={13} /> Back to Home
-          </button>
+          {/* Main content */}
+          <div className="flex-1 flex flex-col justify-center gap-10">
 
-          {/* Logo + headline */}
-          <div className="flex-1 flex flex-col justify-center space-y-6">
-            <Logo size="md" withLabel />
-            <div className="space-y-3 max-w-[280px]">
-              <h2 className="text-2xl font-geometric font-black text-white leading-tight">
-                Measure what matters.<br />
-                <span className="text-brand-gold">Profit from sustainability.</span>
+            {/* Logo — click to go home */}
+            <button onClick={() => onNavigate(Page.HOME)} className="self-start hover:opacity-80 transition-opacity">
+              <Logo size="lg" withLabel />
+            </button>
+
+            {/* Tagline */}
+            <div className="space-y-3 max-w-xs">
+              <h2 className="text-2xl sm:text-3xl font-geometric font-bold text-white leading-snug">
+                {isSignIn ? (
+                  <>Measure what matters.<br /><span className="text-brand-gold">Profit from sustainability.</span></>
+                ) : (
+                  <>Start tracking<br /><span className="text-brand-gold">what matters today.</span></>
+                )}
               </h2>
-              <p className="text-xs text-white/35 font-light leading-relaxed">
-                The premier AI-powered ESG intelligence platform for luxury F&B operations worldwide.
+              <p className="text-sm text-white/40 leading-relaxed">
+                {isSignIn
+                  ? 'The premier AI-powered ESG platform for luxury F&B operations worldwide.'
+                  : 'Everything you need to measure, optimize, and report your ESG performance.'}
               </p>
             </div>
 
-            {/* Divider */}
-            <div className="h-px bg-gradient-to-r from-brand-gold/20 to-transparent w-2/3" />
+            {/* Bullets */}
+            <ul className="space-y-3.5">
+              {leftBullets.map(b => (
+                <li key={b} className="flex items-center gap-3 text-sm text-white/60">
+                  <CheckCircle2 size={16} className="text-brand-eco shrink-0" />
+                  {b}
+                </li>
+              ))}
+            </ul>
 
-            {/* 2×2 metric grid */}
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.35em] text-brand-gold/40 mb-4">Live Platform Metrics</p>
-              <div className="grid grid-cols-2 gap-3">
-                {sideStats.map((s) => (
-                  <div key={s.label} className="p-4 rounded-xl bg-white/4 border border-white/6 hover:border-brand-gold/20 transition-all duration-300 group">
-                    <div className="w-8 h-8 rounded-lg bg-brand-gold/8 border border-brand-gold/15 flex items-center justify-center mb-3 group-hover:border-brand-gold/30 transition-all">
-                      {s.icon}
-                    </div>
-                    <p className="text-sm font-geometric font-black text-white leading-none">{s.value}</p>
-                    <p className="text-[9px] text-gray-600 uppercase tracking-widest mt-1.5">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* Footer */}
           <div className="flex items-center gap-2">
             <ShieldCheck size={12} className="text-brand-eco shrink-0" />
-            <p className="text-[9px] text-gray-700 uppercase tracking-widest">256-bit encrypted · GDPR compliant</p>
+            <p className="text-xs text-white/25">256-bit encrypted · GDPR compliant</p>
           </div>
+
         </div>
       </div>
 
       {/* ── Right form panel ─── */}
-      <div className="flex-1 flex flex-col overflow-y-auto">
-        {/* Mobile back button */}
-        <div className="lg:hidden p-6">
-          <button
-            onClick={() => onNavigate(Page.HOME)}
-            className="flex items-center gap-2 border border-white/15 rounded-full px-5 py-2 text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white hover:border-white/30 transition-all"
-          >
-            <ArrowLeft size={13} /> Back
+      <div className="flex-1 flex flex-col overflow-y-auto bg-[#0d1b18]">
+
+        {/* Mobile logo */}
+        <div className="lg:hidden flex items-center justify-center p-6">
+          <button onClick={() => onNavigate(Page.HOME)} className="hover:opacity-80 transition-opacity">
+            <Logo size="md" withLabel />
           </button>
         </div>
 
-        <div className="flex-1 flex items-center justify-center px-6 py-10 lg:py-16">
-          <div className="w-full max-w-md space-y-8">
-
-            {/* Logo (mobile) */}
-            <div className="lg:hidden flex justify-center">
-              <Logo size="md" withLabel />
-            </div>
+        <div className="flex-1 flex items-center justify-center px-6 py-10">
+          <div className="w-full max-w-sm">
 
             {/* ── Check-your-email confirmation screen ── */}
             {successMsg === 'confirmation_sent' && (
               <div className="flex flex-col items-center text-center gap-6 py-8">
-                {/* Animated envelope icon */}
                 <div className="relative w-20 h-20">
                   <div className="w-20 h-20 rounded-2xl bg-brand-eco/10 border border-brand-eco/30 flex items-center justify-center">
                     <Mail size={36} className="text-brand-eco" />
                   </div>
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-eco border-2 border-brand-dark flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-eco border-2 border-[#0d1b18] flex items-center justify-center">
                     <CheckCircle2 size={11} className="text-brand-dark" />
                   </span>
                 </div>
-
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold/60">Almost There</p>
-                  <h2 className="text-2xl font-geometric font-black text-white">Check your inbox</h2>
-                  <p className="text-sm text-white/40 font-light leading-relaxed max-w-sm">
-                    We sent a confirmation link to <span className="text-white/70 font-medium">{email}</span>. Click it to activate your account and access the dashboard.
+                  <h2 className="text-2xl font-geometric font-bold text-white">Check your inbox</h2>
+                  <p className="text-sm text-white/40 leading-relaxed max-w-sm">
+                    We sent a confirmation link to <span className="text-white/70 font-medium">{email}</span>. Click it to activate your account.
                   </p>
                 </div>
-
                 <div className="w-full p-4 rounded-xl bg-white/3 border border-white/8 text-left space-y-2">
-                  {[
-                    'Check your spam / junk folder if it doesn\'t arrive',
-                    'The link expires in 24 hours',
-                    'Once confirmed you\'ll be taken straight to your dashboard',
-                  ].map((tip) => (
+                  {["Check your spam folder if it doesn't arrive", 'The link expires in 24 hours', 'Once confirmed you\'ll go straight to your dashboard'].map((tip) => (
                     <div key={tip} className="flex items-start gap-2.5">
                       <span className="w-1 h-1 rounded-full bg-brand-gold/50 mt-2 shrink-0" />
                       <p className="text-xs text-white/35">{tip}</p>
                     </div>
                   ))}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => { setSuccessMsg(null); onNavigate(Page.SIGN_IN); }}
-                  className="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-white transition-colors"
-                >
+                <button type="button" onClick={() => { setSuccessMsg(null); onNavigate(Page.SIGN_IN); }} className="text-sm text-white/30 hover:text-white transition-colors">
                   ← Back to Log In
                 </button>
               </div>
             )}
 
-            {/* ── Normal form (hidden when confirmation screen is shown) ── */}
-            {successMsg !== 'confirmation_sent' && (<>
+            {/* ── Normal form ── */}
+            {successMsg !== 'confirmation_sent' && (
+              <div className="space-y-6">
 
-            {/* Header */}
-            <div>
-              {isForgot ? (
-                <>
-                  {/* Forgot password — visual icon + centered layout */}
-                  <div className="flex flex-col items-center text-center gap-4 py-2">
-                    <div className="w-16 h-16 rounded-2xl bg-brand-gold/10 border border-brand-gold/25 flex items-center justify-center">
-                      <Lock size={28} className="text-brand-gold" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/60 mb-1.5">Account Recovery</p>
-                      <h1 className="text-3xl font-geometric font-black text-white">Forgot Password?</h1>
-                      <p className="text-sm text-white/35 mt-2 font-light max-w-xs mx-auto">
-                        No worries. Enter your account email and we'll send you a secure reset link.
-                      </p>
-                    </div>
+                {/* Header */}
+                {isForgot ? (
+                  <div className="space-y-1">
+                    <h1 className="text-2xl font-geometric font-bold text-white">Forgot Password?</h1>
+                    <p className="text-sm text-white/40">Enter your email and we'll send you a reset link.</p>
                   </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/60 mb-2">
-                    {isSignIn ? 'Welcome Back' : 'Get Started'}
-                  </p>
-                  <h1 className="text-3xl font-geometric font-black text-white">
-                    {isSignIn ? 'Member Access' : 'Create Account'}
-                  </h1>
-                  <p className="text-sm text-white/35 mt-2 font-light">
-                    {isSignIn
-                      ? 'Sign in to access the operational intelligence core.'
-                      : 'Join Ecometricus and start tracking what matters.'}
-                  </p>
-                </>
-              )}
-            </div>
+                ) : (
+                  <div className="space-y-1">
+                    <h1 className="text-2xl font-geometric font-bold text-white">
+                      {isSignIn ? 'Welcome back' : 'Create your account'}
+                    </h1>
+                    <p className="text-sm text-white/40">
+                      {isSignIn ? 'Sign in to your Ecometricus account' : 'Get started with Ecometricus for free'}
+                    </p>
+                  </div>
+                )}
 
-            {/* Thin gold divider */}
-            <div className="h-px bg-gradient-to-r from-transparent via-brand-gold/20 to-transparent" />
+                {/* Error / success banners */}
+                {error && (
+                  <div className="p-3.5 bg-red-500/10 border border-red-500/25 rounded-xl">
+                    <p className="text-sm text-red-400">{error}</p>
+                  </div>
+                )}
+                {successMsg && successMsg !== 'confirmation_sent' && (
+                  <div className="space-y-3">
+                    <div className="p-3.5 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-start gap-3">
+                      <CheckCircle2 size={16} className="text-brand-eco shrink-0 mt-0.5" />
+                      <p className="text-sm text-brand-eco">{successMsg}</p>
+                    </div>
+                    {isForgot && (
+                      <a
+                        href="mailto:"
+                        className="w-full flex items-center justify-center gap-2 bg-[#0f2620] border border-brand-gold/25 text-brand-gold hover:bg-brand-gold/10 hover:border-brand-gold/50 rounded-xl py-3 text-sm font-semibold transition-all"
+                      >
+                        <Mail size={15} />
+                        Open Email App
+                      </a>
+                    )}
+                  </div>
+                )}
 
-            {/* Error / success banners */}
-            {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/25 rounded-xl">
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
-            {successMsg && successMsg !== 'confirmation_sent' && (
-              <div className="p-4 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-start gap-3">
-                <CheckCircle2 size={16} className="text-brand-eco shrink-0 mt-0.5" />
-                <p className="text-sm text-brand-eco">{successMsg}</p>
-              </div>
-            )}
+                {/* Form card */}
+                <form onSubmit={handleSubmit} className="bg-[#0f2620] border border-white/8 rounded-2xl p-6 space-y-4">
 
-            {/* ── Form ── */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+                  {isSignUp && (
+                    <Field label="Full Name" value={fullName} onChange={setFullName} placeholder="John Doe" required icon={<User size={14} />} />
+                  )}
 
-              {isSignUp && (
-                <Field
-                  label="Full Name"
-                  value={fullName}
-                  onChange={setFullName}
-                  placeholder="Staff or Admin Name"
-                  required
-                  icon={<User size={14} />}
-                />
-              )}
+                  <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="name@company.com" required icon={<Mail size={14} />} />
 
-              <Field
-                label="Email Address"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                placeholder="user@hotel.com"
-                required
-                icon={<Mail size={14} />}
-              />
+                  {!isForgot && (
+                    <div className="space-y-2">
+                      <PasswordField
+                        label="Password"
+                        value={password}
+                        onChange={setPassword}
+                        required
+                        right={isSignIn ? (
+                          <button type="button" onClick={() => { onNavigate(Page.FORGOT_PASSWORD); setError(null); }} className="text-xs text-brand-gold hover:underline transition-colors">
+                            Forgot password?
+                          </button>
+                        ) : undefined}
+                      />
+                      {isSignUp && <PasswordStrength password={password} />}
+                    </div>
+                  )}
 
-              {!isForgot && (
-                <div className="space-y-2">
-                  <PasswordField
-                    label="Password"
-                    value={password}
-                    onChange={setPassword}
-                    required
-                    right={isSignIn ? (
+                  {isSignUp && (
+                    <PasswordField label="Confirm Password" value={verifyPassword} onChange={setVerifyPassword} placeholder="Repeat password" required />
+                  )}
+
+                  {isSignUp && (
+                    <div className="flex items-start gap-3 pt-1">
                       <button
                         type="button"
-                        onClick={() => { onNavigate(Page.FORGOT_PASSWORD); setError(null); }}
-                        className="text-[9px] font-black uppercase tracking-widest text-brand-gold/60 hover:text-brand-gold transition-colors"
+                        onClick={() => setAcceptTerms(!acceptTerms)}
+                        className={`shrink-0 w-4 h-4 rounded border mt-0.5 flex items-center justify-center transition-all ${acceptTerms ? 'bg-brand-gold border-brand-gold' : 'border-white/20 hover:border-brand-gold'}`}
                       >
-                        Forgot password?
+                        {acceptTerms && <CheckCircle2 size={10} className="text-brand-dark" />}
                       </button>
-                    ) : undefined}
-                  />
-                  {isSignUp && <PasswordStrength password={password} />}
-                </div>
-              )}
-
-              {isSignUp && (
-                <PasswordField
-                  label="Confirm Password"
-                  value={verifyPassword}
-                  onChange={setVerifyPassword}
-                  placeholder="Repeat password"
-                  required
-                />
-              )}
-
-              {/* Role is always 'admin' for new sign-ups.
-                  Workspace admins invite staff and assign roles from the dashboard. */}
-
-              {isSignUp && (
-                <div className="flex items-center gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setAcceptTerms(!acceptTerms)}
-                    className={`shrink-0 w-5 h-5 rounded-md border flex items-center justify-center transition-all ${acceptTerms ? 'bg-brand-gold border-brand-gold' : 'border-white/20 hover:border-brand-gold'}`}
-                  >
-                    {acceptTerms && <CheckCircle2 size={11} className="text-brand-dark" />}
-                  </button>
-                  <span className="text-[11px] text-white/30 whitespace-nowrap">
-                    I accept the{' '}
-                    <button type="button" onClick={() => onNavigate(Page.TERMS)} className="text-brand-gold hover:underline">Terms of Service</button>
-                    {' '}and{' '}
-                    <button type="button" onClick={() => onNavigate(Page.PRIVACY)} className="text-brand-gold hover:underline">Privacy Policy</button>
-                  </span>
-                </div>
-              )}
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoading || (isSignUp && !acceptTerms)}
-                  className="w-full flex items-center justify-center gap-2.5 bg-brand-eco text-brand-dark py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-[0_8px_30px_rgba(119,177,57,0.35)] disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-brand-dark/30 border-t-brand-dark rounded-full animate-spin" />
-                      {isSignIn ? 'Signing In…' : isSignUp ? 'Creating Account…' : 'Sending…'}
-                    </>
-                  ) : (
-                    <>
-                      {isForgot ? <Send size={14} /> : null}
-                      {isSignIn && 'Log In'}
-                      {isSignUp && 'Create Account'}
-                      {isForgot && 'Send Reset Link'}
-                    </>
+                      <span className="text-xs text-white/40 leading-relaxed">
+                        I agree to the{' '}
+                        <button type="button" onClick={() => onNavigate(Page.TERMS)} className="text-brand-gold hover:underline">Terms</button>
+                        {' '}and{' '}
+                        <button type="button" onClick={() => onNavigate(Page.PRIVACY)} className="text-brand-gold hover:underline">Privacy Policy</button>
+                      </span>
+                    </div>
                   )}
-                </button>
-              </div>
 
-              {isForgot && (
-                <button
-                  type="button"
-                  onClick={() => { onNavigate(Page.SIGN_IN); setError(null); setSuccessMsg(null); }}
-                  className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-white/30 hover:text-white transition-colors pt-1"
-                >
-                  ← Back to Sign In
-                </button>
-              )}
-            </form>
+                  <button
+                    type="submit"
+                    disabled={isLoading || (isSignUp && !acceptTerms)}
+                    className="w-full flex items-center justify-center gap-2.5 bg-brand-gold text-brand-dark py-3.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all shadow-[0_6px_20px_rgba(200,164,19,0.3)] disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? (
+                      <><div className="w-4 h-4 border-2 border-brand-dark/30 border-t-brand-dark rounded-full animate-spin" />
+                      {isSignIn ? 'Signing In…' : isSignUp ? 'Creating Account…' : 'Sending…'}</>
+                    ) : (
+                      <>
+                        {isForgot && <Send size={14} />}
+                        {isSignIn && 'Sign in'}
+                        {isSignUp && 'Create Account'}
+                        {isForgot && 'Send Reset Link'}
+                      </>
+                    )}
+                  </button>
 
-            {/* Switch mode link */}
-            {!isForgot && (
-              <p className="text-center text-sm text-white/30">
-                {isSignIn ? (
-                  <>
-                    Don't have an account?{' '}
-                    <button
-                      type="button"
-                      onClick={() => { onNavigate(Page.SIGN_UP); setError(null); setSuccessMsg(null); }}
-                      className="text-brand-gold font-bold hover:underline transition-all"
-                    >
-                      Sign Up
+                  {isForgot && (
+                    <button type="button" onClick={() => { onNavigate(Page.SIGN_IN); setError(null); setSuccessMsg(null); }} className="w-full text-center text-sm text-white/30 hover:text-white transition-colors">
+                      ← Back to Sign In
                     </button>
-                  </>
-                ) : (
-                  <>
-                    Already have an account?{' '}
-                    <button
-                      type="button"
-                      onClick={() => { onNavigate(Page.SIGN_IN); setError(null); setSuccessMsg(null); }}
-                      className="text-brand-gold font-bold hover:underline transition-all"
-                    >
-                      Log In
-                    </button>
-                  </>
+                  )}
+                </form>
+
+                {/* Switch link */}
+                {!isForgot && (
+                  <p className="text-center text-sm text-white/40">
+                    {isSignIn ? (
+                      <>Don't have an account?{' '}<button type="button" onClick={() => { onNavigate(Page.SIGN_UP); setError(null); setSuccessMsg(null); }} className="text-brand-gold font-semibold hover:underline">Sign up free</button></>
+                    ) : (
+                      <>Already have an account?{' '}<button type="button" onClick={() => { onNavigate(Page.SIGN_IN); setError(null); setSuccessMsg(null); }} className="text-brand-gold font-semibold hover:underline">Sign in</button></>
+                    )}
+                  </p>
                 )}
-              </p>
+
+              </div>
             )}
 
-            <p className="text-center text-[10px] text-white/10 uppercase tracking-widest">
-              Ecometricus &copy; {new Date().getFullYear()} · Secured by Us+AI Bureau
-            </p>
-            </>) /* end normal form */}
           </div>
         </div>
       </div>
