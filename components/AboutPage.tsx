@@ -27,34 +27,29 @@ const AboutPage: React.FC = () => {
     <div className="min-h-screen bg-brand-dark">
 
       {/* ─── Hero ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-white/5">
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 60% 40%, rgba(200,164,19,0.07), transparent 55%), radial-gradient(ellipse at 20% 80%, rgba(119,177,57,0.05), transparent 45%)' }} />
-        <div className="relative max-w-7xl mx-auto px-6 py-20 sm:py-28 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
+      <section className="relative overflow-hidden border-b border-white/5 min-h-[420px] sm:min-h-[500px] flex items-center">
+        {/* Background image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="/assets/hero-kitchen.png"
+            alt="Kitchen background"
+            className="w-full h-full object-cover opacity-30 brightness-50"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-dark/95 via-brand-dark/70 to-brand-dark/40" />
+        </div>
+        <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 sm:py-28 w-full">
+          <div className="max-w-2xl">
             <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">Powered by Us+AI Bureau</p>
             <h1 className="text-4xl sm:text-6xl font-geometric font-black text-white uppercase leading-tight mb-6">
               The<br /><span className="text-brand-gold">Vision</span>
             </h1>
-            <p className="text-base sm:text-lg text-gray-400 font-light leading-relaxed mb-8 max-w-lg">
+            <p className="text-base sm:text-lg text-gray-300 font-light leading-relaxed mb-8 max-w-lg">
               Empowering the hotel Food & Beverage industry with a comprehensive, intelligent platform for optimizing performance and enhancing profitability.
             </p>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-eco">
               <div className="w-1.5 h-1.5 rounded-full bg-brand-eco animate-pulse" />
               ESG Intelligence Platform
             </div>
-          </div>
-          {/* Right: 3 stat pills */}
-          <div className="space-y-3">
-            {[
-              { label: 'Daily F&B Metrics Tracked', value: '40+' },
-              { label: 'ESG Reports Generated', value: 'Real-Time' },
-              { label: 'Standards Aligned', value: 'GHG · GSTC · UN SDG' },
-            ].map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-6 py-4 rounded-2xl bg-white/4 border border-white/8 hover:border-brand-gold/30 transition-all duration-300">
-                <span className="text-xs text-gray-500 uppercase tracking-widest font-bold">{s.label}</span>
-                <span className="text-sm font-geometric font-black text-brand-gold">{s.value}</span>
-              </div>
-            ))}
           </div>
         </div>
       </section>

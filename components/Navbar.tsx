@@ -23,6 +23,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
   const navLinks = [
     { label: 'Home',     page: Page.HOME },
     { label: 'About Us', page: Page.ABOUT },
+    { label: 'FAQ',      page: Page.FAQ },
     { label: 'Contact',  page: Page.CONTACT },
   ];
 

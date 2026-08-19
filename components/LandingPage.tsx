@@ -478,50 +478,28 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
 
       {/* F&B Operations Assessment CTA */}
       <section className="py-20 sm:py-28 bg-[#0e1f1c] border-t border-white/5 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 30% 50%, rgba(119,177,57,0.07), transparent 55%)' }}></div>
-        <div className="relative max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-
-            {/* Left: steps */}
-            <div className="space-y-4">
-              {[
-                { step: '01', title: 'Answer 23 Quick Questions', desc: 'Covering waste tracking, tech stack, ESG goals, and budget.' },
-                { step: '02', title: 'Get Your Sustainability Score', desc: 'Instantly understand where your operation stands today.' },
-                { step: '03', title: 'Receive Tailored Insights', desc: 'See which Ecometricus features deliver the most value for you.' },
-              ].map((s) => (
-                <div key={s.step} className="flex gap-5 items-start p-5 rounded-2xl bg-brand-dark/60 border border-white/5 hover:border-brand-eco/30 transition-all duration-300">
-                  <span className="shrink-0 text-2xl font-geometric font-black text-brand-eco/30 leading-none mt-0.5">{s.step}</span>
-                  <div>
-                    <p className="text-sm font-geometric font-bold text-white mb-1">{s.title}</p>
-                    <p className="text-xs text-gray-500 leading-relaxed">{s.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Right: text + CTA */}
-            <div>
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-eco/15 border border-brand-eco/30 mb-6">
-                <ClipboardList className="text-brand-eco" size={26} />
-              </div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-eco mb-4">5-Minute Assessment</p>
-              <h2 className="text-3xl sm:text-4xl font-geometric font-bold text-white leading-tight mb-6">
-                Where does your<br /><span className="text-brand-eco">F&B operation</span> stand?
-              </h2>
-              <p className="text-base text-gray-400 font-light leading-relaxed mb-8 max-w-md">
-                Curious how your operation measures up? This optional assessment gives you a clear picture of where you stand — no sign-up required.
-              </p>
-              <a
-                href="https://tally.so/r/aQ0ZOZ"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 bg-brand-eco text-brand-dark hover:brightness-110 px-10 py-4 rounded-full font-bold shadow-[0_15px_35px_rgba(119,177,57,0.4)] transition-all transform hover:scale-105 uppercase tracking-widest text-xs"
-              >
-                <Sparkles size={16} /> Start the Assessment
-              </a>
-            </div>
-
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 50%, rgba(119,177,57,0.07), transparent 60%)' }}></div>
+        <div className="relative max-w-2xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-eco/15 border border-brand-eco/30 mb-6">
+            <ClipboardList className="text-brand-eco" size={26} />
           </div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">
+            <span className="text-brand-gold">5-Minute</span> Assessment
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-geometric font-bold text-white leading-tight mb-6">
+            Where does your <span className="text-brand-gold">F&B operation</span> stand?
+          </h2>
+          <p className="text-base text-gray-400 font-light leading-relaxed mb-10 max-w-md mx-auto">
+            Curious how your operation measures up? This optional assessment gives you a clear picture of where you stand — no sign-up required.
+          </p>
+          <a
+            href="https://tally.so/r/aQ0ZOZ"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 bg-brand-eco text-brand-dark hover:brightness-110 px-10 py-4 rounded-full font-bold shadow-[0_15px_35px_rgba(119,177,57,0.4)] transition-all transform hover:scale-105 uppercase tracking-widest text-xs"
+          >
+            <Sparkles size={16} /> Start the Assessment
+          </a>
         </div>
       </section>
     </div>
