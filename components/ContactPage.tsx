@@ -4,29 +4,73 @@ import { Mail, CalendarCheck, MessageSquare, MapPin, Send, Check, ChevronDown, X
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 type ToastType = 'success' | 'error';
-interface Toast { id: number; type: ToastType; msg: string }
+interface Toast { id: number; type: ToastType; msg: string; createdAt: number }
 
-const ToastContainer: React.FC<{ toasts: Toast[]; onDismiss: (id: number) => void }> = ({ toasts, onDismiss }) => (
-  <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none">
-    {toasts.map(t => (
-      <div
-        key={t.id}
-        className={`flex items-start gap-3 px-4 py-3.5 rounded-xl border shadow-xl backdrop-blur-xl max-w-xs pointer-events-auto animate-in slide-in-from-right-4 fade-in duration-300 ${
-          t.type === 'success'
-            ? 'bg-brand-dark/95 border-brand-eco/40 text-white'
-            : 'bg-brand-dark/95 border-brand-alert/40 text-white'
-        }`}
-      >
-        {t.type === 'success'
-          ? <CheckCircle2 size={16} className="text-brand-eco shrink-0 mt-0.5" />
-          : <AlertCircle size={16} className="text-brand-alert shrink-0 mt-0.5" />
-        }
-        <p className="text-xs leading-relaxed flex-1">{t.msg}</p>
-        <button onClick={() => onDismiss(t.id)} className="text-white/30 hover:text-white/60 transition-colors shrink-0">
+const TOAST_DURATION = 4500;
+
+const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: number) => void }> = ({ toast, onDismiss }) => {
+  const [progress, setProgress] = useState(100);
+  const isSuccess = toast.type === 'success';
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - toast.createdAt;
+      const remaining = Math.max(0, 100 - (elapsed / TOAST_DURATION) * 100);
+      setProgress(remaining);
+    }, 30);
+    return () => clearInterval(interval);
+  }, [toast.createdAt]);
+
+  return (
+    <div className={`relative w-80 rounded-2xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.5)] pointer-events-auto animate-in slide-in-from-bottom-4 fade-in duration-300 ${
+      isSuccess ? 'bg-[#0d2620]' : 'bg-[#200d0d]'
+    }`}>
+      {/* Left accent bar */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${isSuccess ? 'bg-brand-eco' : 'bg-brand-alert'}`} />
+
+      {/* Content */}
+      <div className="flex items-start gap-3.5 px-5 py-4 pl-5">
+        {/* Icon */}
+        <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5 ${
+          isSuccess ? 'bg-brand-eco/15 border border-brand-eco/30' : 'bg-brand-alert/15 border border-brand-alert/30'
+        }`}>
+          {isSuccess
+            ? <CheckCircle2 size={15} className="text-brand-eco" />
+            : <AlertCircle size={15} className="text-brand-alert" />
+          }
+        </div>
+
+        {/* Text */}
+        <div className="flex-1 min-w-0">
+          <p className={`text-[10px] font-black uppercase tracking-[0.25em] mb-0.5 ${isSuccess ? 'text-brand-eco' : 'text-brand-alert'}`}>
+            {isSuccess ? 'Success' : 'Error'}
+          </p>
+          <p className="text-sm text-white/85 leading-snug">{toast.msg}</p>
+        </div>
+
+        {/* Dismiss */}
+        <button
+          onClick={() => onDismiss(toast.id)}
+          className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-white/25 hover:text-white/60 hover:bg-white/8 transition-all mt-0.5"
+        >
           <X size={12} />
         </button>
       </div>
-    ))}
+
+      {/* Progress bar */}
+      <div className="h-[3px] bg-white/5">
+        <div
+          className={`h-full transition-none ${isSuccess ? 'bg-brand-eco/50' : 'bg-brand-alert/50'}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const ToastContainer: React.FC<{ toasts: Toast[]; onDismiss: (id: number) => void }> = ({ toasts, onDismiss }) => (
+  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-2.5 pointer-events-none">
+    {toasts.map(t => <ToastItem key={t.id} toast={t} onDismiss={onDismiss} />)}
   </div>
 );
 
@@ -111,8 +155,8 @@ const ContactPage: React.FC = () => {
 
   const addToast = (type: ToastType, msg: string) => {
     const id = ++toastCounter.current;
-    setToasts(prev => [...prev, { id, type, msg }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4500);
+    setToasts(prev => [...prev, { id, type, msg, createdAt: Date.now() }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), TOAST_DURATION);
   };
 
   const dismissToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
