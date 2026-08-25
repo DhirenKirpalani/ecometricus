@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Page, UserProfile } from './types';
 import { useSeo } from './lib/useSeo';
+import { loadTranslationsFromSupabase } from './lib/useI18n';
 import Navbar from './components/Navbar';
 import LandingPage from './components/LandingPage';
 import UnderConstruction from './components/UnderConstruction';
@@ -17,6 +18,7 @@ import AssessmentForm from './components/AssessmentForm';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
 import ContactPage from './components/ContactPage';
+import TranslationManager from './components/TranslationManager';
 import Footer from './components/Footer';
 
 // ── URL ↔ Page mappings ───────────────────────────────────────────────────────
@@ -35,6 +37,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   [Page.PRIVACY]:              '/privacy',
   [Page.TERMS]:                '/terms',
   [Page.CONTACT]:              '/contact',
+  [Page.TRANSLATION_MANAGER]:  '/translations',
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -56,6 +59,11 @@ const App: React.FC = () => {
 
   // Per-page SEO meta tags
   useSeo(currentPage);
+
+  // Load translation overrides from Supabase on first render
+  useEffect(() => {
+    loadTranslationsFromSupabase();
+  }, []);
 
   // Sync state when browser back/forward is used
   useEffect(() => {
@@ -162,6 +170,8 @@ const App: React.FC = () => {
         return <TermsPage />;
       case Page.CONTACT:
         return <ContactPage />;
+      case Page.TRANSLATION_MANAGER:
+        return <TranslationManager onNavigate={handleNavigate} />;
       case Page.DASHBOARD:
         return currentUser
           ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
@@ -191,7 +201,8 @@ const App: React.FC = () => {
     currentPage === Page.EARLY_ACCESS ||
     currentPage === Page.SIGN_IN ||
     currentPage === Page.SIGN_UP ||
-    currentPage === Page.FORGOT_PASSWORD;
+    currentPage === Page.FORGOT_PASSWORD ||
+    currentPage === Page.TRANSLATION_MANAGER;
 
   return (
     <div className="min-h-screen flex flex-col bg-brand-dark text-white font-body selection:bg-brand-gold/30 selection:text-brand-gold">

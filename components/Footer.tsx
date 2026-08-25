@@ -2,6 +2,7 @@
 import React from 'react';
 import { Page } from '../types';
 import Logo from './Logo';
+import { useI18n } from '../lib/useI18n';
 
 interface FooterProps {
   onNavigate: (page: Page) => void;
@@ -10,19 +11,20 @@ interface FooterProps {
 
 const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
   const year = new Date().getFullYear();
+  const { t } = useI18n();
 
   const navLinks = [
-    { label: 'Home', page: Page.HOME },
-    { label: 'About Us', page: Page.ABOUT },
-    { label: 'FAQ', page: Page.FAQ },
-    { label: 'Sign Up', page: Page.SIGN_UP },
-    { label: 'Log In', page: Page.SIGN_IN },
+    { label: t('navbar.home'),     page: Page.HOME },
+    { label: t('navbar.aboutUs'),  page: Page.ABOUT },
+    { label: t('navbar.faq'),      page: Page.FAQ },
+    { label: t('navbar.signUp'),   page: Page.SIGN_UP },
+    { label: t('navbar.logIn'),    page: Page.SIGN_IN },
   ];
 
   const legalLinks = [
-    { label: 'Privacy Policy', page: Page.PRIVACY },
-    { label: 'Terms of Service', page: Page.TERMS },
-    { label: 'Contact Us', page: Page.CONTACT },
+    { label: t('footer.privacyPolicy'),  page: Page.PRIVACY },
+    { label: t('footer.termsOfService'), page: Page.TERMS },
+    { label: t('footer.contactUs'),      page: Page.CONTACT },
   ];
 
   return (
@@ -35,18 +37,18 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
 
           {/* Brand */}
           <div className="space-y-5">
-            <Logo size="md" withLabel />
+            <Logo size="md" />
             <p className="text-xs text-gray-500 leading-relaxed max-w-[220px]">
-              AI-powered sustainability intelligence for luxury F&B operations.
+              {t('footer.brandTagline')}
             </p>
             <p className="text-[10px] text-gray-700 uppercase tracking-widest leading-relaxed">
-              By Us+AI Bureau
+              {t('footer.byBureau')}
             </p>
           </div>
 
           {/* Navigate */}
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-4">Navigate</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-4">{t('footer.navigate')}</p>
             <ul className="space-y-2.5">
               {navLinks.map((link) => {
                 const active = currentPage === link.page;
@@ -67,7 +69,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
 
           {/* Legal */}
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-4">Legal & Contact</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-4">{t('footer.legalContact')}</p>
             <ul className="space-y-2.5">
               {legalLinks.map((item) => {
                 const active = currentPage === item.page;
@@ -93,11 +95,11 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
       <div className="border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-[10px] text-gray-700 uppercase tracking-widest">
-            &copy; {year} Ecometricus. All rights reserved.
+            {t('footer.copyright', { year: String(year) })}
           </p>
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-eco animate-pulse" />
-            <p className="text-[10px] text-gray-700 uppercase tracking-widest">ESG Intelligence Engine Active</p>
+            <p className="text-[10px] text-gray-700 uppercase tracking-widest">{t('footer.engineActive')}</p>
           </div>
         </div>
       </div>

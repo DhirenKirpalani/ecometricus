@@ -187,7 +187,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <button
               onClick={() => onNavigate(Page.HOME)}
-              className="px-8 py-4 bg-brand-gold hover:bg-brand-gold/90 text-brand-dark font-geometric font-bold tracking-wide uppercase text-sm rounded-full transition-all shadow-[0_4px_14px_0_rgba(200,164,19,0.39)] hover:-translate-y-0.5"
+              className="px-8 py-4 bg-brand-eco hover:bg-brand-eco/90 text-brand-dark font-geometric font-bold tracking-wide uppercase text-sm rounded-full transition-all shadow-[0_4px_14px_0_rgba(119,177,57,0.39)] hover:-translate-y-0.5"
             >
               Back to Home
             </button>
@@ -397,7 +397,7 @@ const QuestionField: React.FC<{
                 } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <span className={`shrink-0 w-6 h-6 flex items-center justify-center text-[11px] font-bold border rounded-md ${
-                  isSelected ? 'bg-brand-gold text-brand-dark border-brand-gold' : 'border-white/20 text-white/50'
+                  isSelected ? 'bg-brand-eco text-brand-dark border-brand-eco' : 'border-white/20 text-white/50'
                 }`}>
                   {isSelected ? <Check size={14} strokeWidth={3} /> : letterLabel(i)}
                 </span>

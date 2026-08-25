@@ -288,7 +288,7 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
                             <button
                                 onClick={handleSendMessage}
                                 disabled={isLoading || !inputValue.trim()}
-                                className="p-3 bg-brand-gold text-brand-dark rounded-xl hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                className="p-3 bg-brand-eco text-brand-dark rounded-xl hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             >
                                 <Send size={16} />
                             </button>

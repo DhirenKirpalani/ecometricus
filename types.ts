@@ -13,7 +13,8 @@ export enum Page {
   EARLY_ACCESS = 'early_access',
   PRIVACY = 'privacy',
   TERMS = 'terms',
-  CONTACT = 'contact'
+  CONTACT = 'contact',
+  TRANSLATION_MANAGER = 'translation_manager'
 }
 
 export type UserRole = 'admin' | 'supervisor' | 'chef' | 'manager' | 'basic';

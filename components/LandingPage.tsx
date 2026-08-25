@@ -2,6 +2,7 @@
 import React from 'react';
 import { Page } from '../types';
 import { Leaf, Droplets, Zap, Globe, Users, ArrowRight, Infinity, GlassWater, Sun, Eye, Sparkles, CalendarCheck, Clock, ChartBar, CheckCircle, ClipboardList, ChevronDown } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
 
 interface LandingPageProps {
   onNavigate: (page: Page) => void;
@@ -9,6 +10,7 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = false }) => {
+  const { t } = useI18n();
   const [engagementAvg, setEngagementAvg] = React.useState('87');
 
   React.useEffect(() => {
@@ -17,40 +19,40 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
   }, []);
 
   const metrics = [
-    { value: '5,675', unit: 'kg', label: 'Food Waste Saved', icon: <Leaf className="text-brand-gold" size={32} /> },
-    { value: '895', unit: 'Lts', label: 'Water Saved', icon: <Droplets className="text-brand-gold" size={32} /> },
-    { value: '13,000', unit: 'kWh', label: 'Energy Reduced', icon: <Zap className="text-brand-gold" size={32} /> },
-    { value: '2,890', unit: 'kg', label: 'CO₂ Emissions Avoided', icon: <Globe className="text-brand-gold" size={32} /> },
-    { value: `+${engagementAvg}%`, unit: '', label: 'Staff Engagement Avg.', icon: <Users className="text-brand-gold" size={32} /> },
+    { value: '5,675', unit: 'kg', label: t('homepage.foodWasteSaved'), icon: <Leaf className="text-brand-gold" size={32} /> },
+    { value: '895', unit: 'Lts', label: t('homepage.waterSaved'), icon: <Droplets className="text-brand-gold" size={32} /> },
+    { value: '13,000', unit: 'kWh', label: t('homepage.energyReduced'), icon: <Zap className="text-brand-gold" size={32} /> },
+    { value: '2,890', unit: 'kg', label: t('homepage.co2Avoided'), icon: <Globe className="text-brand-gold" size={32} /> },
+    { value: `+${engagementAvg}%`, unit: '', label: t('homepage.staffEngagement'), icon: <Users className="text-brand-gold" size={32} /> },
   ];
 
   const sdgs = [
     {
       id: 12,
       number: "12",
-      title: 'Responsible Consumption',
-      label: "RESPONSIBLE CONSUMPTION",
+      title: t('homepage.sdg12'),
+      label: t('homepage.sdg12').toUpperCase(),
       icon: <Infinity className="text-brand-gold" size={48} strokeWidth={1.5} />
     },
     {
       id: 6,
       number: "6",
-      title: 'Clean Water',
-      label: "CLEAN WATER & SANITATION",
+      title: t('homepage.sdg6'),
+      label: t('homepage.sdg6').toUpperCase(),
       icon: <GlassWater className="text-brand-gold" size={48} strokeWidth={1.5} />
     },
     {
       id: 7,
       number: "7",
-      title: 'Energy Efficiency',
-      label: "AFFORDABLE & CLEAN ENERGY",
+      title: t('homepage.sdg7'),
+      label: t('homepage.sdg7').toUpperCase(),
       icon: <Sun className="text-brand-gold" size={48} strokeWidth={1.5} />
     },
     {
       id: 13,
       number: "13",
-      title: 'Climate Action',
-      label: "CLIMATE ACTION",
+      title: t('homepage.sdg13'),
+      label: t('homepage.sdg13').toUpperCase(),
       icon: <Eye className="text-brand-gold" size={48} strokeWidth={1.5} />
     },
   ];
@@ -72,13 +74,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
         <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
           <div className="space-y-6 sm:space-y-10 max-w-3xl text-left">
             <div className="inline-block px-4 py-1.5 rounded-full border border-brand-gold/40 bg-brand-gold/10 backdrop-blur-xl text-brand-gold text-[10px] sm:text-xs uppercase tracking-[0.4em] font-bold">
-              F&B Intelligence
+              {t('homepage.heroBadge')}
             </div>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-geometric font-bold leading-[1.1] text-white drop-shadow-2xl">
-              Sustainability metrics that drive <span className="text-brand-gold">operational profit.</span>
+              {t('homepage.heroTitle')} <span className="text-brand-gold">{t('homepage.heroTitleGold')}</span>
             </h1>
             <p className="text-lg sm:text-2xl text-gray-100 font-light leading-relaxed max-w-xl drop-shadow-lg">
-              Empowering F&B leaders to measure, optimize, and report ESG performance with unmatched luxury precision.
+              {t('homepage.heroSubtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 pt-4">
               {isLoggedIn ? (
@@ -87,7 +89,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
                   onClick={() => onNavigate(Page.DASHBOARD)}
                   className="flex items-center gap-3 bg-brand-eco text-brand-dark hover:brightness-110 px-12 py-4 rounded-full font-bold shadow-[0_15px_35px_rgba(119,177,57,0.45)] transition-all transform hover:scale-105 uppercase tracking-widest text-xs"
                 >
-                  Go to Dashboard <ArrowRight size={15} />
+                  {t('homepage.goToDashboard')} <ArrowRight size={15} />
                 </button>
               ) : (
                 /* ── Guest: Watch Demo + Sign Up ── */
@@ -98,13 +100,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
                     rel="noopener noreferrer"
                     className="border-2 border-brand-gold text-brand-gold bg-brand-dark/10 backdrop-blur-xl hover:bg-brand-gold hover:text-brand-dark px-10 py-4 rounded-full font-bold transition-all uppercase tracking-widest text-xs shadow-xl text-center"
                   >
-                    Watch Demo
+                    {t('homepage.watchDemo')}
                   </a>
                   <button
                     className="bg-brand-eco text-brand-dark hover:brightness-110 px-12 py-4 rounded-full font-bold shadow-[0_15px_35px_rgba(119,177,57,0.5)] transition-all transform hover:scale-105 uppercase tracking-widest text-xs"
                     onClick={() => onNavigate(Page.SIGN_UP)}
                   >
-                    Sign Up Now
+                    {t('homepage.signUpNow')}
                   </button>
                 </>
               )}
@@ -118,9 +120,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(200,164,19,0.05), transparent 55%)' }} />
         <div className="max-w-7xl mx-auto px-6 relative">
           <div className="text-center mb-14">
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">Platform Performance</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">{t('homepage.platformPerformance')}</p>
             <h2 className="text-3xl sm:text-4xl font-geometric font-bold uppercase tracking-[0.3em] text-white">
-              Global Impact
+              {t('homepage.globalImpact')}
             </h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 items-stretch">
@@ -150,9 +152,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(119,177,57,0.05), transparent 40%), radial-gradient(ellipse at 80% 50%, rgba(200,164,19,0.05), transparent 40%)' }} />
         <div className="max-w-7xl mx-auto px-6 relative">
           <div className="text-center mb-16">
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-eco/70 mb-3">UN Sustainable Development Goals</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-eco/70 mb-3">{t('homepage.sdgLabel')}</p>
             <h2 className="text-3xl sm:text-4xl font-geometric font-bold uppercase tracking-[0.3em] text-white">
-              Industry Impact & Global Alignment
+              {t('homepage.industryImpact')}
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -189,13 +191,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
         <div className="max-w-7xl mx-auto px-6 relative">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-14 gap-6">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">Real-World Results</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">{t('homepage.realWorldResults')}</p>
               <h2 className="text-3xl sm:text-4xl font-geometric font-bold uppercase tracking-[0.2em]">
-                Operational <span className="text-brand-gold">Snapshots</span>
+                {t('homepage.operationalSnapshots')} <span className="text-brand-gold">{t('homepage.snapshots')}</span>
               </h2>
             </div>
             <button className="flex items-center gap-3 text-brand-gold hover:text-white transition-all group font-bold uppercase tracking-[0.2em] text-xs shrink-0">
-              Explore Case Studies <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform" />
+              {t('homepage.exploreCaseStudies')} <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform" />
             </button>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -203,19 +205,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
               {
                 name: "137 PILLARS",
                 location: "Thailand",
-                tag: "Staff Engagement",
+                tag: t('homepage.tagStaffEngagement'),
                 stat: "+23%",
-                statLabel: "participation in 4 months",
-                desc: "Staff participation in sustainable F&B practices increased 23% in 4 months after implementing Ecometricus real-time tracking.",
+                statLabel: t('homepage.statParticipation'),
+                desc: t('homepage.desc137Pillars'),
                 logoColor: "#152b28",
               },
               {
                 name: "MAISON LA FLORIDE",
                 location: "France",
-                tag: "Cost Savings",
+                tag: t('homepage.tagCostSavings'),
                 stat: "€675",
-                statLabel: "saved per outlet / month",
-                desc: "Substantial waste reduction and operational cost savings achieved per outlet through Mila AI-powered intervention.",
+                statLabel: t('homepage.statSavedPerOutlet'),
+                desc: t('homepage.descMaison'),
                 logoColor: "#0e1f1c",
               },
             ].map((partner, i) => (
@@ -261,28 +263,28 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
 
             {/* Left: text */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">Personalized Walkthrough</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">{t('homepage.personalizedWalkthrough')}</p>
               <h2 className="text-3xl sm:text-4xl font-geometric font-bold text-white leading-tight mb-6">
-                Ready to see Ecometricus<br /><span className="text-brand-gold">working for your team?</span>
+                {t('homepage.demoTitle')}<br /><span className="text-brand-gold">{t('homepage.demoTitleGold')}</span>
               </h2>
               <p className="text-base text-gray-400 font-light leading-relaxed mb-8 max-w-md">
-                Our team will walk you through a live session tailored to your property's F&B setup — no generic slides, just real insights for your operation.
+                {t('homepage.demoSubtitle')}
               </p>
               <button
-                className="inline-flex items-center gap-3 bg-brand-gold text-brand-dark hover:brightness-110 px-10 py-4 rounded-full font-bold shadow-[0_15px_35px_rgba(200,164,19,0.35)] transition-all transform hover:scale-105 uppercase tracking-widest text-xs"
+                className="inline-flex items-center gap-3 bg-brand-eco text-brand-dark hover:brightness-110 px-10 py-4 rounded-full font-bold shadow-[0_15px_35px_rgba(119,177,57,0.35)] transition-all transform hover:scale-105 uppercase tracking-widest text-xs"
                 onClick={() => window.open("https://calendly.com/urbanseed-ai/ai-bureau-services", "_blank")}
               >
-                <CalendarCheck size={16} /> Book a Demo
+                <CalendarCheck size={16} /> {t('homepage.bookDemo')}
               </button>
             </div>
 
             {/* Right: feature cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
-                { icon: <Clock className="text-brand-gold" size={22} />, title: '30-Minute Session', desc: 'A focused, no-fluff walkthrough of the platform.' },
-                { icon: <ChartBar className="text-brand-gold" size={22} />, title: 'Live ESG Metrics', desc: 'See real-time F&B sustainability data in action.' },
-                { icon: <CheckCircle className="text-brand-gold" size={22} />, title: 'Tailored to You', desc: 'Customized to your property type and outlet count.' },
-                { icon: <Users className="text-brand-gold" size={22} />, title: 'Team Onboarding', desc: 'Learn how staff adoption works from day one.' },
+                { icon: <Clock className="text-brand-gold" size={22} />, title: t('homepage.feature30Min'), desc: t('homepage.feature30MinDesc') },
+                { icon: <ChartBar className="text-brand-gold" size={22} />, title: t('homepage.featureLiveMetrics'), desc: t('homepage.featureLiveMetricsDesc') },
+                { icon: <CheckCircle className="text-brand-gold" size={22} />, title: t('homepage.featureTailored'), desc: t('homepage.featureTailoredDesc') },
+                { icon: <Users className="text-brand-gold" size={22} />, title: t('homepage.featureOnboarding'), desc: t('homepage.featureOnboardingDesc') },
               ].map((item, i) => (
                 <div key={i} className="metric-card p-5 rounded-2xl bg-brand-dark/60 flex gap-4 items-start group hover:bg-brand-gold/5 transition-all duration-300">
                   <div className="shrink-0 w-10 h-10 rounded-xl bg-brand-gold/10 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -309,13 +311,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
             <ClipboardList className="text-brand-eco" size={26} />
           </div>
           <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">
-            <span className="text-brand-gold">5-Minute</span> Assessment
+            <span className="text-brand-gold">{t('homepage.assessmentBadge')}</span>
           </p>
           <h2 className="text-3xl sm:text-4xl font-geometric font-bold text-white leading-tight mb-6">
-            Where does your <span className="text-brand-gold">F&B operation</span> stand?
+            {t('homepage.assessmentTitle')} <span className="text-brand-gold">{t('homepage.assessmentTitleGold')}</span> {t('homepage.assessmentTitleEnd')}
           </h2>
           <p className="text-base text-gray-400 font-light leading-relaxed mb-10 max-w-md mx-auto">
-            Curious how your operation measures up? This assessment gives you a clear picture of where you stand — no sign-up required.
+            {t('homepage.assessmentSubtitle')}
           </p>
           <a
             href="https://tally.so/r/aQ0ZOZ"
@@ -323,7 +325,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 bg-brand-eco text-brand-dark hover:brightness-110 px-10 py-4 rounded-full font-bold shadow-[0_15px_35px_rgba(119,177,57,0.4)] transition-all transform hover:scale-105 uppercase tracking-widest text-xs"
           >
-            <Sparkles size={16} /> Start the Assessment
+            <Sparkles size={16} /> {t('homepage.startAssessment')}
           </a>
         </div>
       </section>

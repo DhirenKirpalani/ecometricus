@@ -315,7 +315,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
           <div className="flex justify-end mt-2">
             <button
               onClick={() => setActiveCommentCard(null)}
-              className="px-3 py-1 bg-brand-gold text-brand-dark rounded-full text-[8px] font-black uppercase tracking-widest"
+              className="px-3 py-1 bg-brand-eco text-brand-dark rounded-full text-[8px] font-black uppercase tracking-widest"
             >
               Commit Comment
             </button>
@@ -625,7 +625,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
           <div className="flex gap-3">
             <button
               onClick={handleDigitalReport}
-              className="flex items-center gap-2 px-5 py-2.5 bg-brand-gold text-brand-dark rounded-xl text-[11px] font-bold tracking-wide hover:brightness-110 transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-brand-eco text-brand-dark rounded-xl text-[11px] font-bold tracking-wide hover:brightness-110 transition-all"
             >
               <Printer size={14} /> Print Report
             </button>

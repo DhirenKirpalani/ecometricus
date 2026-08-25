@@ -1,27 +1,29 @@
 
 import React from 'react';
 import { Target, Cpu, Scale, BarChart3, Globe2, BookOpen, Award, Trash2, Droplets, Zap, Cloud, ArrowRight } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
 
 const AboutPage: React.FC = () => {
+  const { t } = useI18n();
 
   const gorillaMetrics = [
-    { value: '50–70%', label: "of a hotel's total", category: 'Solid Waste', icon: <Trash2 size={26} className="text-brand-dark" /> },
-    { value: '15–30%', label: 'of total', category: 'Water Consumption', icon: <Droplets size={26} className="text-brand-dark" /> },
-    { value: '15–25%', label: 'of total', category: 'Energy Consumption', icon: <Zap size={26} className="text-brand-dark" /> },
-    { value: '20–35%', label: 'of indirect', category: 'Carbon Footprint (Scope 3)', icon: <Cloud size={26} className="text-brand-dark" /> },
+    { value: '50–70%', label: t('about.ofHotelTotal'), category: t('about.solidWaste'), icon: <Trash2 size={26} className="text-brand-dark" /> },
+    { value: '15–30%', label: t('about.ofTotal'), category: t('about.waterConsumption'), icon: <Droplets size={26} className="text-brand-dark" /> },
+    { value: '15–25%', label: t('about.ofTotal'), category: t('about.energyConsumption'), icon: <Zap size={26} className="text-brand-dark" /> },
+    { value: '20–35%', label: t('about.ofTotal'), category: t('about.carbonFootprint'), icon: <Cloud size={26} className="text-brand-dark" /> },
   ];
 
   const pillars = [
-    { title: 'Actionable Insights', icon: <BarChart3 className="text-brand-gold" size={28} />, desc: 'Transforming raw financial data into clear visualizations, enabling hotels to make informed decisions proactively.' },
-    { title: 'Mila AI Assistant', icon: <Cpu className="text-brand-eco" size={28} />, desc: 'Integrating Generative AI to offer intelligent suggestions and alerts, facilitating goal achievement at every level.' },
-    { title: 'ESG Operationalization', icon: <Scale className="text-brand-energy" size={28} />, desc: 'Tracking the monetary implications of food, water, and energy waste to achieve true environmental stewardship.' },
+    { title: t('about.actionableInsights'), icon: <BarChart3 className="text-brand-gold" size={28} />, desc: t('about.actionableDesc') },
+    { title: t('about.milaAssistant'), icon: <Cpu className="text-brand-eco" size={28} />, desc: t('about.milaDesc') },
+    { title: t('about.esgOps'), icon: <Scale className="text-brand-energy" size={28} />, desc: t('about.esgOpsDesc') },
   ];
 
   const insights = [
-    { title: 'GHG Protocol', icon: <Globe2 className="text-brand-eco" size={24} />, desc: 'Compliance with greenhouse gas accounting standards for operational transparency.' },
-    { title: 'GSTC Framework', icon: <Award className="text-brand-gold" size={24} />, desc: 'Alignment with Global Sustainable Tourism Council criteria for luxury hotels.' },
-    { title: 'UN SDGs', icon: <Target className="text-brand-energy" size={24} />, desc: 'Measurable contributions toward goals 6, 7, 12, and 13.' },
-    { title: 'Case Analysis', icon: <BookOpen className="text-white" size={24} />, desc: 'Real-time benchmarking against luxury competitors for continued market leadership.' },
+    { title: t('about.ghgProtocol'), icon: <Globe2 className="text-brand-eco" size={24} />, desc: t('about.ghgProtocolDesc') },
+    { title: t('about.gstcFramework'), icon: <Award className="text-brand-gold" size={24} />, desc: t('about.gstcDesc') },
+    { title: t('about.unSdgs'), icon: <Target className="text-brand-energy" size={24} />, desc: t('about.unSdgsDesc') },
+    { title: t('about.caseAnalysis'), icon: <BookOpen className="text-white" size={24} />, desc: t('about.caseAnalysisDesc') },
   ];
 
   return (
@@ -43,16 +45,16 @@ const AboutPage: React.FC = () => {
         {/* Left — text */}
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 sm:py-28 w-full">
           <div className="max-w-xl lg:max-w-[45%]">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">Powered by Us+AI Bureau</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.4em] text-brand-gold mb-4">{t('about.poweredBy')}</p>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-geometric font-bold text-white uppercase leading-[1.1] mb-6">
-              The <span className="text-brand-gold">Vision</span>
+              {t('about.theVision')} <span className="text-brand-gold">{t('about.vision')}</span>
             </h1>
             <p className="text-lg sm:text-2xl text-gray-300 font-light leading-relaxed mb-8">
-              Empowering the hotel Food & Beverage industry with a comprehensive, intelligent platform for optimizing performance and enhancing profitability.
+              {t('about.heroDesc')}
             </p>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-eco">
               <div className="w-1.5 h-1.5 rounded-full bg-brand-eco animate-pulse" />
-              ESG Intelligence Platform
+              {t('about.esgPlatform')}
             </div>
           </div>
         </div>
@@ -65,15 +67,15 @@ const AboutPage: React.FC = () => {
         <div className="relative max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-eco/70 mb-4">The Hidden Problem</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-eco/70 mb-4">{t('about.hiddenProblem')}</p>
               <h2 className="text-3xl sm:text-4xl font-geometric font-black text-brand-gold leading-tight mb-6">
-                The 800-Pound Gorilla is in the Kitchen.
+                {t('about.gorillaTitle')}
               </h2>
               <p className="text-base text-gray-400 font-light leading-relaxed mb-6">
-                While guest-facing initiatives are important, the F&B department is consistently the largest contributor to a hotel's environmental footprint — a fact often under-measured in ESG reporting.
+                {t('about.gorillaDesc')}
               </p>
               <p className="text-[10px] text-gray-600 uppercase tracking-widest font-bold">
-                Source: Sustainable Hospitality Alliance, Greenview.
+                {t('about.source')}
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -97,9 +99,9 @@ const AboutPage: React.FC = () => {
       <section className="py-20 sm:py-28 bg-brand-dark border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-14">
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">Our Approach</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">{t('about.ourApproach')}</p>
             <h2 className="text-3xl sm:text-4xl font-geometric font-black text-white uppercase tracking-wide mb-4">
-              Why F&B Remains a <span className="text-brand-gold">Critical ESG Gap</span>
+              {t('about.whyFBRemains')} <span className="text-brand-gold">{t('about.criticalESGGap')}</span>
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -127,38 +129,38 @@ const AboutPage: React.FC = () => {
             {/* Scope visual */}
             <div className="grid grid-cols-2 gap-4">
               <div className="p-8 rounded-2xl border border-white/5 bg-brand-dark/60 flex flex-col items-center justify-center text-center gap-2 hover:border-brand-gold/20 transition-colors">
-                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold">Scope 1</div>
-                <div className="text-[9px] text-gray-600 uppercase tracking-widest">Direct Emissions</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold">{t('about.scope1')}</div>
+                <div className="text-[9px] text-gray-600 uppercase tracking-widest">{t('about.directEmissions')}</div>
               </div>
               <div className="p-8 rounded-2xl border border-white/5 bg-brand-dark/60 flex flex-col items-center justify-center text-center gap-2 hover:border-brand-gold/20 transition-colors">
-                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold">Scope 2</div>
-                <div className="text-[9px] text-gray-600 uppercase tracking-widest">Purchased Energy</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold">{t('about.scope2')}</div>
+                <div className="text-[9px] text-gray-600 uppercase tracking-widest">{t('about.purchasedEnergy')}</div>
               </div>
               <div className="col-span-2 p-8 rounded-2xl border-2 border-brand-eco/50 bg-brand-eco/8 flex flex-col items-center justify-center text-center gap-3 shadow-[0_0_40px_rgba(119,177,57,0.08)]">
-                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-eco">Scope 3 — Operations</div>
-                <div className="text-sm font-bold text-white uppercase tracking-wide">Real-time F&B tracking & reporting</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-eco">{t('about.scope3Ops')}</div>
+                <div className="text-sm font-bold text-white uppercase tracking-wide">{t('about.realtimeTracking')}</div>
                 <div className="flex items-center gap-1.5 mt-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-eco animate-pulse" />
-                  <span className="text-[10px] text-brand-eco/70 uppercase tracking-widest font-bold">Ecometricus Focus</span>
+                  <span className="text-[10px] text-brand-eco/70 uppercase tracking-widest font-bold">{t('about.ecometricusFocus')}</span>
                 </div>
               </div>
             </div>
 
             {/* Text */}
             <div className="space-y-6">
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-eco/70">GHG Protocol Compliance</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-eco/70">{t('about.ghgCompliance')}</p>
               <h2 className="text-3xl sm:text-4xl font-geometric font-black text-white leading-tight">
-                ESG Scope 3:<br /><span className="text-brand-gold">The Differentiator</span>
+                {t('about.scope3Title')}<br /><span className="text-brand-gold">{t('about.differentiator')}</span>
               </h2>
               <p className="text-base text-gray-400 font-light leading-relaxed">
-                According to the <strong className="text-white">GHG Protocol</strong>, food waste falls under <strong className="text-white">Scope 3</strong> ("Waste Generated in Operations"). Despite its impact, it is often an industry blind spot. Ecometricus turns ESG from reporting into real-time results.
+                {t('about.scope3Desc')}
               </p>
               <ul className="space-y-3">
                 {[
-                  'Track daily waste by outlet and category',
-                  'Calculate cost, carbon, water, and energy impact',
-                  'Align with GSTC sustainability criteria',
-                  'Educational webinar & workshop training',
+                  t('about.trackDaily'),
+                  t('about.calculateCost'),
+                  t('about.alignGSTC'),
+                  t('about.educationalTraining'),
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-sm text-gray-300">
                     <ArrowRight size={14} className="text-brand-eco shrink-0" />
@@ -175,12 +177,12 @@ const AboutPage: React.FC = () => {
       <section className="py-20 sm:py-28 bg-brand-dark">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-14">
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">Standards & Frameworks</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">{t('about.standardsFrameworks')}</p>
             <h2 className="text-3xl sm:text-4xl font-geometric font-black text-white uppercase tracking-wide mb-4">
-              Industry <span className="text-brand-gold">Insights</span>
+              {t('about.industry')} <span className="text-brand-gold">{t('about.insights')}</span>
             </h2>
             <p className="text-base text-gray-500 font-light max-w-xl mx-auto">
-              Intelligence that meets global standards and pushes the boundaries of luxury hospitality.
+              {t('about.standardsDesc')}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

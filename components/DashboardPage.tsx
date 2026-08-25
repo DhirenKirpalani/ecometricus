@@ -2426,12 +2426,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <button
                                     disabled={!isMetricCardEditable}
                                     onClick={() => setParams({ ...params, wasteUnit: 'kg' })}
-                                    className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${effectiveParams.wasteUnit === 'kg' ? 'bg-brand-gold text-brand-dark' : 'text-gray-500'}`}
+                                    className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${effectiveParams.wasteUnit === 'kg' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}
                                   >KG</button>
                                   <button
                                     disabled={!isMetricCardEditable}
                                     onClick={() => setParams({ ...params, wasteUnit: 'lbs' })}
-                                    className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${effectiveParams.wasteUnit === 'lbs' ? 'bg-brand-gold text-brand-dark' : 'text-gray-500'}`}
+                                    className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${effectiveParams.wasteUnit === 'lbs' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}
                                   >LBS</button>
                                 </div>
                               </div>
@@ -2649,7 +2649,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="flex flex-col items-center pt-2 gap-3">
                               <button
                                 onClick={() => setIsEditingBenchmarks(!isEditingBenchmarks)}
-                                className={`px-8 py-2.5 rounded-full flex items-center gap-3 text-[9px] font-black uppercase tracking-widest shadow-xl transition-all ${isEditingBenchmarks ? 'bg-brand-gold text-brand-dark ring-2 ring-brand-gold/30' : 'bg-brand-gold text-brand-dark hover:scale-105'}`}
+                                className={`px-8 py-2.5 rounded-full flex items-center gap-3 text-[9px] font-black uppercase tracking-widest shadow-xl transition-all ${isEditingBenchmarks ? 'bg-brand-eco text-brand-dark ring-2 ring-brand-eco/30' : 'bg-brand-eco text-brand-dark hover:scale-105'}`}
                               >
                                 {isEditingBenchmarks ? <Unlock size={12} /> : <Edit2 size={12} />}
                                 {isEditingBenchmarks ? 'Benchmarks Unlocked' : 'Edit Parameters'}
@@ -2790,7 +2790,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <div className="flex justify-center">
                             <button
                               onClick={() => setIsEditingApis(!isEditingApis)}
-                              className={`px-10 py-3 rounded-full flex items-center gap-3 text-[10px] font-black uppercase tracking-widest shadow-xl transition-all ${isEditingApis ? 'bg-brand-gold text-brand-dark ring-2 ring-brand-gold/20' : 'bg-brand-gold text-brand-dark hover:scale-105'}`}
+                              className={`px-10 py-3 rounded-full flex items-center gap-3 text-[10px] font-black uppercase tracking-widest shadow-xl transition-all ${isEditingApis ? 'bg-brand-eco text-brand-dark ring-2 ring-brand-eco/20' : 'bg-brand-eco text-brand-dark hover:scale-105'}`}
                             >
                               {isEditingApis ? <Unlock size={14} /> : <Edit2 size={14} />}
                               {isEditingApis ? 'API Hub Unlocked' : 'Edit APIs'}

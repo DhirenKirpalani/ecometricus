@@ -7,6 +7,7 @@ import {
   ShieldCheck, Send
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useI18n } from '../lib/useI18n';
 
 interface AuthPageProps {
   currentView: Page;
@@ -42,8 +43,17 @@ const getStrength = (pw: string): StrengthResult => {
 };
 
 const PasswordStrength: React.FC<{ password: string }> = ({ password }) => {
+  const { t } = useI18n();
   if (!password) return null;
-  const { score, label, color, barColor, criteria } = getStrength(password);
+  const { score, criteria } = getStrength(password);
+  const labels = [t('auth.pwTooWeak'), t('auth.pwWeak'), t('auth.pwFair'), t('auth.pwGood'), t('auth.pwStrong')];
+  const label = labels[score];
+  const color = score <= 1 ? 'text-red-400' : score === 2 ? 'text-yellow-400' : 'text-brand-eco';
+  const barColor = score <= 1 ? 'bg-red-500' : score === 2 ? 'bg-yellow-500' : 'bg-brand-eco';
+  const translatedCriteria = criteria.map((c, i) => ({
+    ...c,
+    text: [t('auth.pw8Chars'), t('auth.pwUppercase'), t('auth.pwNumber'), t('auth.pwSpecial')][i],
+  }));
   return (
     <div className="space-y-3 pt-1">
       {/* Bar segments */}
@@ -64,7 +74,7 @@ const PasswordStrength: React.FC<{ password: string }> = ({ password }) => {
       </div>
       {/* Criteria checklist */}
       <div className="grid grid-cols-2 gap-1.5">
-        {criteria.map((c) => (
+        {translatedCriteria.map((c) => (
           <div key={c.text} className="flex items-center gap-1.5">
             <span className={`shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-black ${c.met ? 'bg-brand-eco/20 text-brand-eco' : 'bg-white/5 text-white/20'}`}>
               {c.met ? '✓' : '·'}
@@ -158,6 +168,7 @@ const PasswordField: React.FC<{
 
 // ─── Main component ───────────────────────────────────────────────────────────
 const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin }) => {
+  const { t } = useI18n();
   const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
   const [verifyPassword, setVerifyPassword] = useState('');
@@ -181,11 +192,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
   const canAttemptAuth = (): boolean => {
     const now = Date.now();
     if (attemptCount.current >= MAX_ATTEMPTS) {
-      setError('Too many attempts. Please wait 1 minute and refresh the page.');
+      setError(t('auth.errTooManyAttempts'));
       return false;
     }
     if (now - lastAttemptTime.current < RATE_LIMIT_MS) {
-      setError(`Please wait ${Math.ceil((RATE_LIMIT_MS - (now - lastAttemptTime.current)) / 1000)}s before trying again.`);
+      setError(t('auth.errRateLimit', { n: Math.ceil((RATE_LIMIT_MS - (now - lastAttemptTime.current)) / 1000) }));
       return false;
     }
     lastAttemptTime.current = now;
@@ -207,9 +218,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
           redirectTo: `${window.location.origin}/?reset=true`,
         });
         if (resetErr) throw resetErr;
-        setSuccessMsg('Password reset link sent! Check your inbox.');
+        setSuccessMsg(t('auth.errResetSent'));
       } catch (err: any) {
-        setError(err.message || 'Failed to send reset email. Please try again.');
+        setError(err.message || t('auth.errResetFailed'));
       } finally {
         setIsLoading(false);
       }
@@ -217,10 +228,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
     }
 
     // ── Validation ──
-    if (isSignUp && password !== verifyPassword) { setError('Passwords do not match.'); return; }
-    if (isSignUp && !acceptTerms)               { setError('You must accept the Terms and Privacy Policy.'); return; }
-    if (isSignUp && password.length < 6)        { setError('Password must be at least 6 characters.'); return; }
-    if (isSignUp && !fullName.trim())            { setError('Please enter your full name.'); return; }
+    if (isSignUp && password !== verifyPassword) { setError(t('auth.errPwMismatch')); return; }
+    if (isSignUp && !acceptTerms)               { setError(t('auth.errMustAccept')); return; }
+    if (isSignUp && password.length < 6)        { setError(t('auth.errPwTooShort')); return; }
+    if (isSignUp && !fullName.trim())            { setError(t('auth.errNameRequired')); return; }
 
     if (!canAttemptAuth()) return;
     setIsLoading(true);
@@ -243,7 +254,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         });
         if (signUpErr) throw signUpErr;
         authUser = signUpData.user;
-        if (!authUser?.id) throw new Error('Signup failed. Please try again.');
+        if (!authUser?.id) throw new Error(t('auth.errSignupFailed'));
 
         // ── Email confirmation required ──
         // If the user has no session yet (email_confirmed_at is null),
@@ -272,7 +283,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         }
       }
 
-      if (!authUser) throw new Error('Authentication failed to retrieve user session.');
+      if (!authUser) throw new Error(t('auth.errAuthFailed'));
 
       const dynamicFullName = fullName || authUser.user_metadata?.full_name || 'Admin User';
       const finalRole = authUser.user_metadata?.role || 'admin';
@@ -290,9 +301,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
 
     } catch (err: any) {
       let msg = err.message || 'Authentication failed.';
-      if (msg.includes('Email not confirmed'))    msg = 'Please confirm your email before signing in.';
-      if (msg.includes('Invalid login credentials')) msg = 'Incorrect email or password.';
-      if (msg.includes('rate limit'))             msg = 'Too many requests. Please wait and try again.';
+      if (msg.includes('Email not confirmed'))    msg = t('auth.errEmailNotConfirmed');
+      if (msg.includes('Invalid login credentials')) msg = t('auth.errInvalidCredentials');
+      if (msg.includes('rate limit'))             msg = t('auth.errTooManyRequests');
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -303,16 +314,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
 
   // Left panel bullet points
   const leftBullets = isSignIn
-    ? [
-        'Real-time ESG intelligence for your F&B operation',
-        'Track food waste, energy & water in one platform',
-        'AI-powered insights tailored to your property',
-      ]
-    : [
-        'No credit card required to start',
-        'Full dashboard access from day one',
-        'Set up your operation in under 10 minutes',
-      ];
+    ? [t('authBranding.signInBullet1'), t('authBranding.signInBullet2'), t('authBranding.signInBullet3')]
+    : [t('authBranding.signUpBullet1'), t('authBranding.signUpBullet2'), t('authBranding.signUpBullet3')];
 
   return (
     <div className="min-h-screen flex overflow-hidden">
@@ -325,31 +328,29 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         <div className="relative flex flex-col h-full px-12 py-10">
 
           {/* Main content */}
-          <div className="flex-1 flex flex-col justify-center gap-10">
+          <div className="flex-1 flex flex-col justify-center items-center gap-10 text-center">
 
-            {/* Logo — click to go home */}
-            <button onClick={() => onNavigate(Page.HOME)} className="self-start hover:opacity-80 transition-opacity">
-              <Logo size="lg" withLabel />
+            {/* Logo icon — click to go home */}
+            <button onClick={() => onNavigate(Page.HOME)} className="hover:opacity-80 transition-opacity">
+              <Logo size="xl" />
             </button>
 
             {/* Tagline */}
             <div className="space-y-3 max-w-xs">
               <h2 className="text-2xl sm:text-3xl font-geometric font-bold text-white leading-snug">
                 {isSignIn ? (
-                  <>Measure what matters.<br /><span className="text-brand-gold">Profit from sustainability.</span></>
+                  <>{t('authBranding.signInHeadline')}<br /><span className="text-brand-gold">{t('authBranding.signInHeadlineGold')}</span></>
                 ) : (
-                  <>Start tracking<br /><span className="text-brand-gold">what matters today.</span></>
+                  <>{t('authBranding.signUpHeadline')}<br /><span className="text-brand-gold">{t('authBranding.signUpHeadlineGold')}</span></>
                 )}
               </h2>
               <p className="text-sm text-white/40 leading-relaxed">
-                {isSignIn
-                  ? 'The premier AI-powered ESG platform for luxury F&B operations worldwide.'
-                  : 'Everything you need to measure, optimize, and report your ESG performance.'}
+                {isSignIn ? t('authBranding.signInTagline') : t('authBranding.signUpTagline')}
               </p>
             </div>
 
             {/* Bullets */}
-            <ul className="space-y-3.5">
+            <ul className="space-y-3.5 text-left">
               {leftBullets.map(b => (
                 <li key={b} className="flex items-center gap-3 text-sm text-white/60">
                   <CheckCircle2 size={16} className="text-brand-eco shrink-0" />
@@ -361,9 +362,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
           </div>
 
           {/* Footer */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <ShieldCheck size={12} className="text-brand-eco shrink-0" />
-            <p className="text-xs text-white/25">256-bit encrypted · GDPR compliant</p>
+            <p className="text-xs text-white/25">{t('auth.encrypted')}</p>
           </div>
 
         </div>
@@ -375,7 +376,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center justify-center p-6">
           <button onClick={() => onNavigate(Page.HOME)} className="hover:opacity-80 transition-opacity">
-            <Logo size="md" withLabel />
+            <Logo size="lg" />
           </button>
         </div>
 
@@ -394,13 +395,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   </span>
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-geometric font-bold text-white">Check your inbox</h2>
+                  <h2 className="text-2xl font-geometric font-bold text-white">{t('auth.checkInbox')}</h2>
                   <p className="text-sm text-white/40 leading-relaxed max-w-sm">
-                    We sent a confirmation link to <span className="text-white/70 font-medium">{email}</span>. Click it to activate your account.
+                    {t('auth.confirmationSent', { email })}
                   </p>
                 </div>
                 <div className="w-full p-4 rounded-xl bg-white/3 border border-white/8 text-left space-y-2">
-                  {["Check your spam folder if it doesn't arrive", 'The link expires in 24 hours', 'Once confirmed you\'ll go straight to your dashboard'].map((tip) => (
+                  {[t('auth.tipSpam'), t('auth.tipExpires'), t('auth.tipDashboard')].map((tip) => (
                     <div key={tip} className="flex items-start gap-2.5">
                       <span className="w-1 h-1 rounded-full bg-brand-gold/50 mt-2 shrink-0" />
                       <p className="text-xs text-white/35">{tip}</p>
@@ -408,7 +409,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   ))}
                 </div>
                 <button type="button" onClick={() => { setSuccessMsg(null); onNavigate(Page.SIGN_IN); }} className="text-sm text-white/30 hover:text-white transition-colors">
-                  ← Back to Log In
+                  {t('auth.backToLogIn')}
                 </button>
               </div>
             )}
@@ -420,16 +421,16 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                 {/* Header */}
                 {isForgot ? (
                   <div className="space-y-1">
-                    <h1 className="text-2xl font-geometric font-bold text-white">Forgot Password?</h1>
-                    <p className="text-sm text-white/40">Enter your email and we'll send you a reset link.</p>
+                    <h1 className="text-2xl font-geometric font-bold text-white">{t('auth.forgotPassword')}</h1>
+                    <p className="text-sm text-white/40">{t('auth.forgotPasswordDesc')}</p>
                   </div>
                 ) : (
                   <div className="space-y-1">
                     <h1 className="text-2xl font-geometric font-bold text-white">
-                      {isSignIn ? 'Welcome back' : 'Create your account'}
+                      {isSignIn ? t('auth.welcomeBack') : t('auth.createAccount')}
                     </h1>
                     <p className="text-sm text-white/40">
-                      {isSignIn ? 'Sign in to your Ecometricus account' : 'Get started with Ecometricus for free'}
+                      {isSignIn ? t('auth.signInAccount') : t('auth.setUpAccount')}
                     </p>
                   </div>
                 )}
@@ -452,7 +453,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                         className="w-full flex items-center justify-center gap-2 bg-[#0f2620] border border-brand-gold/25 text-brand-gold hover:bg-brand-gold/10 hover:border-brand-gold/50 rounded-xl py-3 text-sm font-semibold transition-all"
                       >
                         <Mail size={15} />
-                        Open Email App
+                        {t('auth.openEmail')}
                       </a>
                     )}
                   </div>
@@ -462,21 +463,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                 <form onSubmit={handleSubmit} className="bg-[#0f2620] border border-white/8 rounded-2xl p-6 space-y-4">
 
                   {isSignUp && (
-                    <Field label="Full Name" value={fullName} onChange={setFullName} placeholder="John Doe" required icon={<User size={14} />} />
+                    <Field label={t('auth.fullName')} value={fullName} onChange={setFullName} placeholder={t('auth.fullNamePlaceholder')} required icon={<User size={14} />} />
                   )}
 
-                  <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="name@company.com" required icon={<Mail size={14} />} />
+                  <Field label={t('auth.email')} type="email" value={email} onChange={setEmail} placeholder={t('auth.emailPlaceholder')} required icon={<Mail size={14} />} />
 
                   {!isForgot && (
                     <div className="space-y-2">
                       <PasswordField
-                        label="Password"
+                        label={t('auth.password')}
                         value={password}
                         onChange={setPassword}
                         required
                         right={isSignIn ? (
                           <button type="button" onClick={() => { onNavigate(Page.FORGOT_PASSWORD); setError(null); }} className="text-xs text-brand-gold hover:underline transition-colors">
-                            Forgot password?
+                            {t('auth.forgotPasswordLink')}
                           </button>
                         ) : undefined}
                       />
@@ -485,7 +486,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   )}
 
                   {isSignUp && (
-                    <PasswordField label="Confirm Password" value={verifyPassword} onChange={setVerifyPassword} placeholder="Repeat password" required />
+                    <PasswordField label={t('auth.confirmPassword')} value={verifyPassword} onChange={setVerifyPassword} placeholder={t('auth.repeatPassword')} required />
                   )}
 
                   {isSignUp && (
@@ -493,15 +494,15 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                       <button
                         type="button"
                         onClick={() => setAcceptTerms(!acceptTerms)}
-                        className={`shrink-0 w-4 h-4 rounded border mt-0.5 flex items-center justify-center transition-all ${acceptTerms ? 'bg-brand-gold border-brand-gold' : 'border-white/20 hover:border-brand-gold'}`}
+                        className={`shrink-0 w-4 h-4 rounded border mt-0.5 flex items-center justify-center transition-all ${acceptTerms ? 'bg-brand-eco border-brand-eco' : 'border-white/20 hover:border-brand-eco'}`}
                       >
                         {acceptTerms && <CheckCircle2 size={10} className="text-brand-dark" />}
                       </button>
                       <span className="text-xs text-white/40 leading-relaxed">
-                        I agree to the{' '}
-                        <button type="button" onClick={() => onNavigate(Page.TERMS)} className="text-brand-gold hover:underline">Terms</button>
-                        {' '}and{' '}
-                        <button type="button" onClick={() => onNavigate(Page.PRIVACY)} className="text-brand-gold hover:underline">Privacy Policy</button>
+                        {t('auth.agreeTerms')}{' '}
+                        <button type="button" onClick={() => onNavigate(Page.TERMS)} className="text-brand-gold hover:underline">{t('auth.terms')}</button>
+                        {' '}{t('auth.and')}{' '}
+                        <button type="button" onClick={() => onNavigate(Page.PRIVACY)} className="text-brand-gold hover:underline">{t('auth.privacyPolicy')}</button>
                       </span>
                     </div>
                   )}
@@ -509,24 +510,24 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   <button
                     type="submit"
                     disabled={isLoading || (isSignUp && !acceptTerms)}
-                    className="w-full flex items-center justify-center gap-2.5 bg-brand-gold text-brand-dark py-3.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all shadow-[0_6px_20px_rgba(200,164,19,0.3)] disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2.5 bg-brand-eco text-brand-dark py-3.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all shadow-[0_6px_20px_rgba(119,177,57,0.3)] disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (
                       <><div className="w-4 h-4 border-2 border-brand-dark/30 border-t-brand-dark rounded-full animate-spin" />
-                      {isSignIn ? 'Signing In…' : isSignUp ? 'Creating Account…' : 'Sending…'}</>
+                      {isSignIn ? t('auth.signingIn') : isSignUp ? t('auth.creatingAccount') : t('auth.sending')}</>
                     ) : (
                       <>
                         {isForgot && <Send size={14} />}
-                        {isSignIn && 'Sign in'}
-                        {isSignUp && 'Create Account'}
-                        {isForgot && 'Send Reset Link'}
+                        {isSignIn && t('auth.signIn')}
+                        {isSignUp && t('auth.createAccountBtn')}
+                        {isForgot && t('auth.sendResetLink')}
                       </>
                     )}
                   </button>
 
                   {isForgot && (
                     <button type="button" onClick={() => { onNavigate(Page.SIGN_IN); setError(null); setSuccessMsg(null); }} className="w-full text-center text-sm text-white/30 hover:text-white transition-colors">
-                      ← Back to Sign In
+                      {t('auth.backToSignIn')}
                     </button>
                   )}
                 </form>
@@ -535,9 +536,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                 {!isForgot && (
                   <p className="text-center text-sm text-white/40">
                     {isSignIn ? (
-                      <>Don't have an account?{' '}<button type="button" onClick={() => { onNavigate(Page.SIGN_UP); setError(null); setSuccessMsg(null); }} className="text-brand-gold font-semibold hover:underline">Sign up free</button></>
+                      <>{t('auth.noAccount')}{' '}<button type="button" onClick={() => { onNavigate(Page.SIGN_UP); setError(null); setSuccessMsg(null); }} className="text-brand-gold font-semibold hover:underline">{t('auth.signUpLink')}</button></>
                     ) : (
-                      <>Already have an account?{' '}<button type="button" onClick={() => { onNavigate(Page.SIGN_IN); setError(null); setSuccessMsg(null); }} className="text-brand-gold font-semibold hover:underline">Sign in</button></>
+                      <>{t('auth.haveAccount')}{' '}<button type="button" onClick={() => { onNavigate(Page.SIGN_IN); setError(null); setSuccessMsg(null); }} className="text-brand-gold font-semibold hover:underline">{t('auth.signInLink')}</button></>
                     )}
                   </p>
                 )}

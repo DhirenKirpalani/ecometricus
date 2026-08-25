@@ -177,7 +177,7 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
               className={`
                 relative py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-500
                 ${(hasScrolledToBottom && hasCheckedTerms)
-                  ? 'bg-brand-gold text-brand-dark hover:brightness-110 active:scale-95 shadow-lg' 
+                  ? 'bg-brand-eco text-brand-dark hover:brightness-110 active:scale-95 shadow-lg' 
                   : 'bg-white/5 text-white/20 border border-white/5 cursor-not-allowed'}
               `}
             >
