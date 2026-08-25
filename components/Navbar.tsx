@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import Logo from './Logo';
-import { Menu, X, LogIn, UserPlus, LogOut, Globe } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, LogOut } from 'lucide-react';
 import { useI18n } from '../lib/useI18n';
 
 interface NavbarProps {
@@ -80,13 +80,21 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
           <div className="hidden md:flex items-center gap-3">
             <div className="w-px h-5 bg-white/10" />
 
-            {/* Language toggle */}
-            <button
-              onClick={() => changeLang(lang === 'en' ? 'es' : 'en')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white border border-white/10 hover:border-white/25 transition-all"
-            >
-              <Globe size={12} /> {lang === 'en' ? 'ES' : 'EN'}
-            </button>
+            {/* Language toggle — segmented pill */}
+            <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-full p-0.5">
+              <button
+                onClick={() => changeLang('en')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all duration-200 ${lang === 'en' ? 'bg-brand-gold text-brand-dark shadow-sm' : 'text-white/35 hover:text-white/70'}`}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => changeLang('es')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all duration-200 ${lang === 'es' ? 'bg-brand-gold text-brand-dark shadow-sm' : 'text-white/35 hover:text-white/70'}`}
+              >
+                ES
+              </button>
+            </div>
 
             <div className="w-px h-5 bg-white/10" />
             {isLoggedIn ? (
@@ -159,6 +167,23 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
               );
             })}
             <div className="h-px bg-white/5 my-2" />
+
+            {/* Mobile language toggle */}
+            <div className="flex items-center justify-center gap-0.5 bg-white/5 border border-white/10 rounded-full p-0.5 self-center my-1">
+              <button
+                onClick={() => changeLang('en')}
+                className={`px-5 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200 ${lang === 'en' ? 'bg-brand-gold text-brand-dark' : 'text-white/35'}`}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => changeLang('es')}
+                className={`px-5 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200 ${lang === 'es' ? 'bg-brand-gold text-brand-dark' : 'text-white/35'}`}
+              >
+                ES
+              </button>
+            </div>
+
             <div className="flex flex-col gap-3">
               {isLoggedIn ? (
                 <div className="flex gap-2">
