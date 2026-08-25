@@ -309,7 +309,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         'AI-powered insights tailored to your property',
       ]
     : [
-        'No credit card required to start',
+        'Mila F&B and Sustainability AI Agent',
         'Full dashboard access from day one',
         'Set up your operation in under 10 minutes',
       ];
@@ -325,11 +325,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         <div className="relative flex flex-col h-full px-12 py-10">
 
           {/* Main content */}
-          <div className="flex-1 flex flex-col justify-center gap-10">
+          <div className="flex-1 flex flex-col justify-center items-center gap-10 text-center">
 
-            {/* Logo — click to go home */}
-            <button onClick={() => onNavigate(Page.HOME)} className="self-start hover:opacity-80 transition-opacity">
-              <Logo size="lg" withLabel />
+            {/* Logo icon — click to go home */}
+            <button onClick={() => onNavigate(Page.HOME)} className="hover:opacity-80 transition-opacity">
+              <Logo size="xl" />
             </button>
 
             {/* Tagline */}
@@ -349,7 +349,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
             </div>
 
             {/* Bullets */}
-            <ul className="space-y-3.5">
+            <ul className="space-y-3.5 text-left">
               {leftBullets.map(b => (
                 <li key={b} className="flex items-center gap-3 text-sm text-white/60">
                   <CheckCircle2 size={16} className="text-brand-eco shrink-0" />
@@ -361,7 +361,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
           </div>
 
           {/* Footer */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <ShieldCheck size={12} className="text-brand-eco shrink-0" />
             <p className="text-xs text-white/25">256-bit encrypted · GDPR compliant</p>
           </div>
@@ -375,7 +375,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center justify-center p-6">
           <button onClick={() => onNavigate(Page.HOME)} className="hover:opacity-80 transition-opacity">
-            <Logo size="md" withLabel />
+            <Logo size="lg" />
           </button>
         </div>
 
@@ -429,7 +429,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                       {isSignIn ? 'Welcome back' : 'Create your account'}
                     </h1>
                     <p className="text-sm text-white/40">
-                      {isSignIn ? 'Sign in to your Ecometricus account' : 'Get started with Ecometricus for free'}
+                      {isSignIn ? 'Sign in to your Ecometricus account' : 'Set up your Ecometricus account'}
                     </p>
                   </div>
                 )}
@@ -493,7 +493,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                       <button
                         type="button"
                         onClick={() => setAcceptTerms(!acceptTerms)}
-                        className={`shrink-0 w-4 h-4 rounded border mt-0.5 flex items-center justify-center transition-all ${acceptTerms ? 'bg-brand-gold border-brand-gold' : 'border-white/20 hover:border-brand-gold'}`}
+                        className={`shrink-0 w-4 h-4 rounded border mt-0.5 flex items-center justify-center transition-all ${acceptTerms ? 'bg-brand-eco border-brand-eco' : 'border-white/20 hover:border-brand-eco'}`}
                       >
                         {acceptTerms && <CheckCircle2 size={10} className="text-brand-dark" />}
                       </button>
@@ -509,7 +509,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   <button
                     type="submit"
                     disabled={isLoading || (isSignUp && !acceptTerms)}
-                    className="w-full flex items-center justify-center gap-2.5 bg-brand-gold text-brand-dark py-3.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all shadow-[0_6px_20px_rgba(200,164,19,0.3)] disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2.5 bg-brand-eco text-brand-dark py-3.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all shadow-[0_6px_20px_rgba(119,177,57,0.3)] disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (
                       <><div className="w-4 h-4 border-2 border-brand-dark/30 border-t-brand-dark rounded-full animate-spin" />
@@ -535,7 +535,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                 {!isForgot && (
                   <p className="text-center text-sm text-white/40">
                     {isSignIn ? (
-                      <>Don't have an account?{' '}<button type="button" onClick={() => { onNavigate(Page.SIGN_UP); setError(null); setSuccessMsg(null); }} className="text-brand-gold font-semibold hover:underline">Sign up free</button></>
+                      <>Don't have an account?{' '}<button type="button" onClick={() => { onNavigate(Page.SIGN_UP); setError(null); setSuccessMsg(null); }} className="text-brand-gold font-semibold hover:underline">Sign up</button></>
                     ) : (
                       <>Already have an account?{' '}<button type="button" onClick={() => { onNavigate(Page.SIGN_IN); setError(null); setSuccessMsg(null); }} className="text-brand-gold font-semibold hover:underline">Sign in</button></>
                     )}

@@ -149,7 +149,7 @@ const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
                     <button
                         onClick={handleSubmit}
                         disabled={isLoading || !inputValue.trim() || isSubmitted}
-                        className="p-3 bg-brand-gold text-brand-dark rounded-xl hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="p-3 bg-brand-eco text-brand-dark rounded-xl hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                         {isLoading ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" /> : <Send size={16} />}
                     </button>

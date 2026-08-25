@@ -269,7 +269,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
                 Our team will walk you through a live session tailored to your property's F&B setup — no generic slides, just real insights for your operation.
               </p>
               <button
-                className="inline-flex items-center gap-3 bg-brand-gold text-brand-dark hover:brightness-110 px-10 py-4 rounded-full font-bold shadow-[0_15px_35px_rgba(200,164,19,0.35)] transition-all transform hover:scale-105 uppercase tracking-widest text-xs"
+                className="inline-flex items-center gap-3 bg-brand-eco text-brand-dark hover:brightness-110 px-10 py-4 rounded-full font-bold shadow-[0_15px_35px_rgba(119,177,57,0.35)] transition-all transform hover:scale-105 uppercase tracking-widest text-xs"
                 onClick={() => window.open("https://calendly.com/urbanseed-ai/ai-bureau-services", "_blank")}
               >
                 <CalendarCheck size={16} /> Book a Demo

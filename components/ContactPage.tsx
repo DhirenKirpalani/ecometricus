@@ -380,7 +380,7 @@ const ContactPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-3 bg-brand-gold text-brand-dark hover:brightness-110 py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all transform hover:scale-[1.02] shadow-[0_10px_25px_rgba(200,164,19,0.3)] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="w-full flex items-center justify-center gap-3 bg-brand-eco text-brand-dark hover:brightness-110 py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all transform hover:scale-[1.02] shadow-[0_10px_25px_rgba(119,177,57,0.3)] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {loading ? (
                   <span className="w-4 h-4 rounded-full border-2 border-brand-dark/30 border-t-brand-dark animate-spin" />

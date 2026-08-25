@@ -35,7 +35,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
 
           {/* Brand */}
           <div className="space-y-5">
-            <Logo size="md" withLabel />
+            <Logo size="md" />
             <p className="text-xs text-gray-500 leading-relaxed max-w-[220px]">
               AI-powered sustainability intelligence for luxury F&B operations.
             </p>
