@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import Logo from './Logo';
-import { Menu, X, LogIn, UserPlus, LogOut } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, LogOut, Globe } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
 
 interface NavbarProps {
   currentPage: Page;
@@ -15,6 +16,7 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = false, userInitial = 'A', onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { t, lang, changeLang } = useI18n();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -23,10 +25,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
   }, []);
 
   const navLinks = [
-    { label: 'Home',     page: Page.HOME },
-    { label: 'About Us', page: Page.ABOUT },
-    { label: 'FAQ',      page: Page.FAQ },
-    { label: 'Contact',  page: Page.CONTACT },
+    { label: t('navbar.home'),     page: Page.HOME },
+    { label: t('navbar.aboutUs'),  page: Page.ABOUT },
+    { label: t('navbar.faq'),      page: Page.FAQ },
+    { label: t('navbar.contact'),  page: Page.CONTACT },
   ];
 
   const handleNavigate = (page: Page) => {
@@ -77,6 +79,16 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
           {/* Desktop action buttons */}
           <div className="hidden md:flex items-center gap-3">
             <div className="w-px h-5 bg-white/10" />
+
+            {/* Language toggle */}
+            <button
+              onClick={() => changeLang(lang === 'en' ? 'es' : 'en')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white border border-white/10 hover:border-white/25 transition-all"
+            >
+              <Globe size={12} /> {lang === 'en' ? 'ES' : 'EN'}
+            </button>
+
+            <div className="w-px h-5 bg-white/10" />
             {isLoggedIn ? (
               <div className="flex items-center gap-2">
                 <button
@@ -100,13 +112,13 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                   onClick={() => handleNavigate(Page.SIGN_IN)}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-gray-300 hover:text-white border border-white/10 hover:border-white/25 transition-all duration-200"
                 >
-                  <LogIn size={13} /> Log In
+                  <LogIn size={13} /> {t('navbar.logIn')}
                 </button>
                 <button
                   onClick={() => handleNavigate(Page.SIGN_UP)}
                   className="flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-brand-eco text-brand-dark hover:brightness-110 transition-all transform hover:scale-105 shadow-[0_4px_15px_rgba(119,177,57,0.35)]"
                 >
-                  <UserPlus size={13} /> Sign Up
+                  <UserPlus size={13} /> {t('navbar.signUp')}
                 </button>
               </>
             )}
@@ -157,7 +169,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
                       <span className="text-brand-gold text-sm font-black leading-none">{userInitial.toUpperCase()}</span>
                     </div>
-                    <span className="text-sm font-bold text-white/80 uppercase tracking-widest">My Dashboard</span>
+                    <span className="text-sm font-bold text-white/80 uppercase tracking-widest">{t('navbar.myDashboard')}</span>
                   </button>
                   <button
                     onClick={onLogout}
@@ -173,13 +185,13 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                     onClick={() => handleNavigate(Page.SIGN_IN)}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 hover:border-white/25 transition-all"
                   >
-                    <LogIn size={14} /> Log In
+                    <LogIn size={14} /> {t('navbar.logIn')}
                   </button>
                   <button
                     onClick={() => handleNavigate(Page.SIGN_UP)}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-brand-eco text-brand-dark shadow-[0_4px_15px_rgba(119,177,57,0.3)]"
                   >
-                    <UserPlus size={14} /> Sign Up
+                    <UserPlus size={14} /> {t('navbar.signUp')}
                   </button>
                 </>
               )}

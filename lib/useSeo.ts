@@ -83,6 +83,11 @@ const PAGE_META: Record<Page, SeoMeta> = {
     description: 'Supervisor dashboard for Ecometricus ESG platform.',
     path: '/supervisor-dashboard',
   },
+  [Page.TRANSLATION_MANAGER]: {
+    title: 'Translation Manager — Ecometricus',
+    description: 'Manage and edit translations for the Ecometricus platform.',
+    path: '/translations',
+  },
 };
 
 function setMeta(attr: string, key: string, content: string) {
