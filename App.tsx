@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Page, UserProfile } from './types';
 import { useSeo } from './lib/useSeo';
@@ -57,6 +57,11 @@ const App: React.FC = () => {
   );
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
+  // Ref to track currentUser inside the onAuthStateChange closure
+  // (which has [] deps and would otherwise capture a stale null value)
+  const currentUserRef = useRef<UserProfile | null>(null);
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+
   // Per-page SEO meta tags
   useSeo(currentPage);
 
@@ -76,34 +81,37 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
-  // ── Handle email confirmation redirect ──
-  // When a user clicks the confirmation link in their email, Supabase fires
-  // SIGNED_IN with event type 'EMAIL_CONFIRMED'. We detect this and route them
-  // straight to the dashboard instead of landing on the home page.
+  // ── Handle session restore & email confirmation redirect ──
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-          // Only auto-route on email confirmation (not every login, which the
-          // AuthPage handleSubmit already handles)
-          if (event === 'SIGNED_IN' && !currentUser) {
-            const authUser = session.user;
-            const meta = authUser.user_metadata || {};
-            const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
-            const role = meta.role || 'admin';
-            const position = role === 'admin' ? 'GM' : role === 'manager' ? 'Outlet Manager' : role === 'chef' ? 'Head Chef' : 'Supervisor';
+          const authUser = session.user;
+          const meta = authUser.user_metadata || {};
+          const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
+          const role = meta.role || 'admin';
+          const position = role === 'admin' ? 'GM' : role === 'manager' ? 'Outlet Manager' : role === 'chef' ? 'Head Chef' : 'Supervisor';
 
-            const profile: UserProfile = {
-              id: authUser.id,
-              fullName,
-              email: authUser.email || '',
-              role: role as any,
-              position: position as any,
-              outletCode: meta.outlet_code || 'ROY02',
-              legal_consent: true,
-            };
+          const profile: UserProfile = {
+            id: authUser.id,
+            fullName,
+            email: authUser.email || '',
+            role: role as any,
+            position: position as any,
+            outletCode: meta.outlet_code || 'ROY02',
+            legal_consent: true,
+          };
 
-            setCurrentUser(profile);
+          // Always restore the user profile into state (so protected pages
+          // like /translations and /dashboard work on reload)
+          setCurrentUser(profile);
+
+          // Only auto-redirect on email confirmation links — these have
+          // auth tokens in the URL hash (e.g. #access_token=...&type=signup).
+          // Normal session restore (SIGNED_IN without hash, or TOKEN_REFRESHED)
+          // should NEVER redirect — respect whatever URL the user is on.
+          const hasAuthHash = window.location.hash.includes('access_token');
+          if (event === 'SIGNED_IN' && hasAuthHash) {
             const targetPage =
               role === 'admin' || role === 'manager' ? Page.DASHBOARD :
               role === 'supervisor' ? Page.SUPERVISOR_DASHBOARD :
@@ -111,6 +119,8 @@ const App: React.FC = () => {
             const path = PAGE_TO_PATH[targetPage];
             navigate(path);
             setCurrentPageState(targetPage);
+            // Clean the hash so it doesn't trigger again on refresh
+            window.history.replaceState(null, '', window.location.pathname);
           }
         }
       }
@@ -171,7 +181,9 @@ const App: React.FC = () => {
       case Page.CONTACT:
         return <ContactPage />;
       case Page.TRANSLATION_MANAGER:
-        return <TranslationManager onNavigate={handleNavigate} />;
+        return currentUser
+          ? <TranslationManager onNavigate={handleNavigate} />
+          : <AuthPage currentView={Page.SIGN_IN} onNavigate={handleNavigate} onLogin={handleLogin} />;
       case Page.DASHBOARD:
         return currentUser
           ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />

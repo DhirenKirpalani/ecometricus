@@ -107,7 +107,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
   };
 
   return (
-    <div className="min-h-screen bg-brand-dark flex flex-col">
+    <div className="h-screen bg-brand-dark flex flex-col overflow-hidden">
 
       {/* ─── Header ─────────────────────────────────────────────── */}
       <header className="border-b border-white/8 bg-[#0e1f1c] sticky top-0 z-50">
