@@ -229,6 +229,7 @@ export const translations: Record<string, TranslationSection> = {
   // ─── FAQ ──────────────────────────────────────────────────────────────────
   faq: {
     knowledgeBase:     { en: 'Knowledge Base', es: 'Base de Conocimiento' },
+    title:             { en: 'FAQ', es: 'FAQ' },
     faqTitle:          { en: 'FAQ', es: 'FAQ' },
     q1:                { en: 'What is an Ecometricus app?', es: '¿Qué es la aplicación Ecometricus?' },
     a1:                { en: 'Ecometricus is an application designed as an F&B Dashboard Metrics (KPIs) with displayed charts per outlet. It is used as a sophisticated tool for the hotel industry to drive data-driven decision making.', es: 'Ecometricus es una aplicación diseñada como un Panel de Métricas de F&B (KPIs) con gráficos mostrados por outlet. Se utiliza como una herramienta sofisticada para la industria hotelera para impulsar la toma de decisiones basada en datos.' },
