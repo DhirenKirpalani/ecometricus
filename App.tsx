@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Page, UserProfile } from './types';
 import { useSeo } from './lib/useSeo';
+import { loadTranslationsFromSupabase } from './lib/useI18n';
 import Navbar from './components/Navbar';
 import LandingPage from './components/LandingPage';
 import UnderConstruction from './components/UnderConstruction';
@@ -58,6 +59,11 @@ const App: React.FC = () => {
 
   // Per-page SEO meta tags
   useSeo(currentPage);
+
+  // Load translation overrides from Supabase on first render
+  useEffect(() => {
+    loadTranslationsFromSupabase();
+  }, []);
 
   // Sync state when browser back/forward is used
   useEffect(() => {

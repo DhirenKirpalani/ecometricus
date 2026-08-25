@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { translations, getAllTranslationKeys, Lang } from '../lib/translations';
-import { useI18n } from '../lib/useI18n';
+import { useI18n, saveTranslationToSupabase } from '../lib/useI18n';
 import { Page } from '../types';
-import { ArrowLeft, Search, Check, Globe, FileText, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Search, Check, Globe, FileText, AlertCircle, Loader2 } from 'lucide-react';
 
 interface TranslationManagerProps {
   onNavigate: (page: Page) => void;
@@ -30,6 +30,8 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
   const [search, setSearch] = useState('');
   const [activeSection, setActiveSection] = useState<string>('all');
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [publishing, setPublishing] = useState(false);
+  const [publishResult, setPublishResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const allKeys = useMemo(() => getAllTranslationKeys(), []);
 
@@ -58,17 +60,40 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
     setEdits(prev => ({ ...prev, [`${section}.${key}`]: value }));
   };
 
-  const handlePublish = () => {
-    // In a real app, this would persist to a backend.
-    // For now, we update the in-memory translations object.
-    for (const [fullKey, value] of Object.entries(edits)) {
+  const handlePublish = async () => {
+    if (Object.keys(edits).length === 0) return;
+    setPublishing(true);
+    setPublishResult(null);
+
+    const entries = Object.entries(edits);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const [fullKey, value] of entries) {
       const [section, key] = fullKey.split('.');
-      if (translations[section]?.[key]) {
-        translations[section][key][editingLang] = value;
+      const ok = await saveTranslationToSupabase(section, key, editingLang, value);
+      if (ok) {
+        successCount++;
+        // Also update in-memory defaults so the UI reflects immediately
+        if (translations[section]?.[key]) {
+          translations[section][key][editingLang] = value;
+        }
+      } else {
+        failCount++;
       }
     }
-    setEdits({});
-    alert(editingLang === 'es' ? '¡Traducciones publicadas!' : 'Translations published!');
+
+    setPublishing(false);
+
+    if (failCount === 0) {
+      setPublishResult({ ok: true, msg: `${successCount} translation${successCount !== 1 ? 's' : ''} published to Supabase` });
+      setEdits({});
+    } else {
+      setPublishResult({ ok: false, msg: `${successCount} saved, ${failCount} failed. Check console for details.` });
+    }
+
+    // Auto-clear result after 5 seconds
+    setTimeout(() => setPublishResult(null), 5000);
   };
 
   const isEdited = (section: string, key: string) => {
@@ -128,13 +153,25 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
             {/* Publish */}
             <button
               onClick={handlePublish}
-              disabled={editedCount === 0}
+              disabled={editedCount === 0 || publishing}
               className="flex items-center gap-2 bg-brand-eco text-brand-dark px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              <Check size={14} /> Publish
+              {publishing ? (
+                <><Loader2 size={14} className="animate-spin" /> Publishing…</>
+              ) : (
+                <><Check size={14} /> Publish</>
+              )}
             </button>
           </div>
         </div>
+
+        {/* Publish result banner */}
+        {publishResult && (
+          <div className={`px-6 py-2 text-xs font-bold uppercase tracking-widest flex items-center gap-2 ${publishResult.ok ? 'bg-brand-eco/10 text-brand-eco border-b border-brand-eco/20' : 'bg-red-500/10 text-red-400 border-b border-red-500/20'}`}>
+            {publishResult.ok ? <Check size={12} /> : <AlertCircle size={12} />}
+            {publishResult.msg}
+          </div>
+        )}
       </header>
 
       {/* ─── Body ───────────────────────────────────────────────── */}
