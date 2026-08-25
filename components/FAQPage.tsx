@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { X, PieChart, Database, Zap, Users } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
 
 interface FAQEntry {
   question: string;
@@ -8,94 +9,95 @@ interface FAQEntry {
 }
 
 const FAQPage: React.FC = () => {
+  const { t } = useI18n();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const faqs: FAQEntry[] = [
     {
-      question: "What is an Ecometricus app?",
-      answer: "Ecometricus is an application designed as an F&B Dashboard Metrics (KPIs) with displayed charts per outlet. It is used as a sophisticated tool for the hotel industry to drive data-driven decision making."
+      question: t('faq.q1'),
+      answer: t('faq.a1')
     },
     {
-      question: "What are the main categories of metrics tracked?",
+      question: t('faq.q2'),
       answer: (
         <div className="grid sm:grid-cols-2 gap-6 mt-2">
           <div className="space-y-3">
             <h4 className="text-brand-gold font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-              <PieChart size={14} className="text-brand-gold" /> Financial Metrics
+              <PieChart size={14} className="text-brand-gold" /> {t('faq.financialMetrics')}
             </h4>
             <ul className="text-sm text-gray-400 space-y-1.5 pl-3">
-              <li>Total Sales (Food, Bev, Banquet)</li>
-              <li>Net Profit & Margin</li>
-              <li>Food & Labor Cost Percentages</li>
-              <li>Cost of Goods Sold (COGS)</li>
+              <li>{t('faq.faqTotalSales')}</li>
+              <li>{t('faq.faqNetProfit')}</li>
+              <li>{t('faq.faqFoodLabor')}</li>
+              <li>{t('faq.faqCogs')}</li>
             </ul>
           </div>
           <div className="space-y-3">
             <h4 className="text-brand-eco font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-              <Zap size={14} className="text-brand-eco" /> Operational Metrics
+              <Zap size={14} className="text-brand-eco" /> {t('faq.operationalMetrics')}
             </h4>
             <ul className="text-sm text-gray-400 space-y-1.5 pl-3">
-              <li>Average Check & Headcount</li>
-              <li>Inventory Turnover Ratio</li>
-              <li>Peak Hour Analysis</li>
-              <li>Customer Retention Rate</li>
+              <li>{t('faq.faqAvgCheck')}</li>
+              <li>{t('faq.faqInventory')}</li>
+              <li>{t('faq.faqPeakHour')}</li>
+              <li>{t('faq.faqRetention')}</li>
             </ul>
           </div>
           <div className="space-y-3">
             <h4 className="text-brand-energy font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-              <Database size={14} className="text-brand-energy" /> Sustainability ESG
+              <Database size={14} className="text-brand-energy" /> {t('faq.sustainabilityESG')}
             </h4>
             <ul className="text-sm text-gray-400 space-y-1.5 pl-3">
-              <li>Food Waste (Weight & Monetary)</li>
-              <li>Water & Energy Waste</li>
-              <li>CO₂ Emission Reduction</li>
+              <li>{t('faq.faqFoodWaste')}</li>
+              <li>{t('faq.faqWaterEnergy')}</li>
+              <li>{t('faq.faqCo2Reduction')}</li>
             </ul>
           </div>
           <div className="space-y-3">
             <h4 className="text-white font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-              <Users size={14} className="text-brand-eco" /> Other KPIs
+              <Users size={14} className="text-brand-eco" /> {t('faq.otherKPIs')}
             </h4>
             <ul className="text-sm text-gray-400 space-y-1.5 pl-3">
-              <li>Online Reviews & Ratings</li>
-              <li>Employee Engagement Scores</li>
-              <li>Distribution Costs</li>
+              <li>{t('faq.faqReviews')}</li>
+              <li>{t('faq.faqEmployee')}</li>
+              <li>{t('faq.faqDistribution')}</li>
             </ul>
           </div>
         </div>
       )
     },
     {
-      question: "How does Ecometricus help with ESG goals?",
-      answer: "Ecometricus provides daily manual input for food waste tracking by weight. Chefs log data by categories like preparation, plate waste, storage, and overproduction. The Mila AI then calculates the monetary cost of wasted food, water and energy savings, CO₂ reduction, and aligns data with GHG protocol and GSTC criteria."
+      question: t('faq.q3'),
+      answer: t('faq.a3')
     },
     {
-      question: "Where does the data come from?",
-      answer: "All data is extracted from your hotel's existing systems — PMS, CRM, and POS — alongside historic internal data and public reports (e.g., STR, RevPAR Guru). Gathered through secure APIs, with daily food waste weight as a manual chef input."
+      question: t('faq.q4'),
+      answer: t('faq.a4')
     },
     {
-      question: "How secure is our data?",
+      question: t('faq.q5'),
       answer: (
         <div className="space-y-3 text-sm text-gray-400 leading-relaxed">
-          <p>Ecometricus uses encrypted, read-only API connections (TLS/HTTPS), role-based access controls, and no plain-text credential storage.</p>
-          <p>We collect only what's needed for analytics, never resell data, and clients retain full ownership at all times.</p>
+          <p>{t('faq.a5a')}</p>
+          <p>{t('faq.a5b')}</p>
         </div>
       )
     },
     {
-      question: "How does Ecometricus provide actionable insights?",
-      answer: "The app includes Suggestion windows with next-month actions to improve metrics, and an Alert window that triggers when metrics deviate from pre-established parameters — often with AI-suggested actions for food cost, inventory, or occupancy deviations."
+      question: t('faq.q6'),
+      answer: t('faq.a6')
     },
     {
-      question: "How often is the data updated?",
-      answer: "All charts and metrics update every 24 hours at 12 AM based on the user's local time zone, ensuring the most current insights for daily operational management."
+      question: t('faq.q7'),
+      answer: t('faq.a7')
     },
     {
-      question: "What kind of reports does Ecometricus generate?",
-      answer: "100% digital, real-time reports organized daily, weekly, monthly, or quarterly. Operational sustainability reports are shareable with staff and guests, while outlet comparative KPIs and benchmarking reports are generated for management and HQ."
+      question: t('faq.q8'),
+      answer: t('faq.a8')
     },
     {
-      question: "Are there different access levels for staff?",
-      answer: "Yes. Ecometricus supports Admin Privilege (full access and benchmarking) and Supervisor Privilege (including Chef Privilege for ESG input and Manager Privilege for labor and forecast input)."
+      question: t('faq.q9'),
+      answer: t('faq.a9')
     }
   ];
 
@@ -107,8 +109,8 @@ const FAQPage: React.FC = () => {
 
         {/* Title */}
         <div className="text-center mb-14">
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">Knowledge Base</p>
-          <h1 className="text-4xl sm:text-5xl font-geometric font-black text-white uppercase tracking-widest">FAQ</h1>
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">{t('faq.knowledgeBase')}</p>
+          <h1 className="text-4xl sm:text-5xl font-geometric font-black text-white uppercase tracking-widest">{t('faq.title')}</h1>
         </div>
 
         {/* Question list */}
@@ -181,7 +183,7 @@ const FAQPage: React.FC = () => {
                 disabled={activeIndex === 0}
                 className="text-[10px] font-bold uppercase tracking-widest text-white/30 hover:text-white disabled:opacity-20 transition-colors"
               >
-                ← Prev
+                {t('faq.prev')}
               </button>
               <div className="flex gap-1.5">
                 {faqs.map((_, i) => (
@@ -197,7 +199,7 @@ const FAQPage: React.FC = () => {
                 disabled={activeIndex === faqs.length - 1}
                 className="text-[10px] font-bold uppercase tracking-widest text-white/30 hover:text-white disabled:opacity-20 transition-colors"
               >
-                Next →
+                {t('faq.next')}
               </button>
             </div>
           </div>

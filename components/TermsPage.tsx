@@ -1,84 +1,79 @@
 
 import React from 'react';
 import { ScrollText } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
 
 interface Section {
-  title: string;
+  titleKey: string;
   content: string | string[];
 }
 
-const sections: Section[] = [
-  {
-    title: 'Acceptance of Terms',
-    content:
-      'By accessing or using Ecometricus, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree with any part of these terms, you may not access or use the platform. These terms apply to all users including administrators, supervisors, managers, and staff.',
-  },
-  {
-    title: 'Platform Use & Eligibility',
-    content: [
-      'You must be at least 18 years old and represent a legitimate hospitality or F&B business to use Ecometricus.',
-      'You are responsible for maintaining the confidentiality of your account credentials and for all activity under your account.',
-      'You agree not to share your login credentials or allow unauthorized persons to access your account.',
-      'Each property subscription is for the use of that property\'s authorized personnel only.',
-    ],
-  },
-  {
-    title: 'Permitted Use',
-    content: [
-      'Use the platform to track, analyze, and report on your property\'s F&B sustainability and operational metrics.',
-      'Generate ESG reports and share them internally with your team or management.',
-      'Input accurate and truthful operational data to the best of your knowledge.',
-      'Integrate with third-party systems (POS, PMS, CRM) using authorized API connections.',
-    ],
-  },
-  {
-    title: 'Prohibited Activities',
-    content: [
-      'Reverse engineering, decompiling, or attempting to extract the source code of the platform.',
-      'Uploading malicious code, viruses, or attempting to disrupt platform availability.',
-      'Using the platform for any unlawful purpose or to violate any applicable regulations.',
-      'Reselling, sublicensing, or redistributing access to the platform without written consent.',
-      'Submitting false, misleading, or fraudulent data into the system.',
-    ],
-  },
-  {
-    title: 'Intellectual Property',
-    content:
-      'All platform features, design, algorithms, AI models, content, and branding are the intellectual property of Us+AI Bureau and Ecometricus. Nothing in these Terms grants you ownership of any platform component. You retain ownership of the data you input, as described in our Privacy Policy.',
-  },
-  {
-    title: 'Data Accuracy',
-    content:
-      'Ecometricus provides analytics and recommendations based on data you provide. We are not responsible for inaccuracies in insights arising from incorrect, incomplete, or outdated data submitted by users. It is your responsibility to review and validate all reports before acting on them.',
-  },
-  {
-    title: 'Availability & Uptime',
-    content:
-      'We strive to maintain high platform availability but do not guarantee uninterrupted access. Scheduled maintenance, updates, or unforeseen technical issues may result in temporary downtime. We will communicate planned outages in advance where possible.',
-  },
-  {
-    title: 'Limitation of Liability',
-    content:
-      'To the maximum extent permitted by law, Ecometricus and Us+AI Bureau shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the platform. Our total liability in any matter arising out of or related to these terms shall not exceed the fees paid by you in the three months preceding the claim.',
-  },
-  {
-    title: 'Termination',
-    content:
-      'We reserve the right to suspend or terminate your account if you breach these Terms of Service or engage in activity harmful to the platform or other users. You may also terminate your account at any time by contacting support. Upon termination, your data will be handled per our Privacy Policy.',
-  },
-  {
-    title: 'Changes to Terms',
-    content:
-      'We may update these Terms of Service at any time. Continued use of the platform after changes constitutes acceptance. We will notify you of material changes via email or an in-app notification at least 14 days in advance.',
-  },
-  {
-    title: 'Governing Law',
-    content:
-      'These Terms of Service are governed by and construed in accordance with applicable international hospitality and data protection law. Any disputes will be resolved through binding arbitration or the courts of the applicable jurisdiction, as agreed between parties.',
-  },
-];
-
 const TermsPage: React.FC = () => {
+  const { t, lang } = useI18n();
+
+  const sections: Section[] = [
+    {
+      titleKey: 'terms.acceptance',
+      content: t('terms.acceptanceDesc'),
+    },
+    {
+      titleKey: 'terms.platformUse',
+      content: [
+        t('terms.platformUse1'),
+        t('terms.platformUse2'),
+        t('terms.platformUse3'),
+        t('terms.platformUse4'),
+      ],
+    },
+    {
+      titleKey: 'terms.permittedUse',
+      content: [
+        t('terms.permittedUse1'),
+        t('terms.permittedUse2'),
+        t('terms.permittedUse3'),
+        t('terms.permittedUse4'),
+      ],
+    },
+    {
+      titleKey: 'terms.prohibited',
+      content: [
+        t('terms.prohibited1'),
+        t('terms.prohibited2'),
+        t('terms.prohibited3'),
+        t('terms.prohibited4'),
+        t('terms.prohibited5'),
+      ],
+    },
+    {
+      titleKey: 'terms.intellectualProperty',
+      content: t('terms.intellectualPropertyDesc'),
+    },
+    {
+      titleKey: 'terms.dataAccuracy',
+      content: t('terms.dataAccuracyDesc'),
+    },
+    {
+      titleKey: 'terms.availability',
+      content: t('terms.availabilityDesc'),
+    },
+    {
+      titleKey: 'terms.liability',
+      content: t('terms.liabilityDesc'),
+    },
+    {
+      titleKey: 'terms.termination',
+      content: t('terms.terminationDesc'),
+    },
+    {
+      titleKey: 'terms.changesToTerms',
+      content: t('terms.changesToTermsDesc'),
+    },
+    {
+      titleKey: 'terms.governingLaw',
+      content: t('terms.governingLawDesc'),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-brand-dark">
       {/* Hero header */}
@@ -88,11 +83,11 @@ const TermsPage: React.FC = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-eco/10 border border-brand-eco/30 mb-6">
             <ScrollText className="text-brand-eco" size={30} />
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-eco mb-3">Legal</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-eco mb-3">{t('terms.legal')}</p>
           <h1 className="text-3xl sm:text-5xl font-geometric font-black text-white uppercase tracking-widest mb-4">
-            Terms of Service
+            {t('terms.title')}
           </h1>
-          <p className="text-sm text-gray-500 uppercase tracking-widest">Last Updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p className="text-sm text-gray-500 uppercase tracking-widest">{t('terms.lastUpdated')} {new Date().toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
       </div>
 
@@ -100,7 +95,7 @@ const TermsPage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-6 pt-14 pb-4">
         <div className="bg-brand-eco/5 border border-brand-eco/20 rounded-2xl p-6 sm:p-8">
           <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-            These Terms of Service govern your access to and use of <span className="text-brand-eco font-bold">Ecometricus</span> by Us+AI Bureau, including all features, dashboards, AI tools, and reports. Please read them carefully before using the platform.
+            {t('terms.intro')}
           </p>
         </div>
       </div>
@@ -114,7 +109,7 @@ const TermsPage: React.FC = () => {
                 {String(i + 1).padStart(2, '0')}
               </span>
               <h2 className="text-base sm:text-lg font-geometric font-black text-white uppercase tracking-widest">
-                {section.title}
+                {t(section.titleKey)}
               </h2>
             </div>
             {Array.isArray(section.content) ? (

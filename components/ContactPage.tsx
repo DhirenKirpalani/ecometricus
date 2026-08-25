@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Mail, CalendarCheck, MessageSquare, MapPin, Send, Check, ChevronDown, X, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 type ToastType = 'success' | 'error';
@@ -9,6 +10,7 @@ interface Toast { id: number; type: ToastType; msg: string; createdAt: number }
 const TOAST_DURATION = 4500;
 
 const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: number) => void }> = ({ toast, onDismiss }) => {
+  const { t } = useI18n();
   const [progress, setProgress] = useState(100);
   const isSuccess = toast.type === 'success';
 
@@ -43,7 +45,7 @@ const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: number) => void }> = (
         {/* Text */}
         <div className="flex-1 min-w-0">
           <p className={`text-[10px] font-black uppercase tracking-[0.25em] mb-0.5 ${isSuccess ? 'text-brand-eco' : 'text-brand-alert'}`}>
-            {isSuccess ? 'Success' : 'Error'}
+            {isSuccess ? t('contact.success') : t('contact.error')}
           </p>
           <p className="text-sm text-white/85 leading-snug">{toast.msg}</p>
         </div>
@@ -75,25 +77,27 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onDismiss: (id: number) => voi
 );
 
 // ─── Custom Select ─────────────────────────────────────────────────────────────
-const subjects = [
-  { value: 'demo',        label: 'Book a Demo' },
-  { value: 'pricing',     label: 'Pricing & Plans' },
-  { value: 'support',     label: 'Technical Support' },
-  { value: 'partnership', label: 'Partnership Enquiry' },
-  { value: 'press',       label: 'Press / Media' },
-  { value: 'other',       label: 'Other' },
-];
+const SUBJECT_VALUES = [
+  { value: 'demo',        key: 'topicDemo' },
+  { value: 'pricing',     key: 'topicPricing' },
+  { value: 'support',     key: 'topicSupport' },
+  { value: 'partnership', key: 'topicPartnership' },
+  { value: 'press',       key: 'topicPress' },
+  { value: 'other',       key: 'topicOther' },
+] as const;
 
 interface CustomSelectProps {
   value: string;
   onChange: (v: string) => void;
   error?: boolean;
+  placeholder: string;
+  options: { value: string; label: string }[];
 }
 
-const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error }) => {
+const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error, placeholder, options }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const selected = subjects.find(s => s.value === value);
+  const selected = options.find(s => s.value === value);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -113,7 +117,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error }) =
         }`}
       >
         <span className={selected ? 'text-white' : 'text-white/25'}>
-          {selected ? selected.label : 'Select a topic'}
+          {selected ? selected.label : placeholder}
         </span>
         <ChevronDown
           size={15}
@@ -123,7 +127,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error }) =
 
       {open && (
         <div className="absolute z-50 top-full mt-1.5 w-full bg-[#0e1f1c] border border-brand-gold/25 rounded-xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-top-2 duration-150">
-          {subjects.map(s => (
+          {options.map(s => (
             <button
               key={s.value}
               type="button"
@@ -146,12 +150,15 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error }) =
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const ContactPage: React.FC = () => {
+  const { t } = useI18n();
   const [form, setForm] = useState({ name: '', email: '', property: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastCounter = useRef(0);
+
+  const subjects = SUBJECT_VALUES.map(s => ({ value: s.value, label: t(`contact.${s.key}`) }));
 
   const addToast = (type: ToastType, msg: string) => {
     const id = ++toastCounter.current;
@@ -163,11 +170,11 @@ const ContactPage: React.FC = () => {
 
   // ── Client-side validation ──
   const validate = (): string | null => {
-    if (!form.name.trim()) return 'Full name is required.';
-    if (!form.email.trim()) return 'Email address is required.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return 'Please enter a valid email address.';
-    if (!form.message.trim()) return 'Message cannot be empty.';
-    if (form.message.trim().length < 10) return 'Message must be at least 10 characters.';
+    if (!form.name.trim()) return t('contact.errNameRequired');
+    if (!form.email.trim()) return t('contact.errEmailRequired');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return t('contact.errEmailInvalid');
+    if (!form.message.trim()) return t('contact.errMessageEmpty');
+    if (form.message.trim().length < 10) return t('contact.errMessageShort');
     return null;
   };
 
@@ -194,17 +201,17 @@ const ContactPage: React.FC = () => {
         Date.now() - new Date(s.submittedAt).getTime() < 60_000
       );
       if (recent) {
-        addToast('error', 'You already sent a message recently. Please wait a moment before submitting again.');
+        addToast('error', t('contact.errDuplicate'));
         setLoading(false);
         return;
       }
       existing.push({ ...form, submittedAt: new Date().toISOString() });
       localStorage.setItem('ecometricus_contact_submissions', JSON.stringify(existing));
-      addToast('success', 'Message sent! We\'ll get back to you within 1–2 business days.');
+      addToast('success', t('contact.successMsg'));
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (_) {
-      addToast('error', 'Something went wrong on our end. Please try again or email us directly.');
+      addToast('error', t('contact.errGeneric'));
     } finally {
       setLoading(false);
     }
@@ -220,23 +227,23 @@ const ContactPage: React.FC = () => {
   const channels = [
     {
       icon: <Mail className="text-brand-gold" size={24} />,
-      title: 'Email Us',
-      desc: 'For general enquiries, partnerships, or support.',
+      title: t('contact.emailUs'),
+      desc: t('contact.emailUsDesc'),
       action: 'earth@urbanseed.net',
       href: 'mailto:earth@urbanseed.net',
     },
     {
       icon: <CalendarCheck className="text-brand-eco" size={24} />,
-      title: 'Book a Demo',
-      desc: 'Schedule a personalized 30-minute walkthrough.',
-      action: 'Book on Calendly',
+      title: t('contact.bookDemo'),
+      desc: t('contact.bookDemoDesc'),
+      action: t('contact.bookOnCalendly'),
       href: 'https://calendly.com/urbanseed-ai/ai-bureau-services',
     },
     {
       icon: <MapPin className="text-brand-energy" size={24} />,
-      title: 'Our Bureau',
-      desc: 'Us+AI Bureau — luxury hospitality intelligence.',
-      action: 'By appointment',
+      title: t('contact.ourBureau'),
+      desc: t('contact.bureauDesc'),
+      action: t('contact.byAppointment'),
       href: undefined,
     },
   ];
@@ -252,12 +259,12 @@ const ContactPage: React.FC = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-gold/10 border border-brand-gold/30 mb-6">
             <MessageSquare className="text-brand-gold" size={30} />
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-3">Get In Touch</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-3">{t('contact.getInTouch')}</p>
           <h1 className="text-3xl sm:text-5xl font-geometric font-black text-white uppercase tracking-widest mb-4">
-            Contact Us
+            {t('contact.title')}
           </h1>
           <p className="text-base text-gray-400 font-light max-w-xl mx-auto leading-relaxed">
-            Have a question, partnership idea, or want to explore what Ecometricus can do for your property? We'd love to hear from you.
+            {t('contact.subtitle')}
           </p>
         </div>
       </div>
@@ -297,15 +304,15 @@ const ContactPage: React.FC = () => {
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-brand-eco/15 border-2 border-brand-eco mx-auto">
               <Check className="text-brand-eco" size={40} strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-geometric font-black text-white uppercase tracking-widest">Message Sent</h2>
+            <h2 className="text-2xl font-geometric font-black text-white uppercase tracking-widest">{t('contact.messageSent')}</h2>
             <p className="text-gray-400 leading-relaxed">
-              Thank you for reaching out. A member of our team will get back to you within 1–2 business days.
+              {t('contact.messageSentDesc')}
             </p>
             <button
               onClick={() => { setSubmitted(false); setForm({ name: '', email: '', property: '', subject: '', message: '' }); setAttempted(false); }}
               className="mt-4 px-8 py-3 border border-brand-gold/40 text-brand-gold hover:bg-brand-gold/10 rounded-full font-bold text-xs uppercase tracking-widest transition-all"
             >
-              Send Another Message
+              {t('contact.sendAnother')}
             </button>
           </div>
         ) : (
@@ -315,15 +322,15 @@ const ContactPage: React.FC = () => {
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-[#0e1f1c] border border-brand-gold/20 rounded-2xl p-6 sm:p-8 shadow-[inset_0_1px_0_rgba(200,164,19,0.06)]">
                 <h2 className="text-lg font-geometric font-black text-white uppercase tracking-widest mb-4">
-                  Why Reach Out?
+                  {t('contact.whyReachOut')}
                 </h2>
                 <ul className="space-y-4">
                   {[
-                    'Questions about platform features or pricing',
-                    'Partnership or integration opportunities',
-                    'Media, press, or speaking requests',
-                    'Technical support or onboarding help',
-                    'Feedback or feature suggestions',
+                    t('contact.why1'),
+                    t('contact.why2'),
+                    t('contact.why3'),
+                    t('contact.why4'),
+                    t('contact.why5'),
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3 text-sm text-gray-400 leading-relaxed">
                       <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-brand-gold/60 mt-2" />
@@ -333,44 +340,46 @@ const ContactPage: React.FC = () => {
                 </ul>
               </div>
               <div className="bg-[#0e1f1c] border border-white/10 rounded-2xl p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand-eco mb-2">Response Time</p>
-                <p className="text-sm text-gray-400 leading-relaxed">We typically respond within <span className="text-white font-semibold">1–2 business days</span>. For urgent matters, please book a demo directly via Calendly.</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand-eco mb-2">{t('contact.responseTime')}</p>
+                <p className="text-sm text-gray-400 leading-relaxed">{t('contact.responseTimeDesc')}</p>
               </div>
             </div>
 
             {/* Right form */}
             <form onSubmit={handleSubmit} noValidate className="lg:col-span-3 bg-[#0e1f1c] border border-white/10 rounded-2xl p-6 sm:p-8 space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-              <h2 className="text-lg font-geometric font-black text-white uppercase tracking-widest mb-2">Send a Message</h2>
+              <h2 className="text-lg font-geometric font-black text-white uppercase tracking-widest mb-2">{t('contact.sendMessage')}</h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Full Name</label>
-                  <input type="text" placeholder="Jane Doe" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputClass('name')} />
+                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.fullName')}</label>
+                  <input type="text" placeholder={t('contact.fullNamePlaceholder')} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputClass('name')} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Email</label>
-                  <input type="email" placeholder="jane@property.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={inputClass('email')} />
+                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.email')}</label>
+                  <input type="email" placeholder={t('contact.emailPlaceholder')} value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={inputClass('email')} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Property / Company</label>
-                <input type="text" placeholder="The Grand Hotel" value={form.property} onChange={e => setForm(p => ({ ...p, property: e.target.value }))} className="w-full bg-brand-dark border border-white/12 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-brand-gold" />
+                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.property')}</label>
+                <input type="text" placeholder={t('contact.propertyPlaceholder')} value={form.property} onChange={e => setForm(p => ({ ...p, property: e.target.value }))} className="w-full bg-brand-dark border border-white/12 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-brand-gold" />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Subject</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.subject')}</label>
                 <CustomSelect
                   value={form.subject}
                   onChange={v => setForm(p => ({ ...p, subject: v }))}
+                  placeholder={t('contact.selectTopic')}
+                  options={subjects}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Message</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.message')}</label>
                 <textarea
                   rows={5}
-                  placeholder="Tell us how we can help..."
+                  placeholder={t('contact.messagePlaceholder')}
                   value={form.message}
                   onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
                   className={`${inputClass('message')} resize-none`}
@@ -387,7 +396,7 @@ const ContactPage: React.FC = () => {
                 ) : (
                   <Send size={15} />
                 )}
-                {loading ? 'Sending…' : 'Send Message'}
+                {loading ? t('contact.sending') : t('contact.sendBtn')}
               </button>
             </form>
           </div>
