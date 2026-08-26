@@ -963,7 +963,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             position: p.position,
             // personnel.outlet_id is a UUID — find the matching outlet code from dbOutlets
             outletCode: dbOutlets.find(o => o.id === p.outlet_id)?.code || '',
-            permissions: p.permissions || [],
+            permissions: Array.isArray(p.permissions) ? p.permissions : (p.permissions ? String(p.permissions).split(',').map((s: string) => s.trim()).filter(Boolean) : []),
             // Password stored as pincode in DB
             password: p.pincode || p.access_code || ''
           }));
@@ -1316,11 +1316,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       return;
     }
 
+    const genPin = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const special = '!@#$%';
+      let pin = '';
+      for (let i = 0; i < 7; i++) pin += chars[Math.floor(Math.random() * chars.length)];
+      pin += special[Math.floor(Math.random() * special.length)];
+      // Shuffle so the special char isn't always last
+      return pin.split('').sort(() => Math.random() - 0.5).join('');
+    };
     const password = enrollId
-      ? (users.find(u => u.id === enrollId)?.password || Math.random().toString(36).slice(-8).toUpperCase())
-      : Math.random().toString(36).slice(-8).toUpperCase();
+      ? (users.find(u => u.id === enrollId)?.password || genPin())
+      : genPin();
 
-    const link = `https://ecometricus.app/access/${enrollOutlet}?token=${password.toLowerCase()}`;
+    const link = `https://ecometricus.com/access/${enrollOutlet}?token=${password.toLowerCase()}`;
     const upsertId = enrollId || Date.now().toString();
 
     // 🛡️ Auth Sync Gate (Phase 3 Repair)
@@ -1338,7 +1347,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       email: enrollEmail,
       role: enrollRole.toLowerCase(),
       position: enrollPosition,
-      pincode: password
+      pincode: password,
+      permissions: enrollPermissions
     };
     
     // Only send valid UUID formats or let DB generate
@@ -1421,9 +1431,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     setEnrollOutlet(user.outletCode);
     const roleKey = Object.keys(ROLE_DEFAULT_PERMISSIONS).find(k => k.toLowerCase() === user.role.toLowerCase()) || 'View';
     setEnrollRole(roleKey);
-    setEnrollPermissions(user.permissions || ROLE_DEFAULT_PERMISSIONS[roleKey]);
+    setEnrollPermissions(user.permissions?.length ? user.permissions : ROLE_DEFAULT_PERMISSIONS[roleKey]);
     setGenPassword(user.password || '');
-    setGenLink(`https://ecometricus.app/access/${user.outletCode}?token=${(user.password || '').toLowerCase()}`);
+    setGenLink(`https://ecometricus.com/access/${user.outletCode}?token=${(user.password || '').toLowerCase()}`);
 
     const form = document.getElementById('enrollment-form');
     form?.scrollIntoView({ behavior: 'smooth' });
@@ -2775,75 +2785,117 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                     {/* ── Audit Log ── */}
                     <div className="rounded-2xl overflow-hidden border border-white/8">
-                      <div className="bg-gradient-to-r from-white/5 to-transparent px-6 sm:px-8 py-5 border-b border-white/8 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
-                          <ScrollText size={17} className="text-brand-gold" />
+                      {/* Header */}
+                      <div className="bg-gradient-to-r from-brand-gold/8 to-transparent px-6 sm:px-8 py-5 border-b border-brand-gold/15 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                          <ScrollText size={18} className="text-brand-gold" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Activity Trail</p>
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/50">Activity Trail</p>
                           <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Audit Log</h4>
                         </div>
+                        {auditLogs.length > 0 && (
+                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-white/8">
+                            {auditLogs.length} {auditLogs.length === 1 ? 'Entry' : 'Entries'}
+                          </span>
+                        )}
                         <button
                           onClick={fetchAuditLogs}
-                          className="p-2 rounded-lg hover:bg-white/8 text-white/30 hover:text-white/60 transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors text-[10px] font-bold uppercase tracking-widest"
                           title="Refresh"
                         >
-                          <RefreshCcw size={14} />
+                          <RefreshCcw size={13} />
+                          <span className="hidden sm:inline">Refresh</span>
                         </button>
                       </div>
+
+                      {/* Body */}
                       <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[600px] overflow-y-auto scrollbar-gold">
                         {auditLogs.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-16 text-center">
-                            <ScrollText size={32} className="text-white/10 mb-4" />
-                            <p className="text-sm text-white/30 font-medium">No activity recorded yet</p>
-                            <p className="text-[11px] text-white/20 mt-1.5">Actions by you and your team will appear here</p>
+                          <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="w-16 h-16 rounded-2xl bg-white/3 border border-white/8 flex items-center justify-center mb-5">
+                              <ScrollText size={28} className="text-white/15" />
+                            </div>
+                            <p className="text-sm text-white/40 font-medium">No activity recorded yet</p>
+                            <p className="text-[11px] text-white/25 mt-2 max-w-[280px]">Actions by you and your team — outlets, settings, personnel, benchmarks — will appear here in real time</p>
                           </div>
                         ) : (
-                          <div className="space-y-1">
-                            {auditLogs.map((log: any) => {
-                              const iconMap: Record<string, any> = {
-                                outlet_added: Plus,
-                                outlet_removed: Trash2,
-                                settings_saved: Save,
-                                personnel_enrolled: UserPlus,
-                                personnel_updated: Edit2,
-                                personnel_removed: Trash2,
-                                benchmarks_saved: Target,
-                              };
-                              const colorMap: Record<string, string> = {
-                                outlet_added: 'text-brand-eco bg-brand-eco/10',
-                                outlet_removed: 'text-brand-alert bg-brand-alert/10',
-                                settings_saved: 'text-brand-gold bg-brand-gold/10',
-                                personnel_enrolled: 'text-brand-eco bg-brand-eco/10',
-                                personnel_updated: 'text-brand-gold bg-brand-gold/10',
-                                personnel_removed: 'text-brand-alert bg-brand-alert/10',
-                                benchmarks_saved: 'text-brand-gold bg-brand-gold/10',
-                              };
-                              const Icon = iconMap[log.action] || Activity;
-                              const color = colorMap[log.action] || 'text-white/40 bg-white/5';
-                              const time = new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                              return (
-                                <div key={log.id} className="flex items-start gap-3 py-3 px-3 rounded-lg hover:bg-white/3 transition-colors">
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
-                                    <Icon size={13} />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-[11px] font-bold text-white uppercase tracking-wide">{log.actor_name}</span>
-                                      <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold px-1.5 py-0.5 rounded bg-white/5">{log.actor_role}</span>
-                                      <span className="text-[9px] text-white/20">·</span>
-                                      <span className="text-[9px] text-white/30">{time}</span>
+                          <div className="relative">
+                            {/* Timeline line */}
+                            <div className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-white/10 via-white/5 to-transparent" />
+
+                            <div className="space-y-1">
+                              {auditLogs.map((log: any) => {
+                                const iconMap: Record<string, any> = {
+                                  outlet_added: Plus,
+                                  outlet_removed: Trash2,
+                                  settings_saved: Save,
+                                  personnel_enrolled: UserPlus,
+                                  personnel_updated: Edit2,
+                                  personnel_removed: Trash2,
+                                  benchmarks_saved: Target,
+                                };
+                                const colorMap: Record<string, string> = {
+                                  outlet_added: 'text-brand-eco bg-brand-eco/15 border-brand-eco/30',
+                                  outlet_removed: 'text-brand-alert bg-brand-alert/15 border-brand-alert/30',
+                                  settings_saved: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
+                                  personnel_enrolled: 'text-brand-eco bg-brand-eco/15 border-brand-eco/30',
+                                  personnel_updated: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
+                                  personnel_removed: 'text-brand-alert bg-brand-alert/15 border-brand-alert/30',
+                                  benchmarks_saved: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
+                                };
+                                const labelMap: Record<string, string> = {
+                                  outlet_added: 'Outlet Added',
+                                  outlet_removed: 'Outlet Removed',
+                                  settings_saved: 'Settings Saved',
+                                  personnel_enrolled: 'Personnel Enrolled',
+                                  personnel_updated: 'Personnel Updated',
+                                  personnel_removed: 'Personnel Removed',
+                                  benchmarks_saved: 'Benchmarks Saved',
+                                };
+                                const Icon = iconMap[log.action] || Activity;
+                                const color = colorMap[log.action] || 'text-white/40 bg-white/5 border-white/10';
+                                const label = labelMap[log.action] || log.action;
+                                const time = new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                const initials = (log.actor_name || '?').split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
+                                return (
+                                  <div key={log.id} className="relative flex items-start gap-4 py-3 pl-1 group">
+                                    {/* Icon node on timeline */}
+                                    <div className={`relative z-10 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${color}`}>
+                                      <Icon size={15} />
                                     </div>
-                                    <p className="text-xs text-white/50 mt-1 leading-snug">{log.description}</p>
-                                    {log.entity_name && (
-                                      <span className="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-widest text-brand-gold/50 bg-brand-gold/5 px-2 py-0.5 rounded">
-                                        {log.entity_type}: {log.entity_name}
-                                      </span>
-                                    )}
+
+                                    {/* Content card */}
+                                    <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-white/5 group-hover:border-white/10 group-hover:bg-white/5 transition-colors p-4">
+                                      {/* Top row: action label + time */}
+                                      <div className="flex items-center justify-between gap-3 mb-2">
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${color.split(' ')[0]}`}>{label}</span>
+                                        <span className="text-[10px] text-white/30 font-medium shrink-0">{time}</span>
+                                      </div>
+
+                                      {/* Description */}
+                                      <p className="text-xs text-white/70 leading-relaxed">{log.description}</p>
+
+                                      {/* Bottom row: actor + entity */}
+                                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5">
+                                        <div className="flex items-center gap-2">
+                                          <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                                            <span className="text-brand-gold text-[8px] font-black leading-none">{initials}</span>
+                                          </span>
+                                          <span className="text-[10px] font-bold text-white/60">{log.actor_name}</span>
+                                          <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/5">{log.actor_role}</span>
+                                        </div>
+                                        {log.entity_name && (
+                                          <span className="ml-auto text-[9px] font-bold uppercase tracking-widest text-brand-gold/60 bg-brand-gold/8 px-2.5 py-1 rounded-md border border-brand-gold/10 shrink-0">
+                                            {log.entity_type} · {log.entity_name}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -3042,62 +3094,75 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Management Group (Admin & GM)</span>
                         </div>
                         <div className="space-y-3">
-                          {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').map((u) => (
-                            <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-brand-gold/5 rounded-2xl border border-brand-gold/20 group hover:bg-brand-gold/10 transition-colors gap-4">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-gold/20 flex items-center justify-center text-brand-gold text-xs font-black shadow-inner border border-brand-gold/40">
-                                  {u.fullName.charAt(0)}
+                          {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').map((u) => {
+                            const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                            return (
+                            <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-brand-gold/5 rounded-2xl border border-brand-gold/20 hover:border-brand-gold/40 transition-colors gap-5">
+                              {/* Left: avatar + identity */}
+                              <div className="flex items-center gap-4 min-w-0 flex-1">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-gold/30 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                                  <span className="text-brand-gold text-sm font-black leading-none tracking-tight">{initials}</span>
                                 </div>
-                                <div>
-                                  <div className="text-sm sm:text-base font-bold text-white uppercase tracking-tight">{u.fullName}</div>
-                                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                                    <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest">{u.position}</span>
-                                    <span className="w-1 h-1 rounded-full bg-white/10"></span>
-                                    <span className="text-[9px] text-brand-gold font-black uppercase tracking-widest">{u.role.toUpperCase()}</span>
+                                <div className="min-w-0">
+                                  <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
+                                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-white/5">{u.position}</span>
+                                    <span className="text-[9px] text-brand-gold font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-gold/10 border border-brand-gold/20">{u.role.toUpperCase()}</span>
                                   </div>
                                 </div>
                               </div>
 
-                              <div className="flex flex-wrap items-center justify-end gap-4 w-full sm:w-auto">
-                                <div className="flex items-center gap-2 px-4 py-1.5 bg-brand-dark/60 rounded-full border border-brand-gold/20">
-                                  <Key size={12} className="text-brand-gold/40" />
-                                  <span className="text-[9px] font-mono font-bold text-brand-gold uppercase tracking-tighter">
+                              {/* Right: credentials + actions */}
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+                                {/* Password */}
+                                <div className="flex items-center gap-2 px-3 py-2 bg-brand-dark/60 rounded-lg border border-brand-gold/15 w-full sm:w-auto">
+                                  <Key size={11} className="text-brand-gold/50 shrink-0" />
+                                  <span className="text-[8px] font-bold text-brand-gold/50 uppercase tracking-widest shrink-0">PIN</span>
+                                  <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider truncate">
                                     {visiblePasswords.has(u.id) ? u.password : '••••••••'}
                                   </span>
-                                  <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/60 hover:text-brand-gold ml-2">
-                                    {visiblePasswords.has(u.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                  <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold ml-auto shrink-0 transition-colors">
+                                    {visiblePasswords.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
                                   </button>
                                 </div>
 
                                 {/* Login link */}
-                                <div className="flex items-center gap-2 px-4 py-1.5 bg-brand-dark/60 rounded-full border border-brand-eco/20">
-                                  <Link2 size={12} className="text-brand-eco/60 shrink-0" />
-                                  <span className="text-[9px] font-mono text-brand-eco/80 truncate max-w-[200px]">
+                                <div className="flex items-center gap-2 px-3 py-2 bg-brand-dark/60 rounded-lg border border-brand-eco/15 w-full sm:w-auto">
+                                  <Link2 size={11} className="text-brand-eco/50 shrink-0" />
+                                  <span className="text-[8px] font-bold text-brand-eco/50 uppercase tracking-widest shrink-0">Link</span>
+                                  <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[160px]">
                                     {visibleLinks.has(u.id)
-                                      ? `ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
+                                      ? `access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
                                       : '••••••••••••••••'}
                                   </span>
-                                  <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/60 hover:text-brand-eco ml-1 shrink-0">
-                                    {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
-                                  </button>
-                                  {visibleLinks.has(u.id) && (
-                                    <button
-                                      onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
-                                      className="text-brand-eco/60 hover:text-brand-eco ml-0.5 shrink-0"
-                                      title="Copy link"
-                                    >
-                                      <Copy size={12} />
+                                  <div className="flex items-center gap-1 ml-auto shrink-0">
+                                    <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
+                                      {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
                                     </button>
-                                  )}
+                                    {visibleLinks.has(u.id) && (
+                                      <button
+                                        onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
+                                        className="text-brand-eco/50 hover:text-brand-eco transition-colors"
+                                        title="Copy link"
+                                      >
+                                        <Copy size={12} />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
 
-                                <div className="flex gap-4">
-                                  <button onClick={() => handleEdit(u)} className="text-gray-500 hover:text-brand-gold transition-colors p-1.5 bg-white/5 rounded-lg"><Edit2 size={16} /></button>
-                                  <button onClick={() => handleDeletePersonnel(u.id)} className="text-gray-500 hover:text-brand-alert transition-colors p-1.5 bg-white/5 rounded-lg"><Trash2 size={16} /></button>
+                                {/* Actions */}
+                                <div className="flex gap-2 shrink-0">
+                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                    <Trash2 size={14} />
+                                  </button>
                                 </div>
                               </div>
                             </div>
-                          ))}
+                          );})}
                         </div>
                       </div>
 
@@ -3112,62 +3177,75 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <span className="text-[10px] font-black uppercase tracking-widest text-white/40">{outlet.name} Outlet — Registry</span>
                             </div>
                             <div className="space-y-3">
-                              {members.map((u) => (
-                                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5 group hover:border-brand-gold/30 transition-colors gap-4">
-                                  <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xs font-black shadow-inner border border-brand-gold/20">
-                                      {u.fullName.charAt(0)}
+                              {members.map((u) => {
+                                const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                                return (
+                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-white/3 rounded-2xl border border-white/8 hover:border-brand-gold/25 transition-colors gap-5">
+                                  {/* Left: avatar + identity */}
+                                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-eco/20 to-brand-eco/5 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                                      <span className="text-brand-eco text-sm font-black leading-none tracking-tight">{initials}</span>
                                     </div>
-                                    <div>
-                                      <div className="text-sm sm:text-base font-bold text-white uppercase tracking-tight">{u.fullName}</div>
-                                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                                        <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest">{u.position}</span>
-                                        <span className="w-1 h-1 rounded-full bg-white/10"></span>
-                                        <span className="text-[9px] text-brand-eco font-black uppercase tracking-widest">{u.role.toUpperCase()}</span>
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
+                                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-white/5">{u.position}</span>
+                                        <span className="text-[9px] text-brand-eco font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-eco/10 border border-brand-eco/20">{u.role.toUpperCase()}</span>
                                       </div>
                                     </div>
                                   </div>
 
-                                  <div className="flex flex-wrap items-center justify-end gap-4 w-full sm:w-auto">
-                                    <div className="flex items-center gap-2 px-4 py-1.5 bg-brand-dark/60 rounded-full border border-white/5">
-                                      <Key size={12} className="text-brand-gold/40" />
-                                      <span className="text-[9px] font-mono font-bold text-brand-gold uppercase tracking-tighter">
+                                  {/* Right: credentials + actions */}
+                                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+                                    {/* Password */}
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-brand-dark/60 rounded-lg border border-brand-gold/15 w-full sm:w-auto">
+                                      <Key size={11} className="text-brand-gold/50 shrink-0" />
+                                      <span className="text-[8px] font-bold text-brand-gold/50 uppercase tracking-widest shrink-0">PIN</span>
+                                      <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider truncate">
                                         {visiblePasswords.has(u.id) ? u.password : '••••••••'}
                                       </span>
-                                      <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/40 hover:text-brand-gold ml-2">
-                                        {visiblePasswords.has(u.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold ml-auto shrink-0 transition-colors">
+                                        {visiblePasswords.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
                                       </button>
                                     </div>
 
                                     {/* Login link */}
-                                    <div className="flex items-center gap-2 px-4 py-1.5 bg-brand-dark/60 rounded-full border border-brand-eco/15">
-                                      <Link2 size={12} className="text-brand-eco/60 shrink-0" />
-                                      <span className="text-[9px] font-mono text-brand-eco/80 truncate max-w-[200px]">
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-brand-dark/60 rounded-lg border border-brand-eco/15 w-full sm:w-auto">
+                                      <Link2 size={11} className="text-brand-eco/50 shrink-0" />
+                                      <span className="text-[8px] font-bold text-brand-eco/50 uppercase tracking-widest shrink-0">Link</span>
+                                      <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[160px]">
                                         {visibleLinks.has(u.id)
-                                          ? `ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
+                                          ? `access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
                                           : '••••••••••••••••'}
                                       </span>
-                                      <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/60 hover:text-brand-eco ml-1 shrink-0">
-                                        {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
-                                      </button>
-                                      {visibleLinks.has(u.id) && (
-                                        <button
-                                          onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
-                                          className="text-brand-eco/60 hover:text-brand-eco ml-0.5 shrink-0"
-                                          title="Copy link"
-                                        >
-                                          <Copy size={12} />
+                                      <div className="flex items-center gap-1 ml-auto shrink-0">
+                                        <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
+                                          {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
                                         </button>
-                                      )}
+                                        {visibleLinks.has(u.id) && (
+                                          <button
+                                            onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
+                                            className="text-brand-eco/50 hover:text-brand-eco transition-colors"
+                                            title="Copy link"
+                                          >
+                                            <Copy size={12} />
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
 
-                                    <div className="flex gap-4">
-                                      <button onClick={() => handleEdit(u)} className="text-gray-500 hover:text-brand-gold transition-colors p-1.5 bg-white/5 rounded-lg"><Edit2 size={16} /></button>
-                                      <button onClick={() => handleDeletePersonnel(u.id)} className="text-gray-500 hover:text-brand-alert transition-colors p-1.5 bg-white/5 rounded-lg"><Trash2 size={16} /></button>
+                                    {/* Actions */}
+                                    <div className="flex gap-2 shrink-0">
+                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                        <Edit2 size={14} />
+                                      </button>
+                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                        <Trash2 size={14} />
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
-                              ))}
+                              );})}
                             </div>
                           </div>
                         );
