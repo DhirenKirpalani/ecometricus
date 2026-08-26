@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Page, UserProfile } from '../types';
 import Logo from './Logo';
 import {
@@ -88,7 +88,7 @@ const PasswordStrength: React.FC<{ password: string }> = ({ password }) => {
 };
 
 // ─── Shared input base class ─────────────────────────────────────────────────
-const inputBase = 'w-full bg-[#0e1f1c] border border-brand-gold/20 focus:border-brand-gold rounded-xl py-3.5 text-sm text-white outline-none transition-all placeholder:text-white/20 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]';
+const inputBase = 'w-full bg-brand-dark border border-brand-gold/20 focus:border-brand-gold rounded-xl py-3.5 text-sm text-white outline-none transition-all placeholder:text-white/20 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]';
 
 // ─── Reusable input ───────────────────────────────────────────────────────────
 const Field: React.FC<{
@@ -173,11 +173,48 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
   const [password, setPassword]         = useState('');
   const [verifyPassword, setVerifyPassword] = useState('');
   const [fullName, setFullName]         = useState('');
-  const role = 'admin'; // New sign-ups are always workspace admins; roles are assigned via invites
   const [acceptTerms, setAcceptTerms]   = useState(false);
   const [isLoading, setIsLoading]       = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [successMsg, setSuccessMsg]     = useState<string | null>(null);
+
+  // ── Invite link detection ──
+  // URL format: /access/OUTL01?token=abc123
+  // When detected, look up the personnel record by access_code and pre-fill
+  // the signup form with the correct role/permissions (not admin).
+  const [inviteData, setInviteData] = useState<{ role: string; position: string; email: string; fullName: string; outletCode: string } | null>(null);
+  const role = inviteData?.role || 'admin'; // Default admin only for direct sign-ups
+  const [inviteLoading, setInviteLoading] = useState(false);
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    const token = new URLSearchParams(window.location.search).get('token');
+    if (path.startsWith('/access/') && token) {
+      setInviteLoading(true);
+      // Extract outlet code from path: /access/OUTL01 → OUTL01
+      const outletCode = path.replace('/access/', '').split('/')[0] || '';
+      // Look up personnel by access_code (token)
+      supabase.from('personnel').select('*').eq('access_code', token.toUpperCase()).maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setInviteData({
+              role: data.role || 'supervisor',
+              position: data.position || 'Staff',
+              email: data.email || '',
+              fullName: data.full_name || '',
+              outletCode: data.outlet_id || outletCode,
+            });
+            // Pre-fill the form
+            if (data.email) setEmail(data.email);
+            if (data.full_name) setFullName(data.full_name);
+            // Switch to sign-up view
+            onNavigate(Page.SIGN_UP);
+          }
+          setInviteLoading(false);
+        })
+        .catch(() => setInviteLoading(false));
+    }
+  }, []);
 
   // Rate limiting
   const lastAttemptTime = useRef<number>(0);
@@ -188,6 +225,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
   const isSignIn = currentView === Page.SIGN_IN;
   const isSignUp = currentView === Page.SIGN_UP;
   const isForgot = currentView === Page.FORGOT_PASSWORD;
+  const isInvite = !!inviteData; // Arrived via access link
+
+  // Detect ?confirmed=true set by App.tsx after email link is clicked
+  const isEmailConfirmed = new URLSearchParams(window.location.search).get('confirmed') === 'true';
+
+  // Clear the ?confirmed param from URL after first render so refresh doesn't re-show the banner
+  useEffect(() => {
+    if (isEmailConfirmed) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const canAttemptAuth = (): boolean => {
     const now = Date.now();
@@ -248,8 +297,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
           email,
           password,
           options: {
-            data: { full_name: fullName, role, auth_origin: 'registration' },
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            data: {
+              full_name: fullName,
+              role,
+              position: inviteData?.position || 'GM',
+              outlet_code: inviteData?.outletCode || '',
+              auth_origin: inviteData ? 'invite' : 'registration',
+            },
+            emailRedirectTo: `${window.location.origin}/login`,
           },
         });
         if (signUpErr) throw signUpErr;
@@ -257,24 +312,28 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         if (!authUser?.id) throw new Error(t('auth.errSignupFailed'));
 
         // ── Email confirmation required ──
-        // If the user has no session yet (email_confirmed_at is null),
-        // Supabase sent a confirmation email. Stop here and show the check-email screen.
-        if (!authUser.email_confirmed_at) {
+        // session === null means Supabase sent a confirmation email (email confirm enabled).
+        // This is the reliable check — email_confirmed_at can be set even before the user
+        // clicks the link in some Supabase configurations.
+        if (!signUpData.session) {
           // Still sync profile so data is ready when they confirm
           try {
             await supabase.from('profiles').upsert({
               id: authUser.id,
               full_name: fullName,
-              role: 'admin',
-              position: 'GM',
+              role, // From invite or default 'admin'
+              position: inviteData?.position || 'GM',
               legal_consent: false,
             }, { onConflict: 'id' });
-            await supabase.from('company_settings').upsert({
-              user_id: authUser.id,
-              admin_name: fullName,
-              company_name: 'My Organization',
-              audit_cycle: 'Monthly',
-            }, { onConflict: 'user_id' });
+            // Only create company_settings for direct sign-ups (admins), not invited staff
+            if (!inviteData) {
+              await supabase.from('company_settings').upsert({
+                user_id: authUser.id,
+                admin_name: fullName,
+                company_name: 'My Organization',
+                audit_cycle: 'Monthly',
+              }, { onConflict: 'user_id' });
+            }
           } catch (syncErr: any) {
             console.warn('Profile sync warning:', syncErr.message);
           }
@@ -286,8 +345,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       if (!authUser) throw new Error(t('auth.errAuthFailed'));
 
       const dynamicFullName = fullName || authUser.user_metadata?.full_name || 'Admin User';
-      const finalRole = authUser.user_metadata?.role || 'admin';
-      const finalPosition = authUser.user_metadata?.position || 'GM';
+      const finalRole = authUser.user_metadata?.role || inviteData?.role || 'admin';
+      const finalPosition = authUser.user_metadata?.position || inviteData?.position || 'GM';
+      const finalOutletCode = authUser.user_metadata?.outlet_code || inviteData?.outletCode || 'ROY02';
 
       onLogin({
         id: authUser.id,
@@ -295,7 +355,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         email: authUser.email || email,
         role: finalRole as any,
         position: finalPosition as any,
-        outletCode: authUser.user_metadata?.outlet_code || 'ROY02',
+        outletCode: finalOutletCode,
         legal_consent: authUser.user_metadata?.legal_consent === true,
       });
 
@@ -321,7 +381,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
     <div className="min-h-screen flex overflow-hidden">
 
       {/* ── Left branding panel (desktop only) ─── */}
-      <div className="hidden lg:flex lg:w-[45%] xl:w-[42%] flex-col relative overflow-hidden bg-[#0a1a17]">
+      <div className="hidden lg:flex lg:w-[45%] xl:w-[42%] flex-col relative overflow-hidden bg-[#1c3933]">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 30% 60%, rgba(119,177,57,0.08), transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(200,164,19,0.05), transparent 50%)' }} />
         <div className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-white/8 to-transparent" />
 
@@ -371,7 +431,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       </div>
 
       {/* ── Right form panel ─── */}
-      <div className="flex-1 flex flex-col overflow-y-auto bg-[#0d1b18]">
+      <div className="flex-1 flex flex-col overflow-y-auto bg-brand-dark">
 
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center justify-center p-6">
@@ -390,7 +450,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   <div className="w-20 h-20 rounded-2xl bg-brand-eco/10 border border-brand-eco/30 flex items-center justify-center">
                     <Mail size={36} className="text-brand-eco" />
                   </div>
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-eco border-2 border-[#0d1b18] flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-eco border-2 border-brand-dark flex items-center justify-center">
                     <CheckCircle2 size={11} className="text-brand-dark" />
                   </span>
                 </div>
@@ -400,7 +460,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                     {t('auth.confirmationSent', { email })}
                   </p>
                 </div>
-                <div className="w-full p-4 rounded-xl bg-white/3 border border-white/8 text-left space-y-2">
+                <div className="w-full p-4 rounded-xl bg-white/3 border border-brand-gold/15 text-left space-y-2">
                   {[t('auth.tipSpam'), t('auth.tipExpires'), t('auth.tipDashboard')].map((tip) => (
                     <div key={tip} className="flex items-start gap-2.5">
                       <span className="w-1 h-1 rounded-full bg-brand-gold/50 mt-2 shrink-0" />
@@ -408,6 +468,23 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                     </div>
                   ))}
                 </div>
+                <a
+                  href={(() => {
+                    const domain = email.split('@')[1]?.toLowerCase() ?? '';
+                    if (domain.includes('gmail'))                         return 'https://mail.google.com';
+                    if (domain.includes('outlook') || domain.includes('hotmail') || domain.includes('live') || domain.includes('msn')) return 'https://outlook.live.com';
+                    if (domain.includes('yahoo'))                         return 'https://mail.yahoo.com';
+                    if (domain.includes('icloud') || domain.includes('me.com') || domain.includes('mac.com')) return 'https://www.icloud.com/mail';
+                    if (domain.includes('proton'))                        return 'https://mail.proton.me';
+                    return `mailto:${email}`;
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-[#1c3933] border border-brand-gold/25 text-brand-gold hover:bg-brand-gold/10 hover:border-brand-gold/50 rounded-xl py-3 text-sm font-semibold transition-all"
+                >
+                  <Mail size={15} />
+                  Open Email App
+                </a>
                 <button type="button" onClick={() => { setSuccessMsg(null); onNavigate(Page.SIGN_IN); }} className="text-sm text-white/30 hover:text-white transition-colors">
                   {t('auth.backToLogIn')}
                 </button>
@@ -435,6 +512,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   </div>
                 )}
 
+                {/* Email confirmation success banner */}
+                {isSignIn && isEmailConfirmed && (
+                  <div className="p-3.5 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-start gap-3">
+                    <CheckCircle2 size={16} className="text-brand-eco shrink-0 mt-0.5" />
+                    <p className="text-sm text-brand-eco font-medium">Email confirmed! Please sign in to access your dashboard.</p>
+                  </div>
+                )}
+
                 {/* Error / success banners */}
                 {error && (
                   <div className="p-3.5 bg-red-500/10 border border-red-500/25 rounded-xl">
@@ -450,7 +535,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                     {isForgot && (
                       <a
                         href="mailto:"
-                        className="w-full flex items-center justify-center gap-2 bg-[#0f2620] border border-brand-gold/25 text-brand-gold hover:bg-brand-gold/10 hover:border-brand-gold/50 rounded-xl py-3 text-sm font-semibold transition-all"
+                        className="w-full flex items-center justify-center gap-2 bg-[#1c3933] border border-brand-gold/25 text-brand-gold hover:bg-brand-gold/10 hover:border-brand-gold/50 rounded-xl py-3 text-sm font-semibold transition-all"
                       >
                         <Mail size={15} />
                         {t('auth.openEmail')}
@@ -460,7 +545,28 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                 )}
 
                 {/* Form card */}
-                <form onSubmit={handleSubmit} className="bg-[#0f2620] border border-white/8 rounded-2xl p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-6 space-y-4">
+
+                  {/* Invite banner */}
+                  {isInvite && isSignUp && (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-brand-gold/10 border border-brand-gold/25">
+                      <ShieldCheck size={16} className="text-brand-gold shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Invitation</p>
+                        <p className="text-xs text-white/70 mt-0.5">
+                          You've been invited as <span className="text-brand-gold font-bold">{inviteData?.position}</span>
+                          {inviteData?.email && <> for <span className="text-white">{inviteData.email}</span></>}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {inviteLoading && (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="w-5 h-5 border-2 border-brand-gold/30 border-t-brand-gold rounded-full animate-spin" />
+                      <span className="ml-3 text-xs text-white/50">Loading invitation…</span>
+                    </div>
+                  )}
 
                   {isSignUp && (
                     <Field label={t('auth.fullName')} value={fullName} onChange={setFullName} placeholder={t('auth.fullNamePlaceholder')} required icon={<User size={14} />} />

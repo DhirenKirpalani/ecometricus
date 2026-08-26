@@ -128,7 +128,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 items-stretch">
             {metrics.map((m, i) => (
               <div key={i} className="relative group cursor-default h-full">
-                <div className="h-full relative border border-brand-gold/20 group-hover:border-brand-gold/60 rounded-2xl p-6 bg-[#0e1f1c] flex flex-col gap-5 transition-all duration-300 shadow-[inset_0_1px_0_rgba(200,164,19,0.08)] group-hover:shadow-[0_0_24px_rgba(200,164,19,0.08)]">
+                <div className="h-full relative border border-brand-gold/20 group-hover:border-brand-gold/60 rounded-2xl p-6 bg-[#1c3933] flex flex-col gap-5 transition-all duration-300 shadow-[inset_0_1px_0_rgba(200,164,19,0.08)] group-hover:shadow-[0_0_24px_rgba(200,164,19,0.08)]">
                   <div className="w-10 h-10 rounded-xl bg-brand-gold/10 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 shrink-0">
                     {m.icon}
                   </div>
@@ -148,7 +148,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
       </section>
 
       {/* Industry Impact & SDG Alignment */}
-      <section className="py-20 sm:py-28 bg-[#0e1f1c] border-y border-white/5 relative overflow-hidden">
+      <section className="py-20 sm:py-28 bg-[#1c3933] border-y border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(119,177,57,0.05), transparent 40%), radial-gradient(ellipse at 80% 50%, rgba(200,164,19,0.05), transparent 40%)' }} />
         <div className="max-w-7xl mx-auto px-6 relative">
           <div className="text-center mb-16">
@@ -159,7 +159,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {sdgs.map((sdg) => (
-              <div key={sdg.id} className="group relative border border-white/5 hover:border-brand-gold/40 rounded-2xl p-7 bg-brand-dark/60 flex flex-col items-center text-center transition-all duration-400 cursor-default overflow-hidden">
+              <div key={sdg.id} className="group relative border border-brand-gold/10 hover:border-brand-gold/40 rounded-2xl p-7 bg-brand-dark/60 flex flex-col items-center text-center transition-all duration-400 cursor-default overflow-hidden">
                 {/* Glow backdrop */}
                 <div className="absolute inset-0 bg-brand-gold/0 group-hover:bg-brand-gold/4 transition-all duration-500 pointer-events-none rounded-2xl" />
                 {/* SDG number badge */}
@@ -223,7 +223,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
             ].map((partner, i) => (
               <div
                 key={i}
-                className="relative rounded-2xl overflow-hidden p-8 sm:p-10 flex flex-col justify-between gap-8 border border-brand-gold/15 hover:border-brand-gold/45 bg-[#0e1f1c] transition-all duration-300 group cursor-default shadow-[inset_0_1px_0_rgba(200,164,19,0.06)]"
+                className="relative rounded-2xl overflow-hidden p-8 sm:p-10 flex flex-col justify-between gap-8 border border-brand-gold/15 hover:border-brand-gold/45 bg-[#1c3933] transition-all duration-300 group cursor-default shadow-[inset_0_1px_0_rgba(200,164,19,0.06)]"
               >
                 {/* Hover glow */}
                 <div className="absolute inset-0 rounded-2xl bg-brand-gold/0 group-hover:bg-brand-gold/3 transition-all duration-400 pointer-events-none" />
@@ -231,7 +231,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
                 {/* Top row */}
                 <div className="flex items-start justify-between gap-6">
                   <div>
-                    <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-white/8 text-gray-400 border border-white/10 mb-4">
+                    <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-white/8 text-gray-400 border border-brand-gold/15 mb-4">
                       {partner.tag}
                     </span>
                     <h3 className="text-lg sm:text-xl font-geometric font-black text-white uppercase tracking-wide mb-1">{partner.name}</h3>
@@ -304,7 +304,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
 
 
       {/* F&B Operations Assessment CTA */}
-      <section className="py-20 sm:py-28 bg-[#0e1f1c] border-t border-white/5 relative overflow-hidden">
+      <section className="py-20 sm:py-28 bg-[#1c3933] border-t border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 50%, rgba(119,177,57,0.07), transparent 60%)' }}></div>
         <div className="relative max-w-2xl mx-auto px-6 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-eco/15 border border-brand-eco/30 mb-6">

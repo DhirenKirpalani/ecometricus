@@ -85,7 +85,7 @@ const PrivacyPage: React.FC = () => {
       {/* Sections */}
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-6 pb-24">
         {sections.map((section, i) => (
-          <div key={i} className="bg-brand-dark/60 border border-white/5 rounded-2xl p-6 sm:p-8 hover:border-brand-gold/20 transition-all duration-300">
+          <div key={i} className="bg-brand-dark/60 border border-brand-gold/10 rounded-2xl p-6 sm:p-8 hover:border-brand-gold/25 transition-all duration-300">
             <div className="flex items-start gap-4 mb-4">
               <span className="shrink-0 text-xs font-black text-brand-gold/40 font-geometric tabular-nums mt-1">
                 {String(i + 1).padStart(2, '0')}

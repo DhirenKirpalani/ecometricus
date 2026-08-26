@@ -2,16 +2,25 @@
 import React from 'react';
 
 interface LogoProps {
-    size?: 'sm' | 'md' | 'lg' | 'xl';
+    size?: 'sm' | 'md' | 'nav' | 'lg' | 'xl';
     withLabel?: boolean;
 }
 
 const Logo: React.FC<LogoProps> = ({ size = 'md', withLabel = false }) => {
-    // scale up for 'xl' specifically for large footer presence
-    const dims = size === 'sm' ? 'w-10 h-10' : size === 'md' ? 'w-14 h-14' : size === 'lg' ? 'w-20 h-20' : 'w-32 h-32 md:w-40 md:h-40';
+    // nav: between md and lg — 68 px icon, same text as md
+    const dims =
+        size === 'sm'  ? 'w-10 h-10' :
+        size === 'md'  ? 'w-14 h-14' :
+        size === 'nav' ? 'w-[68px] h-[68px]' :
+        size === 'lg'  ? 'w-20 h-20' :
+                         'w-32 h-32 md:w-40 md:h-40';
 
-    // Slightly reduced font sizes so the icon is noticeably larger than the text
-    const textSize = size === 'sm' ? 'text-sm' : size === 'md' ? 'text-lg sm:text-xl pt-0.5' : size === 'lg' ? 'text-2xl sm:text-3xl pt-0.5' : 'text-4xl sm:text-5xl pt-1';
+    const textSize =
+        size === 'sm'  ? 'text-sm' :
+        size === 'md'  ? 'text-lg sm:text-xl pt-0.5' :
+        size === 'nav' ? 'text-lg sm:text-xl pt-0.5' :
+        size === 'lg'  ? 'text-2xl sm:text-3xl pt-0.5' :
+                         'text-4xl sm:text-5xl pt-1';
 
     return (
         <div className="flex flex-row items-center gap-3">

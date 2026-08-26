@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { useNavigate as useRouterNavigate } from 'react-router-dom';
 import MilaWidget from './MilaWidget';
 import GamificationHub from './GamificationHub';
@@ -44,9 +45,11 @@ import {
   Search,
   CheckCircle2,
   Cloud,
+  Copy,
   MessageSquare,
   Plus,
   FileText,
+  ScrollText,
   Calendar,
   FileDigit,
   ChevronDown,
@@ -98,6 +101,7 @@ enum PortalView {
   IDENTITY = 'identity',
   TEAM = 'team',
   PARAMETERS = 'parameters',
+  AUDIT_LOG = 'audit_log',
   SYSTEM = 'system'
 }
 
@@ -110,40 +114,164 @@ enum DashboardTab {
 }
 
 const REGION_DATA: Record<string, string[]> = {
-  'Asia': ['Vietnam', 'Kuala Lumpur', 'Singapore', 'Indonesia', 'Bangkok', 'Tokyo', 'Hong Kong'],
-  'USA': ['New York', 'Los Angeles', 'Chicago', 'Miami', 'San Francisco'],
-  'Mexico': ['Mexico City', 'Cancun', 'Guadalajara', 'Monterrey'],
-  'Middle East': ['Dubai', 'Abu Dhabi', 'Riyadh', 'Doha', 'Muscat'],
-  'Europe': ['London', 'Paris', 'Berlin', 'Rome', 'Madrid']
+  'Asia': [
+    'Bangkok, Thailand', 'Singapore', 'Kuala Lumpur, Malaysia', 'Ho Chi Minh City, Vietnam',
+    'Hanoi, Vietnam', 'Jakarta, Indonesia', 'Bali, Indonesia', 'Tokyo, Japan', 'Osaka, Japan',
+    'Hong Kong', 'Seoul, South Korea', 'Taipei, Taiwan', 'Manila, Philippines', 'Phuket, Thailand',
+    'Chiang Mai, Thailand', 'Colombo, Sri Lanka', 'Dhaka, Bangladesh', 'Kathmandu, Nepal',
+    'Maldives', 'Phnom Penh, Cambodia', 'Vientiane, Laos', 'Yangon, Myanmar', 'Macau',
+    'Shanghai, China', 'Beijing, China', 'Shenzhen, China', 'Mumbai, India', 'Delhi, India',
+    'Bengaluru, India', 'Chennai, India', 'Goa, India', 'Hyderabad, India',
+  ],
+  'Middle East': [
+    'Dubai, UAE', 'Abu Dhabi, UAE', 'Sharjah, UAE', 'Riyadh, Saudi Arabia',
+    'Jeddah, Saudi Arabia', 'Mecca, Saudi Arabia', 'Doha, Qatar', 'Muscat, Oman',
+    'Kuwait City, Kuwait', 'Manama, Bahrain', 'Amman, Jordan', 'Beirut, Lebanon',
+    'Tel Aviv, Israel', 'Cairo, Egypt', 'Istanbul, Turkey', 'Ankara, Turkey',
+    'Tehran, Iran', 'Baghdad, Iraq',
+  ],
+  'Europe': [
+    'London, UK', 'Manchester, UK', 'Edinburgh, UK', 'Paris, France', 'Lyon, France',
+    'Berlin, Germany', 'Munich, Germany', 'Frankfurt, Germany', 'Hamburg, Germany',
+    'Rome, Italy', 'Milan, Italy', 'Florence, Italy', 'Venice, Italy', 'Naples, Italy',
+    'Madrid, Spain', 'Barcelona, Spain', 'Seville, Spain', 'Lisbon, Portugal', 'Porto, Portugal',
+    'Amsterdam, Netherlands', 'Brussels, Belgium', 'Vienna, Austria', 'Zurich, Switzerland',
+    'Geneva, Switzerland', 'Copenhagen, Denmark', 'Stockholm, Sweden', 'Oslo, Norway',
+    'Helsinki, Finland', 'Warsaw, Poland', 'Prague, Czech Republic', 'Budapest, Hungary',
+    'Athens, Greece', 'Santorini, Greece', 'Dubrovnik, Croatia', 'Monaco', 'Luxembourg',
+  ],
+  'USA': [
+    'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Miami, FL', 'San Francisco, CA',
+    'Las Vegas, NV', 'Seattle, WA', 'Boston, MA', 'Washington DC', 'Houston, TX',
+    'Dallas, TX', 'Austin, TX', 'Atlanta, GA', 'New Orleans, LA', 'Nashville, TN',
+    'Denver, CO', 'Phoenix, AZ', 'San Diego, CA', 'Portland, OR', 'Honolulu, HI',
+    'Orlando, FL', 'Tampa, FL', 'Charlotte, NC', 'Minneapolis, MN', 'Detroit, MI',
+  ],
+  'Caribbean': [
+    'Cancun, Mexico', 'Mexico City, Mexico', 'Guadalajara, Mexico', 'Monterrey, Mexico',
+    'Havana, Cuba', 'Nassau, Bahamas', 'Kingston, Jamaica', 'San Juan, Puerto Rico',
+    'Bridgetown, Barbados', 'Port of Spain, Trinidad', 'Punta Cana, Dominican Republic',
+    'Santo Domingo, Dominican Republic', 'Georgetown, Cayman Islands', 'Philipsburg, St Maarten',
+  ],
+  'Africa': [
+    'Cape Town, South Africa', 'Johannesburg, South Africa', 'Nairobi, Kenya',
+    'Lagos, Nigeria', 'Accra, Ghana', 'Casablanca, Morocco', 'Marrakech, Morocco',
+    'Tunis, Tunisia', 'Algiers, Algeria', 'Addis Ababa, Ethiopia', 'Dar es Salaam, Tanzania',
+    'Kampala, Uganda', 'Kigali, Rwanda', 'Maputo, Mozambique', 'Mauritius',
+  ],
+  'Oceania': [
+    'Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia',
+    'Gold Coast, Australia', 'Adelaide, Australia', 'Cairns, Australia',
+    'Auckland, New Zealand', 'Queenstown, New Zealand', 'Wellington, New Zealand',
+    'Fiji', 'Bora Bora, French Polynesia', 'Noumea, New Caledonia',
+  ],
+  'South America': [
+    'Buenos Aires, Argentina', 'Mendoza, Argentina', 'São Paulo, Brazil', 'Rio de Janeiro, Brazil',
+    'Brasília, Brazil', 'Santiago, Chile', 'Lima, Peru', 'Cusco, Peru', 'Bogotá, Colombia',
+    'Medellín, Colombia', 'Cartagena, Colombia', 'Quito, Ecuador', 'Caracas, Venezuela',
+    'Montevideo, Uruguay', 'Asunción, Paraguay', 'La Paz, Bolivia',
+  ],
+  'Canada': [
+    'Toronto, Canada', 'Vancouver, Canada', 'Montreal, Canada', 'Calgary, Canada',
+    'Ottawa, Canada', 'Edmonton, Canada', 'Quebec City, Canada', 'Winnipeg, Canada',
+    'Halifax, Canada',
+  ],
 };
 
 const TIMEZONES: Record<string, string> = {
-  'Vietnam': 'ICT (UTC+7)',
-  'Kuala Lumpur': 'MYT (UTC+8)',
-  'Singapore': 'SGT (UTC+8)',
-  'Indonesia': 'WIB (UTC+7)',
-  'Bangkok': 'ICT (UTC+7)',
-  'Tokyo': 'JST (UTC+9)',
-  'Hong Kong': 'HKT (UTC+8)',
-  'New York': 'EDT (UTC-4)',
-  'Los Angeles': 'PDT (UTC-7)',
-  'Chicago': 'CDT (UTC-5)',
-  'Miami': 'EDT (UTC-4)',
-  'San Francisco': 'PDT (UTC-7)',
-  'Mexico City': 'CST (UTC-6)',
-  'Cancun': 'EST (UTC-5)',
-  'Guadalajara': 'CST (UTC-6)',
-  'Monterrey': 'CST (UTC-6)',
-  'Dubai': 'GST (UTC+4)',
-  'Abu Dhabi': 'GST (UTC+4)',
-  'Riyadh': 'AST (UTC+3)',
-  'Doha': 'AST (UTC+3)',
-  'Muscat': 'GST (UTC+4)',
-  'London': 'BST (UTC+1)',
-  'Paris': 'CEST (UTC+2)',
-  'Berlin': 'CEST (UTC+2)',
-  'Rome': 'CEST (UTC+2)',
-  'Madrid': 'CEST (UTC+2)'
+  // Asia
+  'Bangkok, Thailand': 'ICT (UTC+7)', 'Singapore': 'SGT (UTC+8)', 'Kuala Lumpur, Malaysia': 'MYT (UTC+8)',
+  'Ho Chi Minh City, Vietnam': 'ICT (UTC+7)', 'Hanoi, Vietnam': 'ICT (UTC+7)',
+  'Jakarta, Indonesia': 'WIB (UTC+7)', 'Bali, Indonesia': 'WITA (UTC+8)',
+  'Tokyo, Japan': 'JST (UTC+9)', 'Osaka, Japan': 'JST (UTC+9)', 'Hong Kong': 'HKT (UTC+8)',
+  'Seoul, South Korea': 'KST (UTC+9)', 'Taipei, Taiwan': 'CST (UTC+8)',
+  'Manila, Philippines': 'PHT (UTC+8)', 'Phuket, Thailand': 'ICT (UTC+7)',
+  'Chiang Mai, Thailand': 'ICT (UTC+7)', 'Colombo, Sri Lanka': 'IST (UTC+5:30)',
+  'Dhaka, Bangladesh': 'BST (UTC+6)', 'Kathmandu, Nepal': 'NPT (UTC+5:45)',
+  'Maldives': 'MVT (UTC+5)', 'Phnom Penh, Cambodia': 'ICT (UTC+7)',
+  'Vientiane, Laos': 'ICT (UTC+7)', 'Yangon, Myanmar': 'MMT (UTC+6:30)', 'Macau': 'CST (UTC+8)',
+  'Shanghai, China': 'CST (UTC+8)', 'Beijing, China': 'CST (UTC+8)',
+  'Shenzhen, China': 'CST (UTC+8)', 'Mumbai, India': 'IST (UTC+5:30)',
+  'Delhi, India': 'IST (UTC+5:30)', 'Bengaluru, India': 'IST (UTC+5:30)',
+  'Chennai, India': 'IST (UTC+5:30)', 'Goa, India': 'IST (UTC+5:30)',
+  'Hyderabad, India': 'IST (UTC+5:30)',
+  // Middle East
+  'Dubai, UAE': 'GST (UTC+4)', 'Abu Dhabi, UAE': 'GST (UTC+4)', 'Sharjah, UAE': 'GST (UTC+4)',
+  'Riyadh, Saudi Arabia': 'AST (UTC+3)', 'Jeddah, Saudi Arabia': 'AST (UTC+3)',
+  'Mecca, Saudi Arabia': 'AST (UTC+3)', 'Doha, Qatar': 'AST (UTC+3)',
+  'Muscat, Oman': 'GST (UTC+4)', 'Kuwait City, Kuwait': 'AST (UTC+3)',
+  'Manama, Bahrain': 'AST (UTC+3)', 'Amman, Jordan': 'EET (UTC+3)',
+  'Beirut, Lebanon': 'EET (UTC+3)', 'Tel Aviv, Israel': 'IDT (UTC+3)',
+  'Cairo, Egypt': 'EET (UTC+2)', 'Istanbul, Turkey': 'TRT (UTC+3)',
+  'Ankara, Turkey': 'TRT (UTC+3)', 'Tehran, Iran': 'IRST (UTC+3:30)',
+  'Baghdad, Iraq': 'AST (UTC+3)',
+  // Europe
+  'London, UK': 'BST (UTC+1)', 'Manchester, UK': 'BST (UTC+1)', 'Edinburgh, UK': 'BST (UTC+1)',
+  'Paris, France': 'CEST (UTC+2)', 'Lyon, France': 'CEST (UTC+2)',
+  'Berlin, Germany': 'CEST (UTC+2)', 'Munich, Germany': 'CEST (UTC+2)',
+  'Frankfurt, Germany': 'CEST (UTC+2)', 'Hamburg, Germany': 'CEST (UTC+2)',
+  'Rome, Italy': 'CEST (UTC+2)', 'Milan, Italy': 'CEST (UTC+2)',
+  'Florence, Italy': 'CEST (UTC+2)', 'Venice, Italy': 'CEST (UTC+2)',
+  'Naples, Italy': 'CEST (UTC+2)', 'Madrid, Spain': 'CEST (UTC+2)',
+  'Barcelona, Spain': 'CEST (UTC+2)', 'Seville, Spain': 'CEST (UTC+2)',
+  'Lisbon, Portugal': 'WEST (UTC+1)', 'Porto, Portugal': 'WEST (UTC+1)',
+  'Amsterdam, Netherlands': 'CEST (UTC+2)', 'Brussels, Belgium': 'CEST (UTC+2)',
+  'Vienna, Austria': 'CEST (UTC+2)', 'Zurich, Switzerland': 'CEST (UTC+2)',
+  'Geneva, Switzerland': 'CEST (UTC+2)', 'Copenhagen, Denmark': 'CEST (UTC+2)',
+  'Stockholm, Sweden': 'CEST (UTC+2)', 'Oslo, Norway': 'CEST (UTC+2)',
+  'Helsinki, Finland': 'EEST (UTC+3)', 'Warsaw, Poland': 'CEST (UTC+2)',
+  'Prague, Czech Republic': 'CEST (UTC+2)', 'Budapest, Hungary': 'CEST (UTC+2)',
+  'Athens, Greece': 'EEST (UTC+3)', 'Santorini, Greece': 'EEST (UTC+3)',
+  'Dubrovnik, Croatia': 'CEST (UTC+2)', 'Monaco': 'CEST (UTC+2)', 'Luxembourg': 'CEST (UTC+2)',
+  // USA
+  'New York, NY': 'EDT (UTC-4)', 'Los Angeles, CA': 'PDT (UTC-7)', 'Chicago, IL': 'CDT (UTC-5)',
+  'Miami, FL': 'EDT (UTC-4)', 'San Francisco, CA': 'PDT (UTC-7)', 'Las Vegas, NV': 'PDT (UTC-7)',
+  'Seattle, WA': 'PDT (UTC-7)', 'Boston, MA': 'EDT (UTC-4)', 'Washington DC': 'EDT (UTC-4)',
+  'Houston, TX': 'CDT (UTC-5)', 'Dallas, TX': 'CDT (UTC-5)', 'Austin, TX': 'CDT (UTC-5)',
+  'Atlanta, GA': 'EDT (UTC-4)', 'New Orleans, LA': 'CDT (UTC-5)', 'Nashville, TN': 'CDT (UTC-5)',
+  'Denver, CO': 'MDT (UTC-6)', 'Phoenix, AZ': 'MST (UTC-7)', 'San Diego, CA': 'PDT (UTC-7)',
+  'Portland, OR': 'PDT (UTC-7)', 'Honolulu, HI': 'HST (UTC-10)', 'Orlando, FL': 'EDT (UTC-4)',
+  'Tampa, FL': 'EDT (UTC-4)', 'Charlotte, NC': 'EDT (UTC-4)',
+  'Minneapolis, MN': 'CDT (UTC-5)', 'Detroit, MI': 'EDT (UTC-4)',
+  // Caribbean / Mexico
+  'Cancun, Mexico': 'EST (UTC-5)', 'Mexico City, Mexico': 'CST (UTC-6)',
+  'Guadalajara, Mexico': 'CST (UTC-6)', 'Monterrey, Mexico': 'CST (UTC-6)',
+  'Havana, Cuba': 'CDT (UTC-4)', 'Nassau, Bahamas': 'EDT (UTC-4)',
+  'Kingston, Jamaica': 'EST (UTC-5)', 'San Juan, Puerto Rico': 'AST (UTC-4)',
+  'Bridgetown, Barbados': 'AST (UTC-4)', 'Port of Spain, Trinidad': 'AST (UTC-4)',
+  'Punta Cana, Dominican Republic': 'AST (UTC-4)', 'Santo Domingo, Dominican Republic': 'AST (UTC-4)',
+  'Georgetown, Cayman Islands': 'EST (UTC-5)', 'Philipsburg, St Maarten': 'AST (UTC-4)',
+  // Africa
+  'Cape Town, South Africa': 'SAST (UTC+2)', 'Johannesburg, South Africa': 'SAST (UTC+2)',
+  'Nairobi, Kenya': 'EAT (UTC+3)', 'Lagos, Nigeria': 'WAT (UTC+1)',
+  'Accra, Ghana': 'GMT (UTC+0)', 'Casablanca, Morocco': 'WET (UTC+1)',
+  'Marrakech, Morocco': 'WET (UTC+1)', 'Tunis, Tunisia': 'CET (UTC+1)',
+  'Algiers, Algeria': 'CET (UTC+1)', 'Addis Ababa, Ethiopia': 'EAT (UTC+3)',
+  'Dar es Salaam, Tanzania': 'EAT (UTC+3)', 'Kampala, Uganda': 'EAT (UTC+3)',
+  'Kigali, Rwanda': 'CAT (UTC+2)', 'Maputo, Mozambique': 'CAT (UTC+2)', 'Mauritius': 'MUT (UTC+4)',
+  // Oceania
+  'Sydney, Australia': 'AEST (UTC+10)', 'Melbourne, Australia': 'AEST (UTC+10)',
+  'Brisbane, Australia': 'AEST (UTC+10)', 'Perth, Australia': 'AWST (UTC+8)',
+  'Gold Coast, Australia': 'AEST (UTC+10)', 'Adelaide, Australia': 'ACST (UTC+9:30)',
+  'Cairns, Australia': 'AEST (UTC+10)', 'Auckland, New Zealand': 'NZST (UTC+12)',
+  'Queenstown, New Zealand': 'NZST (UTC+12)', 'Wellington, New Zealand': 'NZST (UTC+12)',
+  'Fiji': 'FJT (UTC+12)', 'Bora Bora, French Polynesia': 'TAHT (UTC-10)',
+  'Noumea, New Caledonia': 'NCT (UTC+11)',
+  // South America
+  'Buenos Aires, Argentina': 'ART (UTC-3)', 'Mendoza, Argentina': 'ART (UTC-3)',
+  'São Paulo, Brazil': 'BRT (UTC-3)', 'Rio de Janeiro, Brazil': 'BRT (UTC-3)',
+  'Brasília, Brazil': 'BRT (UTC-3)', 'Santiago, Chile': 'CLT (UTC-4)',
+  'Lima, Peru': 'PET (UTC-5)', 'Cusco, Peru': 'PET (UTC-5)',
+  'Bogotá, Colombia': 'COT (UTC-5)', 'Medellín, Colombia': 'COT (UTC-5)',
+  'Cartagena, Colombia': 'COT (UTC-5)', 'Quito, Ecuador': 'ECT (UTC-5)',
+  'Caracas, Venezuela': 'VET (UTC-4)', 'Montevideo, Uruguay': 'UYT (UTC-3)',
+  'Asunción, Paraguay': 'PYT (UTC-4)', 'La Paz, Bolivia': 'BOT (UTC-4)',
+  // Canada
+  'Toronto, Canada': 'EDT (UTC-4)', 'Vancouver, Canada': 'PDT (UTC-7)',
+  'Montreal, Canada': 'EDT (UTC-4)', 'Calgary, Canada': 'MDT (UTC-6)',
+  'Ottawa, Canada': 'EDT (UTC-4)', 'Edmonton, Canada': 'MDT (UTC-6)',
+  'Quebec City, Canada': 'EDT (UTC-4)', 'Winnipeg, Canada': 'CDT (UTC-5)',
+  'Halifax, Canada': 'ADT (UTC-3)',
 };
 
 const BENCHMARK_PROFILES: Record<string, { waste: number; water: number; energy: number; foodCost: number; laborCost: number }> = {
@@ -360,15 +488,283 @@ const ADMIN_SENTIMENT_MOCK_DATA = [
   { day: 'Sat', rating_value: 4.1, outlet_code: 'GUS04' },
 ];
 
+// ── Fully-themed custom select (native <select> can't be styled on macOS) ──
+interface CustomSelectProps {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  emptyMessage?: string;
+}
+const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, disabled, placeholder, emptyMessage }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors
+          ${disabled ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-brand-gold/25 hover:border-brand-gold/50 cursor-pointer'}
+          ${open ? 'border-brand-gold' : ''}`}
+      >
+        <span className={value ? 'text-white' : 'text-white/40'}>{value || placeholder || 'Select…'}</span>
+        <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-[9999] mt-1 w-full rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
+          <ul className="max-h-56 overflow-y-auto scrollbar-gold py-1">
+            {options.length === 0 ? (
+              <li className="px-4 py-3 text-xs text-white/30 italic text-center select-none">
+                {emptyMessage ?? 'No options available'}
+              </li>
+            ) : options.map(opt => (
+              <li key={opt}>
+                <button
+                  type="button"
+                  onClick={() => { onChange(opt); setOpen(false); }}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2
+                    ${opt === value
+                      ? 'text-brand-gold bg-brand-gold/10 font-semibold'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+                >
+                  {opt === value && <Check size={12} className="text-brand-gold shrink-0" />}
+                  {opt !== value && <span className="w-3 shrink-0" />}
+                  {opt}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Custom date picker (native date input popup can't be themed on macOS) ──
+const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAY_LABELS  = ['S','M','T','W','T','F','S'];
+
+interface CustomDatePickerProps {
+  value: string; // YYYY-MM-DD or ''
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}
+
+const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, disabled }) => {
+  const today   = new Date();
+  const parsed  = value ? new Date(value + 'T00:00:00') : null;
+
+  const [open, setOpen]           = useState(false);
+  const [viewYear, setViewYear]   = useState(parsed?.getFullYear() ?? today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(parsed?.getMonth()    ?? today.getMonth());
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popupRef   = useRef<HTMLDivElement>(null);
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 288 });
+
+  // Recompute popup position relative to trigger
+  const reposition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const popupW = 288;
+    let left = r.left;
+    // Keep popup on-screen horizontally
+    if (left + popupW > window.innerWidth - 8) left = window.innerWidth - popupW - 8;
+    if (left < 8) left = 8;
+    setPopupPos({ top: r.bottom + 6, left, width: popupW });
+  }, []);
+
+  // Click-outside closes picker
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (popupRef.current?.contains(e.target as Node))   return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Position popup on open + on scroll/resize
+  useEffect(() => {
+    if (!open) return;
+    reposition();
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open, reposition]);
+
+  // Sync view when value changes externally
+  useEffect(() => {
+    if (parsed) { setViewYear(parsed.getFullYear()); setViewMonth(parsed.getMonth()); }
+  }, [value]);
+
+  const prevMonth = () => viewMonth === 0  ? (setViewMonth(11), setViewYear(y => y - 1)) : setViewMonth(m => m - 1);
+  const nextMonth = () => viewMonth === 11 ? (setViewMonth(0),  setViewYear(y => y + 1)) : setViewMonth(m => m + 1);
+
+  const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const todayISO = toISO(today);
+
+  // Build 5-or-6 row calendar grid
+  const cells = useMemo<{ date: Date; current: boolean }[]>(() => {
+    const firstDow     = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth  = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const daysInPrev   = new Date(viewYear, viewMonth, 0).getDate();
+    const result: { date: Date; current: boolean }[] = [];
+    for (let i = firstDow - 1; i >= 0; i--)
+      result.push({ date: new Date(viewYear, viewMonth - 1, daysInPrev - i), current: false });
+    for (let d = 1; d <= daysInMonth; d++)
+      result.push({ date: new Date(viewYear, viewMonth, d), current: true });
+    let d = 1;
+    while (result.length % 7 !== 0 || result.length < 35)
+      result.push({ date: new Date(viewYear, viewMonth + 1, d++), current: false });
+    return result;
+  }, [viewYear, viewMonth]);
+
+  const displayValue = parsed
+    ? `${String(parsed.getDate()).padStart(2,'0')}/${String(parsed.getMonth()+1).padStart(2,'0')}/${parsed.getFullYear()}`
+    : '';
+
+  const popup = open ? ReactDOM.createPortal(
+    <div
+      ref={popupRef}
+      style={{ position: 'fixed', top: popupPos.top, left: popupPos.left, width: popupPos.width, zIndex: 99999 }}
+      className="rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.65)] overflow-hidden"
+    >
+      {/* Month / Year nav */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <button type="button" onClick={prevMonth}
+          className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+          <ChevronDown size={13} className="rotate-90" />
+        </button>
+        <span className="text-[11px] font-black uppercase tracking-widest text-white">
+          {MONTHS_LONG[viewMonth]} {viewYear}
+        </span>
+        <button type="button" onClick={nextMonth}
+          className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+          <ChevronDown size={13} className="-rotate-90" />
+        </button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 px-3 pb-1">
+        {DAY_LABELS.map((d, i) => (
+          <div key={i} className="text-center text-[9px] font-black uppercase tracking-widest text-brand-gold/40 py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
+        {cells.map((cell, i) => {
+          const iso        = toISO(cell.date);
+          const isSelected = iso === value;
+          const isToday    = iso === todayISO;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => { onChange(iso); setOpen(false); }}
+              className={[
+                'aspect-square flex items-center justify-center text-[11px] font-semibold rounded-lg transition-colors',
+                !cell.current                            ? 'text-white/15 hover:text-white/30'             : '',
+                cell.current && !isSelected && !isToday  ? 'text-white/70 hover:bg-white/10 hover:text-white' : '',
+                isToday && !isSelected                   ? 'text-brand-gold border border-brand-gold/40'   : '',
+                isSelected                               ? 'bg-brand-gold text-[#0e1f1c] font-black'       : '',
+              ].join(' ')}
+            >
+              {cell.date.getDate()}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-white/8">
+        <button type="button"
+          onClick={() => { onChange(''); setOpen(false); }}
+          className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">
+          Clear
+        </button>
+        <button type="button"
+          onClick={() => { onChange(todayISO); setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); setOpen(false); }}
+          className="text-[10px] font-bold text-brand-gold hover:text-brand-gold/70 transition-colors uppercase tracking-widest">
+          Today
+        </button>
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div className="relative w-full">
+      {/* Trigger */}
+      <button
+        ref={triggerRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        className={`w-full flex items-center gap-3 bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-left transition-colors
+          ${disabled ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40 cursor-pointer'}
+          ${open ? 'border-brand-gold' : ''}`}
+      >
+        <Calendar size={13} className="text-brand-gold/60 shrink-0" />
+        <span className={displayValue ? 'text-white text-xs' : 'text-white/35 text-xs'}>{displayValue || 'dd/mm/yyyy'}</span>
+      </button>
+      {popup}
+    </div>
+  );
+};
+
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateUser }) => {
   const routerNavigate = useRouterNavigate();
-  const [activeView, setActiveView] = useState<PortalView>(PortalView.DASHBOARD);
+  const [activeView, setActiveView] = useState<PortalView>(() => {
+    const saved = localStorage.getItem('eco_dashboard_tab');
+    return (Object.values(PortalView).includes(saved as PortalView) ? saved : PortalView.DASHBOARD) as PortalView;
+  });
+
+  // Persist active tab on every change
+  useEffect(() => {
+    localStorage.setItem('eco_dashboard_tab', activeView);
+  }, [activeView]);
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>(DashboardTab.SUMMARIZED);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isHydrating, setIsHydrating] = useState(true);
+
+  // ── Toast + Confirm modal ──────────────────────────────────────────────────
+  const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Date.now();
+    setToast({ id, message, type });
+    setTimeout(() => setToast(prev => prev?.id === id ? null : prev), 3500);
+  };
+  const showConfirm = (message: string, onConfirm: () => void) => setConfirmModal({ message, onConfirm });
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+  const [visibleLinks, setVisibleLinks] = useState<Set<string>>(new Set());
   const [isPermDropdownOpen, setIsPermDropdownOpen] = useState(false);
   const permRef = useRef<HTMLDivElement>(null);
+  const permTriggerRef = useRef<HTMLButtonElement>(null);
+  const permPopupRef = useRef<HTMLDivElement>(null);
+  const [permPopupPos, setPermPopupPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
   const [showApiInfo, setShowApiInfo] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -398,14 +794,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // Shared Administrative Core State
   const [outlets, setOutlets] = useState<Outlet[]>(DEFAULT_OUTLETS); // Default to hardcoded if DB empty
 
-  const [sequenceCounter, setSequenceCounter] = useState(2);
+  const [sequenceCounter, setSequenceCounter] = useState(0);
 
   const [company, setCompany] = useState({
     name: '',
     company_name: '',
-    region: 'Asia',
-    country: 'Thailand',
-    city: 'Bangkok',
+    region: '',
+    country: '',
+    city: '',
     adminPhone: '',
     currentOutletName: '',
     currentOutletCode: 'XXXX00',
@@ -419,6 +815,51 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [sentimentLogs, setSentimentLogs] = useState<any[]>([]);
   const [rawWasteLogs, setRawWasteLogs] = useState<any[]>([]);
   const [rawResourceLogs, setRawResourceLogs] = useState<any[]>([]);
+
+  // ── Audit Log ──
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+
+  // Log an action to the audit_logs table (silently fails if table doesn't exist yet)
+  const logAction = async (
+    action: string,
+    entityType: string,
+    entityName: string,
+    description: string,
+    metadata?: Record<string, any>
+  ) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.from('audit_logs').insert({
+        user_id: session.user.id,
+        actor_name: user.fullName,
+        actor_role: user.role,
+        action,
+        entity_type: entityType,
+        entity_name: entityName,
+        description,
+        metadata: metadata || {}
+      });
+      // Refresh local audit logs
+      fetchAuditLogs();
+    } catch (e) {
+      // Silently ignore — audit logging should never break the main flow
+      console.warn('AUDIT_LOG_SKIP:', e);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data, error } = await supabase.from('audit_logs')
+        .select('*').eq('user_id', session.user.id)
+        .order('created_at', { ascending: false }).limit(50);
+      if (!error && data) setAuditLogs(data);
+    } catch (e) {
+      // Table might not exist yet — silently ignore
+    }
+  };
 
   // 🛡️ INITIAL HYDRATION: Fetch all database-anchored identity & settings
   useEffect(() => {
@@ -451,14 +892,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           supabase.from('benchmarks').select('*').eq('user_id', authUser.id).eq('outlet_name', 'Unknown Outlet').maybeSingle(),
           supabase.from('personnel').select('*').eq('user_id', authUser.id),
           supabase.from('company_settings').select('*').eq('user_id', authUser.id).maybeSingle(),
-          supabase.from('outlets').select('*')
+          supabase.from('outlets').select('*').eq('user_id', authUser.id)
         ]);
 
         if (companyRes.data) {
           setCompany(prev => ({ 
             ...prev, 
-            name: companyRes.data.admin_name, 
-            company_name: companyRes.data.company_name || companyRes.data.admin_name,
+            name: companyRes.data.company_name || '',
+            company_name: companyRes.data.company_name || '',
             city: companyRes.data.city_country || prev.city,
             region: companyRes.data.region || prev.region
           }));
@@ -477,22 +918,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           setCompany(prev => ({ ...prev, name: '' }));
         }
 
-        // Hybrid Outlet Merging
-        const dbOutlets: Outlet[] = (outletsRes.data || []).map((o: any) => ({
-          id: o.id,
-          name: o.name,
-          code: o.code,
-          location: o.location || '',
-          color_hex: o.color_hex
-        }));
+        // Map outlets from DB — schema uses 'outlet_name' (not 'name').
+        // 'outlet_id' stores the generated code (e.g. OUT01); fall back to deterministic generation.
+        const dbOutlets: Outlet[] = (outletsRes.data || [])
+          .filter((o: any) => o.outlet_name)
+          .map((o: any, idx: number) => ({
+            id: o.id,
+            name: o.outlet_name,
+            code: o.outlet_id || (o.outlet_name.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() + String(idx + 1).padStart(2, '0')),
+            location: o.location || '',
+            color_hex: o.color_hex
+          }));
 
-        setOutlets(prev => {
-          // 🛡️ De-Duplication Fix: prefer DB results, only use defaults if DB is empty
-          if (dbOutlets.length > 0) {
-            return dbOutlets;
-          }
-          return DEFAULT_OUTLETS;
-        });
+        // Only show this user's outlets — never fall back to shared demo data
+        setOutlets(dbOutlets);
 
         if (parametersRes.data) {
           setParams(prev => ({
@@ -522,11 +961,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             email: p.email,
             role: p.role,
             position: p.position,
-            outletCode: p.outlet_code,
-            permissions: p.permissions || []
+            // personnel.outlet_id is a UUID — find the matching outlet code from dbOutlets
+            outletCode: dbOutlets.find(o => o.id === p.outlet_id)?.code || '',
+            permissions: p.permissions || [],
+            // Password stored as pincode in DB
+            password: p.pincode || p.access_code || ''
           }));
           setUsers(mappedUsers);
         }
+
+        // Fetch audit logs (non-blocking — table may not exist yet)
+        fetchAuditLogs();
       } catch (err) {
         console.error("Hydration BLOCKED:", err);
       } finally {
@@ -540,16 +985,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     // Note: Removed local onAuthStateChange listener to prevent infinite loop on Exit.
   }, []); // ✅ Run ONLY ONCE on mount. Stabilization applied.
-
-  // Sync currentOutletCode automatically when currentOutletName changes
-  useEffect(() => {
-    if (company.currentOutletName) {
-      const code = company.currentOutletName.substring(0, 4).toUpperCase() + Math.floor(Math.random() * 100).toString().padStart(2, '0');
-      setCompany(prev => ({ ...prev, currentOutletCode: code }));
-    } else {
-      setCompany(prev => ({ ...prev, currentOutletCode: 'XXXX00' }));
-    }
-  }, [company.currentOutletName]);
 
   useEffect(() => {
     const fetchOperationalData = async () => {
@@ -783,24 +1218,49 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   }, [outlets]);
 
   // Handle auto-mapping roles/permissions when position changes
+  // Skip when editing an existing user — use a ref to avoid race conditions
+  const isEditingUserRef = useRef(false);
   useEffect(() => {
-    if (enrollPosition && !enrollId) {
+    if (enrollPosition && !isEditingUserRef.current) {
       const roleKey = POSITION_TO_ROLE[enrollPosition] || 'View';
       setEnrollRole(roleKey);
       setEnrollPermissions(ROLE_DEFAULT_PERMISSIONS[roleKey] || []);
     }
-  }, [enrollPosition, enrollId]);
+  }, [enrollPosition]);
 
-  // Handle click outside for permissions dropdown
+  // Reset edit flag when enrollId is cleared (new enrollment)
+  useEffect(() => {
+    isEditingUserRef.current = !!enrollId;
+  }, [enrollId]);
+
+  // Handle click outside for permissions dropdown (portal-aware)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (permRef.current && !permRef.current.contains(event.target as Node)) {
-        setIsPermDropdownOpen(false);
-      }
+      if (permTriggerRef.current?.contains(event.target as Node)) return;
+      if (permPopupRef.current?.contains(event.target as Node)) return;
+      setIsPermDropdownOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Reposition permissions popup on open + scroll/resize
+  useEffect(() => {
+    if (!isPermDropdownOpen) return;
+    const reposition = () => {
+      const el = permTriggerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setPermPopupPos({ top: r.bottom + 6, left: r.left, width: r.width });
+    };
+    reposition();
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [isPermDropdownOpen]);
 
   // Logic for automatic sequential outlet code adjustment
   useEffect(() => {
@@ -811,7 +1271,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         setCompany(prev => ({ ...prev, currentOutletCode: existing.code }));
       } else {
         const base = company.currentOutletName.substring(0, 4).replace(/[^a-zA-Z]/g, '').padEnd(3, 'X').toUpperCase();
-        const code = `${base}${String(sequenceCounter + 1).padStart(2, '0')}`;
+        // Count existing outlets with the same prefix to determine next sequence
+        const samePrefixCount = outlets.filter(o => o.code?.startsWith(base)).length;
+        const seq = String(samePrefixCount + 1).padStart(2, '0');
+        const code = `${base}${seq}`;
         setCompany(prev => ({ ...prev, currentOutletCode: code }));
       }
     }
@@ -838,9 +1301,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     });
   };
 
+  const toggleLinkVisibility = (id: string) => {
+    setVisibleLinks(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const handleEnroll = async () => {
     if (!enrollName || !enrollEmail || !enrollPosition || !enrollOutlet) {
-      alert("Please complete all enrollment fields.");
+      showToast("Please complete all enrollment fields.", 'error');
       return;
     }
 
@@ -854,7 +1326,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     // 🛡️ Auth Sync Gate (Phase 3 Repair)
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      alert("User authentication required for personnel management.");
+      showToast("Authentication required.", 'error');
       return;
     }
 
@@ -866,7 +1338,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       email: enrollEmail,
       role: enrollRole.toLowerCase(),
       position: enrollPosition,
-      outlet_code: enrollOutlet,
       pincode: password
     };
     
@@ -874,6 +1345,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     if (enrollId && enrollId.includes('-')) {
       dbPayload.id = enrollId;
     }
+    // personnel table uses outlet_id (UUID), not outlet_code
     if (mappedOutlet && mappedOutlet.id) {
        dbPayload.outlet_id = mappedOutlet.id;
     }
@@ -896,11 +1368,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     if (error || (status !== 200 && status !== 201)) {
        console.error("PERSONNEL_UPSERT_FAILURE:", error);
-       alert("Database Error: " + (error?.message || `Failed to persist personnel (Status: ${status})`));
-       return; // STRICT EXIT ON ERROR - no success message shown
+       showToast("Database Error: " + (error?.message || `Failed to save (Status: ${status})`), 'error');
+       return;
     }
-
-    alert("Save Successful");
 
     if (enrollId) {
       setUsers(prev => prev.map(u => u.id === enrollId ? {
@@ -927,8 +1397,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       setUsers(prev => [...prev, newUser]);
     }
 
-    setGenPassword(password);
-    setGenLink(link);
+    setGenPassword('');
+    setGenLink('');
 
     setEnrollId(null);
     setEnrollName('');
@@ -938,10 +1408,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     setEnrollRole('');
     setEnrollPermissions([]);
 
-    alert(`Personnel record for ${enrollName || 'staff'} has been processed and saved.`);
+    showToast(`${enrollName || 'Staff member'} saved successfully.`, 'success');
+    logAction(enrollId ? 'personnel_updated' : 'personnel_enrolled', 'personnel', enrollName || 'Unknown', `${enrollName} enrolled as ${enrollPosition} for ${enrollOutlet}`, { role: enrollRole, position: enrollPosition, outlet: enrollOutlet });
   };
 
   const handleEdit = (user: UserProfile & { password?: string }) => {
+    isEditingUserRef.current = true; // Prevent auto-permission override
     setEnrollId(user.id);
     setEnrollName(user.fullName);
     setEnrollEmail(user.email);
@@ -957,103 +1429,110 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     form?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleDeletePersonnel = async (id: string) => {
-    if (!confirm("Permanently remove this staff member from the registry?")) return;
+  const handleDeletePersonnel = (id: string) => {
+    showConfirm("Permanently remove this staff member from the registry?", async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { showToast("Authentication required.", 'error'); return; }
 
-    // 🛡️ Auth Persistence Sync (Phase 5)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      alert("User authentication required for registry management.");
-      return;
-    }
+      const { error, status } = await supabase.from('personnel').delete().eq('id', id);
 
-    const { error, status } = await supabase.from('personnel').delete().eq('id', id);
+      if (error || (status !== 204 && status !== 200)) {
+        console.error("PERSONNEL_DELETE_FAILURE:", error);
+        showToast("Database Error: " + (error?.message || `Failed to remove staff member.`), 'error');
+        return;
+      }
 
-    if (error || (status !== 204 && status !== 200)) {
-       console.error("PERSONNEL_DELETE_FAILURE:", error);
-       alert("Database Error: " + (error?.message || `Failed to remove staff member (Status: ${status})`));
-       return;
-    }
-
-    setUsers(prev => prev.filter(u => u.id !== id));
-    alert("Save Successful");
+      setUsers(prev => prev.filter(u => u.id !== id));
+      showToast("Staff member removed.", 'success');
+      const removedUser = users.find(u => u.id === id);
+      logAction('personnel_removed', 'personnel', removedUser?.fullName || 'Unknown', `Removed ${removedUser?.fullName || 'staff member'} from registry`, { email: removedUser?.email });
+    });
   };
 
   const handleAddOutlet = async () => {
     if (!company.currentOutletName) return;
     const cleanName = company.currentOutletName.trim();
-    const existing = outlets.find(o => o.name.toLowerCase() === cleanName.toLowerCase());
+    // Guard: only compare outlets that have valid names to avoid crashes on empty rows
+    const existing = outlets.filter(o => o.name).find(o => o.name.toLowerCase() === cleanName.toLowerCase());
 
     if (existing) {
-      alert("Outlet already registered in core session.");
+      showToast("Outlet already registered.", 'error');
       return;
     }
 
     // 🛡️ Auth Persistence Sync (Phase 4)
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      alert("User authentication required for registry management.");
+      showToast("Authentication required.", 'error');
       return;
     }
 
+    // code is generated client-side — the DB 'outlets' table has no code column
     const newOutlet: Outlet = { 
       name: cleanName, 
       code: company.currentOutletCode,
-      color_hex: '#718096' // Default Grey for new outlets
+      location: company.city || '',
+      color_hex: '#718096'
     };
 
-    const { error, status } = await supabase.from('outlets').upsert({
-      user_id: session.user.id,
-      name: newOutlet.name,
-      code: newOutlet.code,
-      color_hex: newOutlet.color_hex
-    }, { onConflict: 'name' });
+    // No unique constraint on (user_id, outlet_name) — check manually then insert
+    const { data: existingDb } = await supabase.from('outlets')
+      .select('id').eq('user_id', session.user.id).eq('outlet_name', newOutlet.name).maybeSingle();
+
+    let error: any, status: number, insertedId: string | undefined;
+    if (existingDb?.id) {
+      const r = await supabase.from('outlets').update({
+        color_hex: newOutlet.color_hex,
+        location: newOutlet.location,
+        outlet_id: newOutlet.code
+      }).eq('id', existingDb.id).select('id').single();
+      error = r.error; status = r.status; insertedId = existingDb.id;
+    } else {
+      const r = await supabase.from('outlets').insert({
+        user_id: session.user.id,
+        outlet_name: newOutlet.name,
+        outlet_id: newOutlet.code,
+        location: newOutlet.location,
+        color_hex: newOutlet.color_hex
+      }).select('id').single();
+      error = r.error; status = r.status; insertedId = r.data?.id;
+    }
 
     if (error || (status !== 201 && status !== 200)) {
       console.error("OUTLET_INSERT_FAILURE:", error);
-      alert("Database Error: " + (error?.message || `Failed to persist outlet (Status: ${status})`));
+      showToast("Database Error: " + (error?.message || `Failed to save outlet.`), 'error');
       return;
     }
 
-    setOutlets(prev => [...prev, newOutlet]);
+    // Use the real DB id if we got it back
+    setOutlets(prev => [...prev, { ...newOutlet, id: insertedId }]);
     setSequenceCounter(prev => prev + 1);
-    setCompany(prev => ({ ...prev, currentOutletName: '', currentOutletCode: 'XXXX00' }));
-    alert("Outlet Registered Successfully.");
+    setCompany(prev => ({ ...prev, currentOutletName: '', currentOutletCode: 'XXX01' }));
+    logAction('outlet_added', 'outlet', newOutlet.name, `Added outlet "${newOutlet.name}" (${newOutlet.code})`, { code: newOutlet.code, location: newOutlet.location });
   };
 
-  const handleRemoveOutlet = async (code: string) => {
-    if (!confirm(`Remove outlet ${code} from registry?`)) return;
+  const handleRemoveOutlet = (code: string) => {
+    const outletName = outlets.find(o => o.code === code)?.name || code;
+    showConfirm(`Remove "${outletName}" from your outlets?`, async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { showToast("Authentication required.", 'error'); return; }
 
-    // 🛡️ Auth Persistence Sync (Phase 4)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      alert("User authentication required for registry management.");
-      return;
-    }
+      // Delete by outlet_name (actual DB column)
+      const name = outlets.find(o => o.code === code)?.name;
+      if (!name) return;
+      const { error, status } = await supabase.from('outlets').delete()
+        .eq('user_id', session.user.id).eq('outlet_name', name);
 
-    const { error, status } = await supabase.from('outlets').delete().eq('code', code);
-
-    if (error || (status !== 204 && status !== 200)) {
-       console.error("OUTLET_DELETE_FAILURE:", error);
-       alert("Database Error: " + (error?.message || `Failed to remove outlet (Status: ${status})`));
-       return;
-    }
-
-    setOutlets(prev => {
-      const remaining = prev.filter(o => o.code !== code);
-      // 🔥 FIX: Persist remaining outlets to DB so default ones don't resurrect if the DB was empty!
-      if (remaining.length > 0) {
-        supabase.from('outlets').upsert(remaining.map(o => ({
-          user_id: session.user.id,
-          name: o.name,
-          code: o.code,
-          location: o.location || company.city,
-          color_hex: o.color_hex || '#77B139'
-        })), { onConflict: 'code' }).then();
+      if (error || (status !== 204 && status !== 200)) {
+        console.error("OUTLET_DELETE_FAILURE:", error);
+        showToast("Database Error: " + (error?.message || `Failed to remove outlet.`), 'error');
+        return;
       }
-      return remaining;
+
+      setOutlets(prev => prev.filter(o => o.code !== code));
+      showToast(`"${outletName}" removed.`, 'success');
+      logAction('outlet_removed', 'outlet', outletName, `Removed outlet "${outletName}" (${code})`, { code });
     });
-    alert("Outlet Removed Successfully.");
   };
 
   const togglePermission = (perm: string) => {
@@ -1077,8 +1556,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // 1. Upsert Company Identity
       const { error: companyError, status: companyStatus } = await supabase.from('company_settings').upsert({
         user_id: userId,
-        admin_name: company.name,
-        company_name: company.company_name || company.name,
+        admin_name: user.fullName,
+        company_name: company.name,
         city_country: company.city,
         region: company.region,
         
@@ -1096,25 +1575,40 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       }
 
       // 2. Persist All Current Outlets (Registry Sync)
-      // This ensures defaults become permanent in the DB so they can be managed/deleted
+      // No unique constraint on (user_id, outlet_name) — sync each outlet individually
       if (outlets.length > 0) {
-        const { error: outletError, status: outletStatus } = await supabase.from('outlets').upsert(
-          outlets.map(o => ({
-            name: o.name,
-            code: o.code,
-            location: o.location || company.city,
-            color_hex: o.color_hex || '#77B139'
-          })),
-          { onConflict: 'name' }
-        );
-        if (outletError || (outletStatus !== 200 && outletStatus !== 201)) {
-          console.error("OUTLET_UPSERT_FAILURE:", outletError);
-          throw outletError || new Error(`Database rejected outlet registry update (Status: ${outletStatus})`);
+        for (const o of outlets) {
+          if (!o.name) continue;
+          const { data: existingDb } = await supabase.from('outlets')
+            .select('id').eq('user_id', session.user.id).eq('outlet_name', o.name).maybeSingle();
+
+          let outletError: any, outletStatus: number;
+          if (existingDb?.id) {
+            const r = await supabase.from('outlets').update({
+              outlet_id: o.code,
+              location: o.location || company.city,
+              color_hex: o.color_hex || '#77B139'
+            }).eq('id', existingDb.id);
+            outletError = r.error; outletStatus = r.status;
+          } else {
+            const r = await supabase.from('outlets').insert({
+              user_id: session.user.id,
+              outlet_name: o.name,
+              outlet_id: o.code,
+              location: o.location || company.city,
+              color_hex: o.color_hex || '#77B139'
+            });
+            outletError = r.error; outletStatus = r.status;
+          }
+          if (outletError || (outletStatus !== 200 && outletStatus !== 201 && outletStatus !== 204)) {
+            console.error("OUTLET_UPSERT_FAILURE:", outletError);
+            throw outletError || new Error(`Database rejected outlet "${o.name}" (Status: ${outletStatus})`);
+          }
         }
       }
 
-      // ONLY UPDATE LOCAL UI STATE ON SUCCESS
-      alert("Save Successful");
+      showToast("Saved successfully.", 'success');
+      logAction('settings_saved', 'company', company.name || 'Organization', `Updated company identity, audit config, and ${outlets.length} outlet(s)`, { region: company.region, city: company.city, outletCount: outlets.length });
       setSaveStatus('success');
       setIsEditingIdentity(false);
       setIsEditingAudit(false);
@@ -1122,17 +1616,131 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       setIsEditingApis(false);
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error: any) {
-      alert("Database Error: " + error.message);
+      showToast("Database Error: " + error.message, 'error');
       setSaveStatus('idle');
     }
   };
+
+  // ── Auto-save: Company identity + Audit config (debounced 3s) ──
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isAutoSaveReady = useRef(false); // Skip the initial hydration load
+
+  // Lightweight save — only company_settings row (no outlets, no toast, no edit-lock toggle)
+  const persistCompanyAndAudit = async (isAutoSave = false) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { error } = await supabase.from('company_settings').upsert({
+        user_id: session.user.id,
+        admin_name: user.fullName,
+        company_name: company.name,
+        city_country: company.city,
+        region: company.region,
+        audit_cycle: auditReport.cycle,
+        audit_from_date: auditReport.fromDate,
+        audit_to_date: auditReport.toDate,
+        audit_outlet_selection: auditReport.outletSelection,
+        audit_comments: auditReport.comments
+      }, { onConflict: 'user_id' });
+      if (error) throw error;
+      if (isAutoSave) {
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 1500);
+      }
+    } catch (e: any) {
+      console.error('AUTO_SAVE_ERROR:', e);
+      if (isAutoSave) setSaveStatus('idle');
+    }
+  };
+
+  // Debounced auto-save — triggers 3s after company/auditReport changes while editing
+  useEffect(() => {
+    // Don't auto-save until the user has actually started editing
+    if (!isAutoSaveReady.current) return;
+    if (!isEditingIdentity && !isEditingAudit) return;
+
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    setSaveStatus('saving');
+    autoSaveRef.current = setTimeout(async () => {
+      await persistCompanyAndAudit(true);
+    }, 3000);
+
+    return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company.name, company.region, company.city, company.currentOutletName,
+      auditReport.cycle, auditReport.fromDate, auditReport.toDate,
+      auditReport.outletSelection, auditReport.comments,
+      isEditingIdentity, isEditingAudit]);
+
+  // Enable auto-save after first edit (not on initial load)
+  useEffect(() => {
+    if (isEditingIdentity || isEditingAudit) {
+      isAutoSaveReady.current = true;
+    }
+  }, [isEditingIdentity, isEditingAudit]);
+
+  // ── Auto-save: Team tab (personnel edit, debounced 3s) ──
+  // Only auto-saves when editing an existing user (enrollId is a UUID).
+  // New enrollments still need the explicit button to generate credentials.
+  const teamAutoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Only auto-save when editing an existing user (UUID id) with all required fields
+    if (!enrollId || !enrollId.includes('-')) return;
+    if (!enrollName || !enrollEmail || !enrollPosition) return;
+
+    if (teamAutoSaveRef.current) clearTimeout(teamAutoSaveRef.current);
+    setSaveStatus('saving');
+
+    teamAutoSaveRef.current = setTimeout(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { setSaveStatus('idle'); return; }
+
+        const mappedOutlet = outlets.find(o => o.code === enrollOutlet);
+        const dbPayload: any = {
+          id: enrollId,
+          user_id: session.user.id,
+          full_name: enrollName,
+          email: enrollEmail,
+          role: enrollRole.toLowerCase(),
+          position: enrollPosition,
+          permissions: enrollPermissions,
+        };
+        if (mappedOutlet?.id) dbPayload.outlet_id = mappedOutlet.id;
+
+        const { error } = await supabase.from('personnel').upsert(dbPayload);
+        if (error) throw error;
+
+        // Update local state silently
+        setUsers(prev => prev.map(u => u.id === enrollId ? {
+          ...u,
+          fullName: enrollName,
+          email: enrollEmail,
+          position: enrollPosition as any,
+          outletCode: enrollOutlet,
+          role: enrollRole.toLowerCase() as any,
+          permissions: enrollPermissions,
+        } : u));
+
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 1500);
+      } catch (e: any) {
+        console.error('TEAM_AUTO_SAVE_ERROR:', e);
+        setSaveStatus('idle');
+      }
+    }, 3000);
+
+    return () => { if (teamAutoSaveRef.current) clearTimeout(teamAutoSaveRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrollName, enrollEmail, enrollPosition, enrollOutlet, enrollRole, enrollPermissions, enrollId]);
 
   const handleSaveBenchmarks = async () => {
     setSaveStatus('saving');
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      alert("User authentication required.");
+      showToast("Authentication required.", 'error');
       setSaveStatus('idle');
       return;
     }
@@ -1158,11 +1766,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       }, { onConflict: 'user_id, outlet_name' });
 
     if (error) {
-      alert('DATABASE REJECTION: ' + error.message);
+      showToast('Database Error: ' + error.message, 'error');
       console.error(error);
     } else {
-      alert('SUCCESS: DATA PERSISTED AT ' + new Date().toLocaleTimeString());
+      showToast('Benchmarks saved.', 'success');
       setParamsUpdatedAt(new Date().toLocaleString());
+      logAction('benchmarks_saved', 'benchmark', params.benchmarkRegion, `Saved benchmark parameters (${params.benchmarkRegion})`, { wasteTarget: params.wasteTarget, energyTarget: params.energyTarget, waterTarget: params.waterTarget });
     }
 
     if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
@@ -1194,7 +1803,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   };
 
   const handleGetReport = () => {
-    alert(`Generating ${auditReport.cycle} Audit Report for ${auditReport.outletSelection}...\n(Digital ESG Workflow Active)`);
+    showToast(`Generating ${auditReport.cycle} report for ${auditReport.outletSelection}…`, 'info');
   };
 
   const rawJson = useMemo(() => JSON.stringify({
@@ -1220,7 +1829,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     return (
       <button
         onClick={() => setActiveView(view)}
-        className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all duration-200 whitespace-nowrap group ${
+        className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors duration-150 whitespace-nowrap group ${
           active
             ? 'text-white'
             : 'text-white/40 hover:text-white/80'
@@ -1228,14 +1837,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       >
         <Icon
           size={15}
-          className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/25 group-hover:text-white/50'}`}
+          className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/25 group-hover:text-white/50'}`}
         />
-        <span className={`text-[12px] font-semibold tracking-tight transition-colors ${active ? 'text-white' : ''}`}>
+        <span className={`text-[12px] font-semibold tracking-tight ${active ? 'text-white' : ''}`}>
           {label}
         </span>
-        {active && (
-          <span className="absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80" />
-        )}
+        {/* Underline indicator — absolute so it never affects tab width/height */}
+        <span className={`absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80 transition-opacity duration-150 ${active ? 'opacity-100' : 'opacity-0'}`} />
       </button>
     );
   };
@@ -1364,11 +1972,46 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   return (
     <div className={`relative min-h-screen ${isPendingConsent ? 'overflow-hidden' : ''}`}>
+
+      {/* ── Toast notification ── */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-[99999] flex items-start gap-3 px-4 py-3 rounded-xl border shadow-[0_8px_32px_rgba(0,0,0,0.5)] max-w-sm animate-in slide-in-from-top-2 duration-300
+          ${toast.type === 'success' ? 'bg-[#1a3d2e] border-brand-eco/40 text-brand-eco' : ''}
+          ${toast.type === 'error'   ? 'bg-[#2d1a1a] border-brand-alert/40 text-brand-alert' : ''}
+          ${toast.type === 'info'    ? 'bg-[#1c3933] border-brand-gold/30 text-brand-gold' : ''}`}
+        >
+          <span className="text-sm font-medium leading-snug flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="opacity-50 hover:opacity-100 transition-opacity shrink-0 mt-0.5">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Confirm modal ── */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-[99998] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-6 shadow-[0_16px_64px_rgba(0,0,0,0.7)] max-w-sm w-full mx-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60 mb-2">Confirm Action</p>
+            <p className="text-sm text-white/80 leading-relaxed mb-6">{confirmModal.message}</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 rounded-lg border border-white/15 text-white/50 hover:text-white hover:border-white/30 text-[11px] font-semibold transition-colors"
+              >Cancel</button>
+              <button
+                onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
+                className="px-4 py-2 rounded-lg bg-brand-alert/20 border border-brand-alert/40 text-brand-alert hover:bg-brand-alert/30 text-[11px] font-semibold transition-colors"
+              >Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Navbar ── */}
       <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-white/6"
         style={{ background: 'linear-gradient(180deg, #0e1f1c 0%, rgba(14,31,28,0.97) 100%)', backdropFilter: 'blur(20px)' }}>
 
-        <div className="max-w-[1920px] mx-auto h-14 px-4 sm:px-6 flex items-center justify-between gap-4">
+        <div className="max-w-[1920px] mx-auto h-20 px-4 sm:px-6 flex items-center justify-between gap-4">
 
           {/* ── Left: Logo ── */}
           <button
@@ -1376,7 +2019,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             className="hover:opacity-80 transition-opacity shrink-0"
             aria-label="Go to home page"
           >
-            <Logo size="sm" withLabel />
+            <Logo size="md" withLabel />
           </button>
 
           {/* ── Right: user + logout ── */}
@@ -1384,16 +2027,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
             {/* Avatar */}
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
-              <span className="text-brand-gold text-sm font-black leading-none">{user.fullName?.[0] ?? 'A'}</span>
+              <span className="text-brand-gold text-xs font-black leading-none tracking-tight">
+                {(user.fullName?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('') || 'A').toUpperCase()}
+              </span>
             </div>
 
-            {/* Name + role */}
-            <div className="hidden sm:block text-left leading-tight">
-              <p className="text-[13px] font-semibold text-white">{user.fullName}</p>
-              <p className="text-[10px] text-brand-gold/60 font-medium tracking-wide mt-0.5">
-                {user.position}
-              </p>
-            </div>
+            {/* Role only — full name is already in the greeting below */}
+            <p className="hidden sm:block text-[11px] text-brand-gold/70 font-semibold tracking-widest uppercase">
+              {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+            </p>
 
             {/* Divider */}
             <div className="hidden sm:block w-px h-7 bg-white/8" />
@@ -1402,10 +2044,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <button
               onClick={onLogout}
               title="Log out"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white/30 hover:text-brand-alert hover:bg-brand-alert/8 transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-white/15 text-white/60 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
             >
               <LogOut size={14} />
-              <span className="hidden lg:inline text-[11px] font-medium">Log out</span>
+              <span className="text-[11px] font-semibold">Log out</span>
             </button>
           </div>
         </div>
@@ -1431,6 +2073,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 <p className="text-[11px] font-medium text-white/35 mt-2 tracking-wide flex items-center gap-2">
                   <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                   <span className="w-1 h-1 rounded-full bg-white/15" />
+                  <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="w-1 h-1 rounded-full bg-white/15" />
                   <span>{company.currentOutletName || 'All Outlets'}</span>
                 </p>
               </div>
@@ -1448,19 +2092,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
             <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
             <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
+            <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
           </div>
 
           <div className="flex items-center gap-2 shrink-0 pb-1">
-            {/* Save button */}
-            {activeView !== PortalView.DASHBOARD && activeView !== PortalView.SYSTEM && (
+            {/* Save button — not shown on Team (auto-save + inline enroll button) or Audit Log */}
+            {activeView !== PortalView.DASHBOARD && activeView !== PortalView.SYSTEM && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && (
               <button
                 onClick={handleSaveAll}
                 disabled={saveStatus !== 'idle'}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
               >
                 {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
-                {saveStatus === 'success' ? 'Saved' : 'Save'}
+                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
               </button>
+            )}
+
+            {/* Auto-save indicator (Team tab edit mode) */}
+            {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold tracking-wide ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
+                {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : <Check size={12} />}
+                {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
+              </div>
             )}
 
             {/* System diagnostics — icon-only */}
@@ -1485,6 +2138,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
+                    {activeView === PortalView.AUDIT_LOG && "Activity Trail & Action History"}
                     {activeView === PortalView.SYSTEM && "Raw System Response Stream"}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white/90 leading-tight">
@@ -1492,6 +2146,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.IDENTITY && "Company Identity"}
                     {activeView === PortalView.TEAM && "Staff Registry"}
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
+                    {activeView === PortalView.AUDIT_LOG && "Audit Log"}
                     {activeView === PortalView.SYSTEM && "System Diagnostics"}
                   </h3>
                 </div>
@@ -1922,32 +2577,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="w-3 h-px bg-white/20" />Location
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5 relative">
+                            <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Region</label>
-                              <select
+                              <CustomSelect
                                 value={company.region}
-                                onChange={(e) => {
-                                  const newRegion = e.target.value;
-                                  setCompany({ ...company, region: newRegion, city: REGION_DATA[newRegion][0] });
-                                }}
+                                options={Object.keys(REGION_DATA)}
+                                onChange={(newRegion) => setCompany({ ...company, region: newRegion, city: '' })}
                                 disabled={!isEditingIdentity}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
-                              >
-                                {Object.keys(REGION_DATA).map(r => <option key={r} value={r} className="bg-brand-dark text-white">{r}</option>)}
-                              </select>
-                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                                placeholder="Select Region"
+                              />
                             </div>
-                            <div className="space-y-1.5 relative">
+                            <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">City / Country</label>
-                              <select
+                              <CustomSelect
                                 value={company.city}
-                                onChange={e => setCompany({ ...company, city: e.target.value })}
+                                options={REGION_DATA[company.region] ?? []}
+                                onChange={(city) => setCompany({ ...company, city })}
                                 disabled={!isEditingIdentity}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
-                              >
-                                {REGION_DATA[company.region]?.map(c => <option key={c} value={c} className="bg-brand-dark text-white">{c}</option>)}
-                              </select>
-                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                                placeholder="Select City / Country"
+                                emptyMessage="Select a region first"
+                              />
                             </div>
                           </div>
                         </div>
@@ -1984,8 +2633,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <input
                                 type="text"
                                 value={company.currentOutletName}
-                                onChange={e => setCompany({ ...company, currentOutletName: e.target.value })}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-gray-700 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                                onChange={e => {
+                                  const name = e.target.value;
+                                  const prefix = name.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'XXX';
+                                  const seq = String(outlets.filter(o => o.name).length + 1).padStart(2, '0');
+                                  setCompany({ ...company, currentOutletName: name, currentOutletCode: prefix + seq });
+                                }}
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
                                 placeholder="e.g. Skyline Lounge"
                                 readOnly={!isEditingIdentity}
                               />
@@ -2006,9 +2660,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
 
                           {/* Active outlets */}
-                          {outlets.length > 0 && (
+                          {outlets.filter(o => o.name && o.code).length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                              {outlets.map((o) => (
+                              {outlets.filter(o => o.name && o.code).map((o) => (
                                 <div key={o.code} className="flex items-center justify-between px-4 py-3 bg-brand-gold/5 border border-brand-gold/15 rounded-xl group hover:border-brand-gold/35 transition-all">
                                   <div className="flex items-center gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-brand-eco" />
@@ -2059,49 +2713,42 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       <div className="p-6 sm:p-8 space-y-5 bg-brand-dark/40">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5 relative">
+                          <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Report Cycle</label>
-                            <select
+                            <CustomSelect
                               value={auditReport.cycle}
-                              onChange={e => setAuditReport({ ...auditReport, cycle: e.target.value })}
+                              options={['Daily', 'Weekly', 'Monthly', 'Quarterly']}
+                              onChange={v => setAuditReport({ ...auditReport, cycle: v })}
                               disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
-                            >
-                              {['Daily', 'Weekly', 'Monthly', 'Quarterly'].map(cycle => <option key={cycle} value={cycle} className="bg-brand-dark">{cycle}</option>)}
-                            </select>
-                            <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                            />
                           </div>
-                          <div className="space-y-1.5 relative">
+                          <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Outlet Selection</label>
-                            <select
+                            <CustomSelect
                               value={auditReport.outletSelection}
-                              onChange={e => setAuditReport({ ...auditReport, outletSelection: e.target.value })}
+                              options={['All outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
+                              onChange={v => setAuditReport({ ...auditReport, outletSelection: v })}
                               disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
-                            >
-                              <option value="All outlets" className="bg-brand-dark">All outlets</option>
-                              {outlets.map(o => (
-                                <option key={o.code} value={o.code}>{o.name} ({o.code})</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                            />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">From Date</label>
-                            <div className="relative">
-                              <input type="date" value={auditReport.fromDate} onChange={e => setAuditReport({ ...auditReport, fromDate: e.target.value })} disabled={!isEditingAudit} className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 pl-9 text-white outline-none focus:border-brand-gold transition-all text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`} />
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/60 pointer-events-none" size={13} />
-                            </div>
+                            <CustomDatePicker
+                              value={auditReport.fromDate}
+                              onChange={v => setAuditReport({ ...auditReport, fromDate: v })}
+                              disabled={!isEditingAudit}
+                            />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">To Date</label>
-                            <div className="relative">
-                              <input type="date" value={auditReport.toDate} onChange={e => setAuditReport({ ...auditReport, toDate: e.target.value })} disabled={!isEditingAudit} className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 pl-9 text-white outline-none focus:border-brand-gold transition-all text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`} />
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/60 pointer-events-none" size={13} />
-                            </div>
+                            <CustomDatePicker
+                              value={auditReport.toDate}
+                              onChange={v => setAuditReport({ ...auditReport, toDate: v })}
+                              disabled={!isEditingAudit}
+                            />
                           </div>
                         </div>
 
@@ -2117,33 +2764,88 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* ── Operational Context ── */}
+                )}
+
+
+
+                {activeView === PortalView.AUDIT_LOG && (
+                  <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
+
+                    {/* ── Audit Log ── */}
                     <div className="rounded-2xl overflow-hidden border border-white/8">
                       <div className="bg-gradient-to-r from-white/5 to-transparent px-6 sm:px-8 py-5 border-b border-white/8 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
-                          <Globe size={17} className="text-brand-gold" />
+                          <ScrollText size={17} className="text-brand-gold" />
                         </div>
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Live</p>
-                          <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Operational Context</h4>
+                        <div className="flex-1">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Activity Trail</p>
+                          <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Audit Log</h4>
                         </div>
+                        <button
+                          onClick={fetchAuditLogs}
+                          className="p-2 rounded-lg hover:bg-white/8 text-white/30 hover:text-white/60 transition-colors"
+                          title="Refresh"
+                        >
+                          <RefreshCcw size={14} />
+                        </button>
                       </div>
-                      <div className="p-6 sm:p-8 bg-brand-dark/40 flex flex-col sm:flex-row items-center gap-6">
-                        <div className="flex-1 space-y-3 w-full">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Dynamic Timezone Adjustment</p>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-sm font-bold text-white">{company.city}, {company.region}</span>
-                            <div className="px-3 py-1.5 bg-brand-eco/10 border border-brand-eco/30 rounded-full inline-flex items-center gap-2">
-                              <Clock size={12} className="text-brand-eco" />
-                              <span className="text-[10px] font-black text-brand-eco uppercase tracking-widest">{currentTimezone}</span>
-                            </div>
+                      <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[600px] overflow-y-auto scrollbar-gold">
+                        {auditLogs.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-16 text-center">
+                            <ScrollText size={32} className="text-white/10 mb-4" />
+                            <p className="text-sm text-white/30 font-medium">No activity recorded yet</p>
+                            <p className="text-[11px] text-white/20 mt-1.5">Actions by you and your team will appear here</p>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-white/30 shrink-0">
-                          <Activity size={13} className="text-brand-gold/60" />
-                          <p className="text-[9px] font-bold uppercase tracking-widest">Next Sync: 12:00 AM {currentTimezone.split(' ')[0]}</p>
-                        </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {auditLogs.map((log: any) => {
+                              const iconMap: Record<string, any> = {
+                                outlet_added: Plus,
+                                outlet_removed: Trash2,
+                                settings_saved: Save,
+                                personnel_enrolled: UserPlus,
+                                personnel_updated: Edit2,
+                                personnel_removed: Trash2,
+                                benchmarks_saved: Target,
+                              };
+                              const colorMap: Record<string, string> = {
+                                outlet_added: 'text-brand-eco bg-brand-eco/10',
+                                outlet_removed: 'text-brand-alert bg-brand-alert/10',
+                                settings_saved: 'text-brand-gold bg-brand-gold/10',
+                                personnel_enrolled: 'text-brand-eco bg-brand-eco/10',
+                                personnel_updated: 'text-brand-gold bg-brand-gold/10',
+                                personnel_removed: 'text-brand-alert bg-brand-alert/10',
+                                benchmarks_saved: 'text-brand-gold bg-brand-gold/10',
+                              };
+                              const Icon = iconMap[log.action] || Activity;
+                              const color = colorMap[log.action] || 'text-white/40 bg-white/5';
+                              const time = new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                              return (
+                                <div key={log.id} className="flex items-start gap-3 py-3 px-3 rounded-lg hover:bg-white/3 transition-colors">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                                    <Icon size={13} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-[11px] font-bold text-white uppercase tracking-wide">{log.actor_name}</span>
+                                      <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold px-1.5 py-0.5 rounded bg-white/5">{log.actor_role}</span>
+                                      <span className="text-[9px] text-white/20">·</span>
+                                      <span className="text-[9px] text-white/30">{time}</span>
+                                    </div>
+                                    <p className="text-xs text-white/50 mt-1 leading-snug">{log.description}</p>
+                                    {log.entity_name && (
+                                      <span className="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-widest text-brand-gold/50 bg-brand-gold/5 px-2 py-0.5 rounded">
+                                        {log.entity_type}: {log.entity_name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2173,11 +2875,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         {enrollId && (
                           <button
                             onClick={() => {
+                              isEditingUserRef.current = false;
                               setEnrollId(null); setEnrollName(''); setEnrollEmail('');
                               setEnrollPosition(''); setEnrollOutlet(''); setEnrollRole('');
                               setEnrollPermissions([]); setGenPassword(''); setGenLink('');
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white/70 hover:border-white/20 transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white/70 hover:border-white/20 transition-colors"
                           >
                             <X size={10} /> Cancel
                           </button>
@@ -2194,12 +2897,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Full Name</label>
                               <input type="text" value={enrollName} onChange={e => setEnrollName(e.target.value)} placeholder="Hotel Staff Name"
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-gray-700 hover:border-brand-gold/40 transition-all" />
+                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Corporate Email</label>
                               <input type="email" value={enrollEmail} onChange={e => setEnrollEmail(e.target.value)} placeholder="staff@hotel.com"
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-gray-700 hover:border-brand-gold/40 transition-all" />
+                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
                             </div>
                           </div>
                         </div>
@@ -2212,27 +2915,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="w-3 h-px bg-white/20" />Assignment
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5 relative">
+                            <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Position</label>
-                              <select value={enrollPosition} onChange={e => setEnrollPosition(e.target.value)}
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-brand-gold font-black uppercase outline-none appearance-none cursor-pointer hover:border-brand-gold/40 transition-all">
-                                <option value="" disabled>Select Position</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Exec Chef">Exec Chef</option>
-                                <option value="Outlet Manager">Outlet Manager</option>
-                                <option value="Chef Prep">Chef Prep</option>
-                                <option value="GM">GM</option>
-                              </select>
-                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                              <CustomSelect
+                                value={enrollPosition}
+                                options={['Admin', 'Exec Chef', 'Outlet Manager', 'Chef Prep', 'GM']}
+                                onChange={setEnrollPosition}
+                                placeholder="Select Position"
+                              />
                             </div>
-                            <div className="space-y-1.5 relative">
+                            <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Primary Outlet</label>
-                              <select value={enrollOutlet} onChange={e => setEnrollOutlet(e.target.value)}
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white font-black uppercase appearance-none cursor-pointer hover:border-brand-gold/40 transition-all">
-                                <option value="" disabled>Select Outlet</option>
-                                {outlets.map(o => <option key={o.code} value={o.code}>{o.name} ({o.code})</option>)}
-                              </select>
-                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                              <CustomSelect
+                                value={enrollOutlet}
+                                options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                                onChange={v => setEnrollOutlet(outlets.find(o => `${o.name} (${o.code})` === v)?.code || v)}
+                                placeholder="Select Outlet"
+                                emptyMessage="No outlets added yet — go to Company → Outlets"
+                              />
                             </div>
                           </div>
                         </div>
@@ -2240,31 +2940,60 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <div className="h-px bg-white/5" />
 
                         {/* Permissions */}
-                        <div className="space-y-3 relative" ref={permRef}>
+                        <div className="space-y-3">
                           <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
                             <span className="w-3 h-px bg-white/20" />Permissions
                           </p>
+                          {/* Trigger — matches CustomSelect style */}
                           <button
+                            ref={permTriggerRef}
                             onClick={() => setIsPermDropdownOpen(!isPermDropdownOpen)}
-                            className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-left flex items-center justify-between hover:border-brand-gold/40 transition-all"
+                            className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors cursor-pointer
+                              ${isPermDropdownOpen ? 'border-brand-gold' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
                           >
-                            <span className={enrollPermissions.length ? 'text-brand-gold font-black text-xs uppercase tracking-widest' : 'text-white/25 text-sm'}>
-                              {enrollPermissions.length === 0 ? 'Select Permissions' : `${enrollPermissions.length} Permission${enrollPermissions.length > 1 ? 's' : ''} Selected`}
+                            <span className={enrollPermissions.length ? 'text-white text-sm' : 'text-white/40 text-sm'}>
+                              {enrollPermissions.length === 0
+                                ? 'Select Permissions'
+                                : `${enrollPermissions.length} Permission${enrollPermissions.length > 1 ? 's' : ''} Selected`}
                             </span>
-                            {isPermDropdownOpen ? <ChevronUp size={15} className="text-brand-gold" /> : <ChevronDown size={15} className="text-brand-gold/60" />}
+                            <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${isPermDropdownOpen ? 'rotate-180' : ''}`} />
                           </button>
-                          {isPermDropdownOpen && (
-                            <div className="absolute top-full left-0 w-full mt-1.5 bg-[#0e1f1c] border border-brand-gold/25 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] z-[100] max-h-[280px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150">
-                              <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-1.5">
-                                {AVAILABLE_PERMISSIONS.map(p => (
-                                  <button key={p} onClick={() => togglePermission(p)}
-                                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-all text-left ${enrollPermissions.includes(p) ? 'bg-brand-gold/10 border-brand-gold/30 text-brand-gold' : 'border-transparent text-white/40 hover:bg-white/5 hover:text-white/70'}`}>
-                                    {enrollPermissions.includes(p) ? <CheckSquare size={14} /> : <Square size={14} />}
-                                    <span className="text-[9px] font-bold uppercase tracking-tight">{p}</span>
-                                  </button>
-                                ))}
+
+                          {isPermDropdownOpen && ReactDOM.createPortal(
+                            <div
+                              ref={permPopupRef}
+                              style={{ position: 'fixed', top: permPopupPos.top, left: permPopupPos.left, width: permPopupPos.width, zIndex: 99999 }}
+                              className="bg-[#152E2A] border border-brand-gold/25 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+                            >
+                              <div className="max-h-64 overflow-y-auto scrollbar-gold p-2 grid grid-cols-1 md:grid-cols-2 gap-1">
+                                {AVAILABLE_PERMISSIONS.map(p => {
+                                  const checked = enrollPermissions.includes(p);
+                                  return (
+                                    <button key={p} type="button" onClick={() => togglePermission(p)}
+                                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors text-left
+                                        ${checked
+                                          ? 'bg-brand-gold/10 text-brand-gold'
+                                          : 'text-white/50 hover:bg-white/5 hover:text-white/80'}`}
+                                    >
+                                      {/* Custom themed checkbox */}
+                                      <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-colors
+                                        ${checked ? 'bg-brand-gold border-brand-gold' : 'border-white/20 bg-transparent'}`}>
+                                        {checked && <Check size={10} className="text-[#0e1f1c]" strokeWidth={3} />}
+                                      </span>
+                                      <span className="text-[9px] font-bold uppercase tracking-tight leading-tight">{p}</span>
+                                    </button>
+                                  );
+                                })}
                               </div>
-                            </div>
+                              {/* Select all / Clear all footer */}
+                              <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/8">
+                                <button type="button" onClick={() => setEnrollPermissions([])}
+                                  className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">Clear all</button>
+                                <button type="button" onClick={() => setEnrollPermissions(AVAILABLE_PERMISSIONS)}
+                                  className="text-[10px] font-bold text-brand-gold hover:text-brand-gold/70 transition-colors uppercase tracking-widest">Select all</button>
+                              </div>
+                            </div>,
+                            document.body
                           )}
                         </div>
 
@@ -2296,7 +3025,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
 
                         <button onClick={handleEnroll}
-                          className="w-full py-3.5 bg-brand-eco text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_6px_20px_rgba(119,177,57,0.3)] hover:brightness-110 active:scale-[0.98] transition-all">
+                          className="w-full py-3.5 bg-brand-eco text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_6px_20px_rgba(119,177,57,0.3)] hover:brightness-110 active:scale-[0.98] transition-[filter,transform]">
                           {enrollId ? 'Save Role Changes' : 'Enroll & Generate Access'}
                         </button>
                       </div>
@@ -2314,7 +3043,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <div className="space-y-3">
                           {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').map((u) => (
-                            <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-brand-gold/5 rounded-2xl border border-brand-gold/20 group hover:bg-brand-gold/10 transition-all gap-4">
+                            <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-brand-gold/5 rounded-2xl border border-brand-gold/20 group hover:bg-brand-gold/10 transition-colors gap-4">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-gold/20 flex items-center justify-center text-brand-gold text-xs font-black shadow-inner border border-brand-gold/40">
                                   {u.fullName.charAt(0)}
@@ -2340,6 +3069,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   </button>
                                 </div>
 
+                                {/* Login link */}
+                                <div className="flex items-center gap-2 px-4 py-1.5 bg-brand-dark/60 rounded-full border border-brand-eco/20">
+                                  <Link2 size={12} className="text-brand-eco/60 shrink-0" />
+                                  <span className="text-[9px] font-mono text-brand-eco/80 truncate max-w-[200px]">
+                                    {visibleLinks.has(u.id)
+                                      ? `ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
+                                      : '••••••••••••••••'}
+                                  </span>
+                                  <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/60 hover:text-brand-eco ml-1 shrink-0">
+                                    {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
+                                  </button>
+                                  {visibleLinks.has(u.id) && (
+                                    <button
+                                      onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
+                                      className="text-brand-eco/60 hover:text-brand-eco ml-0.5 shrink-0"
+                                      title="Copy link"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
+                                  )}
+                                </div>
+
                                 <div className="flex gap-4">
                                   <button onClick={() => handleEdit(u)} className="text-gray-500 hover:text-brand-gold transition-colors p-1.5 bg-white/5 rounded-lg"><Edit2 size={16} /></button>
                                   <button onClick={() => handleDeletePersonnel(u.id)} className="text-gray-500 hover:text-brand-alert transition-colors p-1.5 bg-white/5 rounded-lg"><Trash2 size={16} /></button>
@@ -2362,7 +3113,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="space-y-3">
                               {members.map((u) => (
-                                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5 group hover:border-brand-gold/30 transition-all gap-4">
+                                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5 group hover:border-brand-gold/30 transition-colors gap-4">
                                   <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xs font-black shadow-inner border border-brand-gold/20">
                                       {u.fullName.charAt(0)}
@@ -2386,6 +3137,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/40 hover:text-brand-gold ml-2">
                                         {visiblePasswords.has(u.id) ? <EyeOff size={14} /> : <Eye size={14} />}
                                       </button>
+                                    </div>
+
+                                    {/* Login link */}
+                                    <div className="flex items-center gap-2 px-4 py-1.5 bg-brand-dark/60 rounded-full border border-brand-eco/15">
+                                      <Link2 size={12} className="text-brand-eco/60 shrink-0" />
+                                      <span className="text-[9px] font-mono text-brand-eco/80 truncate max-w-[200px]">
+                                        {visibleLinks.has(u.id)
+                                          ? `ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
+                                          : '••••••••••••••••'}
+                                      </span>
+                                      <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/60 hover:text-brand-eco ml-1 shrink-0">
+                                        {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
+                                      </button>
+                                      {visibleLinks.has(u.id) && (
+                                        <button
+                                          onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
+                                          className="text-brand-eco/60 hover:text-brand-eco ml-0.5 shrink-0"
+                                          title="Copy link"
+                                        >
+                                          <Copy size={12} />
+                                        </button>
+                                      )}
                                     </div>
 
                                     <div className="flex gap-4">
@@ -2608,37 +3381,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="grid grid-cols-1 gap-4">
                               <div className="space-y-2">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-1">Profile Category</label>
-                                <div className="relative">
-                                  <select
-                                    value={params.benchmarkRegion}
-                                    onChange={e => setParams({ ...params, benchmarkRegion: e.target.value, selectedManualOutlet: '' })}
-                                    className="w-full bg-brand-dark/80 border border-white/10 rounded-xl py-3 px-4 text-xs text-white font-bold outline-none appearance-none cursor-pointer focus:border-brand-gold transition-all"
-                                  >
-                                    <option value="ASEAN Luxury Hotels">ASEAN Luxury Hotels</option>
-                                    <option value="European Michelin Standard">European Michelin Standard</option>
-                                    <option value="North American Premium">North American Premium</option>
-                                    <option value="Middle East Luxury Collection">Middle East Luxury Collection</option>
-                                    <option value="Manual">Manual Entry</option>
-                                  </select>
-                                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gold pointer-events-none" size={14} />
-                                </div>
+                                <CustomSelect
+                                  value={params.benchmarkRegion}
+                                  options={['ASEAN Luxury Hotels', 'European Michelin Standard', 'North American Premium', 'Middle East Luxury Collection', 'Manual Entry']}
+                                  onChange={v => setParams({ ...params, benchmarkRegion: v === 'Manual Entry' ? 'Manual' : v, selectedManualOutlet: '' })}
+                                />
                               </div>
 
                               {isManualBenchmark && (
                                 <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
                                   <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-1">Outlet Selection (Drop Menu)</label>
-                                  <div className="relative">
-                                    <select
-                                      value={params.selectedManualOutlet}
-                                      onChange={e => setParams({ ...params, selectedManualOutlet: e.target.value })}
-                                      className="w-full bg-brand-dark/60 border border-brand-gold/40 rounded-xl py-3 px-10 text-[10px] text-brand-gold font-bold outline-none appearance-none cursor-pointer focus:border-brand-gold transition-all"
-                                    >
-                                      <option value="" disabled>Select Target Outlet</option>
-                                      {outlets.map(o => <option key={o.code} value={o.code}>{o.name} ({o.code})</option>)}
-                                    </select>
-                                    <MapPin size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40" />
-                                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gold pointer-events-none" />
-                                  </div>
+                                  <CustomSelect
+                                    value={outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : ''}
+                                    options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                                    onChange={v => {
+                                      const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
+                                      setParams({ ...params, selectedManualOutlet: code });
+                                    }}
+                                    placeholder="Select Target Outlet"
+                                    emptyMessage="No outlets added yet — go to Company → Outlets"
+                                  />
                                   <p className="text-[8px] text-gray-500 uppercase font-black tracking-tight leading-tight mt-1 ml-1">
                                     Each outlet follows its individual parameters under manual entry mode.
                                   </p>
@@ -2745,7 +3507,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   value={params.posApiKey}
                                   onChange={e => setParams({ ...params, posApiKey: e.target.value })}
                                   placeholder="Connect POS..."
-                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-gray-700 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
+                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
                                 />
                                 <Link2 size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
                               </div>
@@ -2762,7 +3524,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   value={params.crmApiKey}
                                   onChange={e => setParams({ ...params, crmApiKey: e.target.value })}
                                   placeholder="Connect CRM..."
-                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-gray-700 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
+                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
                                 />
                                 <Users size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
                               </div>
@@ -2779,7 +3541,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   value={params.pmsApiKey}
                                   onChange={e => setParams({ ...params, pmsApiKey: e.target.value })}
                                   placeholder="Connect PMS..."
-                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-gray-700 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
+                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
                                 />
                                 <Building2 size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
                               </div>
