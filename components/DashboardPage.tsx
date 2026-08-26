@@ -484,6 +484,67 @@ const ADMIN_SENTIMENT_MOCK_DATA = [
   { day: 'Sat', rating_value: 4.1, outlet_code: 'GUS04' },
 ];
 
+// ── Fully-themed custom select (native <select> can't be styled on macOS) ──
+interface CustomSelectProps {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}
+const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, disabled, placeholder }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors
+          ${disabled ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-brand-gold/25 hover:border-brand-gold/50 cursor-pointer'}
+          ${open ? 'border-brand-gold' : ''}`}
+      >
+        <span className={value ? 'text-white' : 'text-white/30'}>{value || placeholder || 'Select…'}</span>
+        <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-[9999] mt-1 w-full rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
+          <ul className="max-h-56 overflow-y-auto scrollbar-hide py-1">
+            {options.map(opt => (
+              <li key={opt}>
+                <button
+                  type="button"
+                  onClick={() => { onChange(opt); setOpen(false); }}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2
+                    ${opt === value
+                      ? 'text-brand-gold bg-brand-gold/10 font-semibold'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+                >
+                  {opt === value && <Check size={12} className="text-brand-gold shrink-0" />}
+                  {opt !== value && <span className="w-3 shrink-0" />}
+                  {opt}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateUser }) => {
   const routerNavigate = useRouterNavigate();
   const [activeView, setActiveView] = useState<PortalView>(() => {
@@ -1518,7 +1579,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
             {/* Avatar */}
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
-              <span className="text-brand-gold text-sm font-black leading-none">{user.fullName?.[0] ?? 'A'}</span>
+              <span className="text-brand-gold text-xs font-black leading-none tracking-tight">
+                {(user.fullName?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('') || 'A').toUpperCase()}
+              </span>
             </div>
 
             {/* Role only — full name is already in the greeting below */}
@@ -2055,34 +2118,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="w-3 h-px bg-white/20" />Location
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5 relative">
+                            <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Region</label>
-                              <select
+                              <CustomSelect
                                 value={company.region}
-                                onChange={(e) => {
-                                  const newRegion = e.target.value;
-                                  setCompany({ ...company, region: newRegion, city: REGION_DATA[newRegion][0] });
-                                }}
+                                options={Object.keys(REGION_DATA)}
+                                onChange={(newRegion) => setCompany({ ...company, region: newRegion, city: REGION_DATA[newRegion][0] })}
                                 disabled={!isEditingIdentity}
-                                className={`w-full bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-colors appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
-                                style={{ colorScheme: 'dark' }}
-                              >
-                                {Object.keys(REGION_DATA).map(r => <option key={r} value={r} style={{ background: '#152E2A', color: '#fff' }}>{r}</option>)}
-                              </select>
-                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                              />
                             </div>
-                            <div className="space-y-1.5 relative">
+                            <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">City / Country</label>
-                              <select
+                              <CustomSelect
                                 value={company.city}
-                                onChange={e => setCompany({ ...company, city: e.target.value })}
+                                options={REGION_DATA[company.region] ?? []}
+                                onChange={(city) => setCompany({ ...company, city })}
                                 disabled={!isEditingIdentity}
-                                className={`w-full bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-colors appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
-                                style={{ colorScheme: 'dark' }}
-                              >
-                                {REGION_DATA[company.region]?.map(c => <option key={c} value={c} style={{ background: '#152E2A', color: '#fff' }}>{c}</option>)}
-                              </select>
-                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                              />
                             </div>
                           </div>
                         </div>
