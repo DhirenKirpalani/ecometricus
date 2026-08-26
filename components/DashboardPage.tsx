@@ -515,13 +515,13 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
           ${disabled ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-brand-gold/25 hover:border-brand-gold/50 cursor-pointer'}
           ${open ? 'border-brand-gold' : ''}`}
       >
-        <span className={value ? 'text-white' : 'text-white/30'}>{value || placeholder || 'Select…'}</span>
+        <span className={value ? 'text-white' : 'text-white/40'}>{value || placeholder || 'Select…'}</span>
         <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
         <div className="absolute z-[9999] mt-1 w-full rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
-          <ul className="max-h-56 overflow-y-auto scrollbar-hide py-1">
+          <ul className="max-h-56 overflow-y-auto scrollbar-gold py-1">
             {options.map(opt => (
               <li key={opt}>
                 <button
@@ -539,6 +539,151 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
               </li>
             ))}
           </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Custom date picker (native date input popup can't be themed on macOS) ──
+const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAY_LABELS  = ['S','M','T','W','T','F','S'];
+
+interface CustomDatePickerProps {
+  value: string; // YYYY-MM-DD or ''
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}
+
+const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, disabled }) => {
+  const today   = new Date();
+  const parsed  = value ? new Date(value + 'T00:00:00') : null;
+
+  const [open, setOpen]           = useState(false);
+  const [viewYear, setViewYear]   = useState(parsed?.getFullYear() ?? today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(parsed?.getMonth()    ?? today.getMonth());
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Click-outside closes picker
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Sync view when value changes externally
+  useEffect(() => {
+    if (parsed) { setViewYear(parsed.getFullYear()); setViewMonth(parsed.getMonth()); }
+  }, [value]);
+
+  const prevMonth = () => viewMonth === 0  ? (setViewMonth(11), setViewYear(y => y - 1)) : setViewMonth(m => m - 1);
+  const nextMonth = () => viewMonth === 11 ? (setViewMonth(0),  setViewYear(y => y + 1)) : setViewMonth(m => m + 1);
+
+  const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const todayISO = toISO(today);
+
+  // Build 5-or-6 row calendar grid
+  const cells = useMemo<{ date: Date; current: boolean }[]>(() => {
+    const firstDow     = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth  = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const daysInPrev   = new Date(viewYear, viewMonth, 0).getDate();
+    const result: { date: Date; current: boolean }[] = [];
+    for (let i = firstDow - 1; i >= 0; i--)
+      result.push({ date: new Date(viewYear, viewMonth - 1, daysInPrev - i), current: false });
+    for (let d = 1; d <= daysInMonth; d++)
+      result.push({ date: new Date(viewYear, viewMonth, d), current: true });
+    let d = 1;
+    while (result.length % 7 !== 0 || result.length < 35)
+      result.push({ date: new Date(viewYear, viewMonth + 1, d++), current: false });
+    return result;
+  }, [viewYear, viewMonth]);
+
+  const displayValue = parsed
+    ? `${String(parsed.getDate()).padStart(2,'0')}/${String(parsed.getMonth()+1).padStart(2,'0')}/${parsed.getFullYear()}`
+    : '';
+
+  return (
+    <div ref={ref} className="relative w-full">
+      {/* Trigger */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        className={`w-full flex items-center gap-3 bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-left transition-colors
+          ${disabled ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40 cursor-pointer'}
+          ${open ? 'border-brand-gold' : ''}`}
+      >
+        <Calendar size={13} className="text-brand-gold/60 shrink-0" />
+        <span className={displayValue ? 'text-white text-xs' : 'text-white/35 text-xs'}>{displayValue || 'dd/mm/yyyy'}</span>
+      </button>
+
+      {/* Calendar popup */}
+      {open && (
+        <div className="absolute z-[9999] mt-1 rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.65)] overflow-hidden w-72">
+
+          {/* Month / Year nav */}
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <button type="button" onClick={prevMonth}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+              <ChevronDown size={13} className="rotate-90" />
+            </button>
+            <span className="text-[11px] font-black uppercase tracking-widest text-white">
+              {MONTHS_LONG[viewMonth]} {viewYear}
+            </span>
+            <button type="button" onClick={nextMonth}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+              <ChevronDown size={13} className="-rotate-90" />
+            </button>
+          </div>
+
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 px-3 pb-1">
+            {DAY_LABELS.map((d, i) => (
+              <div key={i} className="text-center text-[9px] font-black uppercase tracking-widest text-brand-gold/40 py-1">{d}</div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
+            {cells.map((cell, i) => {
+              const iso        = toISO(cell.date);
+              const isSelected = iso === value;
+              const isToday    = iso === todayISO;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { onChange(iso); setOpen(false); }}
+                  className={[
+                    'aspect-square flex items-center justify-center text-[11px] font-semibold rounded-lg transition-colors',
+                    !cell.current                            ? 'text-white/15 hover:text-white/30'             : '',
+                    cell.current && !isSelected && !isToday  ? 'text-white/70 hover:bg-white/10 hover:text-white' : '',
+                    isToday && !isSelected                   ? 'text-brand-gold border border-brand-gold/40'   : '',
+                    isSelected                               ? 'bg-brand-gold text-[#0e1f1c] font-black'       : '',
+                  ].join(' ')}
+                >
+                  {cell.date.getDate()}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between px-4 py-3 border-t border-white/8">
+            <button type="button"
+              onClick={() => { onChange(''); setOpen(false); }}
+              className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">
+              Clear
+            </button>
+            <button type="button"
+              onClick={() => { onChange(todayISO); setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); setOpen(false); }}
+              className="text-[10px] font-bold text-brand-gold hover:text-brand-gold/70 transition-colors uppercase tracking-widest">
+              Today
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -2199,7 +2344,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   const seq = String(outlets.filter(o => o.name).length + 1).padStart(2, '0');
                                   setCompany({ ...company, currentOutletName: name, currentOutletCode: prefix + seq });
                                 }}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-gray-700 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
                                 placeholder="e.g. Skyline Lounge"
                                 readOnly={!isEditingIdentity}
                               />
@@ -2273,49 +2418,42 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       <div className="p-6 sm:p-8 space-y-5 bg-brand-dark/40">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5 relative">
+                          <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Report Cycle</label>
-                            <select
+                            <CustomSelect
                               value={auditReport.cycle}
-                              onChange={e => setAuditReport({ ...auditReport, cycle: e.target.value })}
+                              options={['Daily', 'Weekly', 'Monthly', 'Quarterly']}
+                              onChange={v => setAuditReport({ ...auditReport, cycle: v })}
                               disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
-                            >
-                              {['Daily', 'Weekly', 'Monthly', 'Quarterly'].map(cycle => <option key={cycle} value={cycle} className="bg-brand-dark">{cycle}</option>)}
-                            </select>
-                            <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                            />
                           </div>
-                          <div className="space-y-1.5 relative">
+                          <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Outlet Selection</label>
-                            <select
+                            <CustomSelect
                               value={auditReport.outletSelection}
-                              onChange={e => setAuditReport({ ...auditReport, outletSelection: e.target.value })}
+                              options={['All outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
+                              onChange={v => setAuditReport({ ...auditReport, outletSelection: v })}
                               disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
-                            >
-                              <option value="All outlets" className="bg-brand-dark">All outlets</option>
-                              {outlets.map(o => (
-                                <option key={o.code} value={o.code}>{o.name} ({o.code})</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                            />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">From Date</label>
-                            <div className="relative">
-                              <input type="date" value={auditReport.fromDate} onChange={e => setAuditReport({ ...auditReport, fromDate: e.target.value })} disabled={!isEditingAudit} className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 pl-9 text-white outline-none focus:border-brand-gold transition-all text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`} />
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/60 pointer-events-none" size={13} />
-                            </div>
+                            <CustomDatePicker
+                              value={auditReport.fromDate}
+                              onChange={v => setAuditReport({ ...auditReport, fromDate: v })}
+                              disabled={!isEditingAudit}
+                            />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">To Date</label>
-                            <div className="relative">
-                              <input type="date" value={auditReport.toDate} onChange={e => setAuditReport({ ...auditReport, toDate: e.target.value })} disabled={!isEditingAudit} className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 pl-9 text-white outline-none focus:border-brand-gold transition-all text-xs ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`} />
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/60 pointer-events-none" size={13} />
-                            </div>
+                            <CustomDatePicker
+                              value={auditReport.toDate}
+                              onChange={v => setAuditReport({ ...auditReport, toDate: v })}
+                              disabled={!isEditingAudit}
+                            />
                           </div>
                         </div>
 
@@ -2408,12 +2546,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Full Name</label>
                               <input type="text" value={enrollName} onChange={e => setEnrollName(e.target.value)} placeholder="Hotel Staff Name"
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-gray-700 hover:border-brand-gold/40 transition-all" />
+                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Corporate Email</label>
                               <input type="email" value={enrollEmail} onChange={e => setEnrollEmail(e.target.value)} placeholder="staff@hotel.com"
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-gray-700 hover:border-brand-gold/40 transition-all" />
+                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
                             </div>
                           </div>
                         </div>
@@ -2426,27 +2564,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="w-3 h-px bg-white/20" />Assignment
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5 relative">
+                            <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Position</label>
-                              <select value={enrollPosition} onChange={e => setEnrollPosition(e.target.value)}
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-brand-gold font-black uppercase outline-none appearance-none cursor-pointer hover:border-brand-gold/40 transition-all">
-                                <option value="" disabled>Select Position</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Exec Chef">Exec Chef</option>
-                                <option value="Outlet Manager">Outlet Manager</option>
-                                <option value="Chef Prep">Chef Prep</option>
-                                <option value="GM">GM</option>
-                              </select>
-                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                              <CustomSelect
+                                value={enrollPosition}
+                                options={['Admin', 'Exec Chef', 'Outlet Manager', 'Chef Prep', 'GM']}
+                                onChange={setEnrollPosition}
+                                placeholder="Select Position"
+                              />
                             </div>
-                            <div className="space-y-1.5 relative">
+                            <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Primary Outlet</label>
-                              <select value={enrollOutlet} onChange={e => setEnrollOutlet(e.target.value)}
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white font-black uppercase appearance-none cursor-pointer hover:border-brand-gold/40 transition-all">
-                                <option value="" disabled>Select Outlet</option>
-                                {outlets.map(o => <option key={o.code} value={o.code}>{o.name} ({o.code})</option>)}
-                              </select>
-                              <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
+                              <CustomSelect
+                                value={enrollOutlet}
+                                options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                                onChange={v => setEnrollOutlet(outlets.find(o => `${o.name} (${o.code})` === v)?.code || v)}
+                                placeholder="Select Outlet"
+                              />
                             </div>
                           </div>
                         </div>
@@ -2822,37 +2956,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="grid grid-cols-1 gap-4">
                               <div className="space-y-2">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-1">Profile Category</label>
-                                <div className="relative">
-                                  <select
-                                    value={params.benchmarkRegion}
-                                    onChange={e => setParams({ ...params, benchmarkRegion: e.target.value, selectedManualOutlet: '' })}
-                                    className="w-full bg-brand-dark/80 border border-white/10 rounded-xl py-3 px-4 text-xs text-white font-bold outline-none appearance-none cursor-pointer focus:border-brand-gold transition-all"
-                                  >
-                                    <option value="ASEAN Luxury Hotels">ASEAN Luxury Hotels</option>
-                                    <option value="European Michelin Standard">European Michelin Standard</option>
-                                    <option value="North American Premium">North American Premium</option>
-                                    <option value="Middle East Luxury Collection">Middle East Luxury Collection</option>
-                                    <option value="Manual">Manual Entry</option>
-                                  </select>
-                                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gold pointer-events-none" size={14} />
-                                </div>
+                                <CustomSelect
+                                  value={params.benchmarkRegion}
+                                  options={['ASEAN Luxury Hotels', 'European Michelin Standard', 'North American Premium', 'Middle East Luxury Collection', 'Manual Entry']}
+                                  onChange={v => setParams({ ...params, benchmarkRegion: v === 'Manual Entry' ? 'Manual' : v, selectedManualOutlet: '' })}
+                                />
                               </div>
 
                               {isManualBenchmark && (
                                 <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
                                   <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-1">Outlet Selection (Drop Menu)</label>
-                                  <div className="relative">
-                                    <select
-                                      value={params.selectedManualOutlet}
-                                      onChange={e => setParams({ ...params, selectedManualOutlet: e.target.value })}
-                                      className="w-full bg-brand-dark/60 border border-brand-gold/40 rounded-xl py-3 px-10 text-[10px] text-brand-gold font-bold outline-none appearance-none cursor-pointer focus:border-brand-gold transition-all"
-                                    >
-                                      <option value="" disabled>Select Target Outlet</option>
-                                      {outlets.map(o => <option key={o.code} value={o.code}>{o.name} ({o.code})</option>)}
-                                    </select>
-                                    <MapPin size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40" />
-                                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-gold pointer-events-none" />
-                                  </div>
+                                  <CustomSelect
+                                    value={outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : ''}
+                                    options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                                    onChange={v => {
+                                      const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
+                                      setParams({ ...params, selectedManualOutlet: code });
+                                    }}
+                                    placeholder="Select Target Outlet"
+                                  />
                                   <p className="text-[8px] text-gray-500 uppercase font-black tracking-tight leading-tight mt-1 ml-1">
                                     Each outlet follows its individual parameters under manual entry mode.
                                   </p>
@@ -2959,7 +3081,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   value={params.posApiKey}
                                   onChange={e => setParams({ ...params, posApiKey: e.target.value })}
                                   placeholder="Connect POS..."
-                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-gray-700 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
+                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
                                 />
                                 <Link2 size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
                               </div>
@@ -2976,7 +3098,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   value={params.crmApiKey}
                                   onChange={e => setParams({ ...params, crmApiKey: e.target.value })}
                                   placeholder="Connect CRM..."
-                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-gray-700 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
+                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
                                 />
                                 <Users size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
                               </div>
@@ -2993,7 +3115,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   value={params.pmsApiKey}
                                   onChange={e => setParams({ ...params, pmsApiKey: e.target.value })}
                                   placeholder="Connect PMS..."
-                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-gray-700 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
+                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
                                 />
                                 <Building2 size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
                               </div>
