@@ -44,8 +44,11 @@ const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
   Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page as Page])
 );
 
-const pathToPage = (pathname: string): Page =>
-  PATH_TO_PAGE[pathname] ?? Page.HOME;
+const pathToPage = (pathname: string): Page => {
+  // Invite links: /access/OUTL01?token=abc → treat as sign-up
+  if (pathname.startsWith('/access/')) return Page.SIGN_UP;
+  return PATH_TO_PAGE[pathname] ?? Page.HOME;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 const App: React.FC = () => {

@@ -45,9 +45,11 @@ import {
   Search,
   CheckCircle2,
   Cloud,
+  Copy,
   MessageSquare,
   Plus,
   FileText,
+  ScrollText,
   Calendar,
   FileDigit,
   ChevronDown,
@@ -99,6 +101,7 @@ enum PortalView {
   IDENTITY = 'identity',
   TEAM = 'team',
   PARAMETERS = 'parameters',
+  AUDIT_LOG = 'audit_log',
   SYSTEM = 'system'
 }
 
@@ -756,8 +759,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   };
   const showConfirm = (message: string, onConfirm: () => void) => setConfirmModal({ message, onConfirm });
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+  const [visibleLinks, setVisibleLinks] = useState<Set<string>>(new Set());
   const [isPermDropdownOpen, setIsPermDropdownOpen] = useState(false);
   const permRef = useRef<HTMLDivElement>(null);
+  const permTriggerRef = useRef<HTMLButtonElement>(null);
+  const permPopupRef = useRef<HTMLDivElement>(null);
+  const [permPopupPos, setPermPopupPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
   const [showApiInfo, setShowApiInfo] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -792,9 +799,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [company, setCompany] = useState({
     name: '',
     company_name: '',
-    region: 'Asia',
-    country: 'Thailand',
-    city: 'Bangkok',
+    region: '',
+    country: '',
+    city: '',
     adminPhone: '',
     currentOutletName: '',
     currentOutletCode: 'XXXX00',
@@ -954,8 +961,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             email: p.email,
             role: p.role,
             position: p.position,
-            outletCode: p.outlet_code,
-            permissions: p.permissions || []
+            // personnel.outlet_id is a UUID — find the matching outlet code from dbOutlets
+            outletCode: dbOutlets.find(o => o.id === p.outlet_id)?.code || '',
+            permissions: p.permissions || [],
+            // Password stored as pincode in DB
+            password: p.pincode || p.access_code || ''
           }));
           setUsers(mappedUsers);
         }
@@ -1208,24 +1218,49 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   }, [outlets]);
 
   // Handle auto-mapping roles/permissions when position changes
+  // Skip when editing an existing user — use a ref to avoid race conditions
+  const isEditingUserRef = useRef(false);
   useEffect(() => {
-    if (enrollPosition && !enrollId) {
+    if (enrollPosition && !isEditingUserRef.current) {
       const roleKey = POSITION_TO_ROLE[enrollPosition] || 'View';
       setEnrollRole(roleKey);
       setEnrollPermissions(ROLE_DEFAULT_PERMISSIONS[roleKey] || []);
     }
-  }, [enrollPosition, enrollId]);
+  }, [enrollPosition]);
 
-  // Handle click outside for permissions dropdown
+  // Reset edit flag when enrollId is cleared (new enrollment)
+  useEffect(() => {
+    isEditingUserRef.current = !!enrollId;
+  }, [enrollId]);
+
+  // Handle click outside for permissions dropdown (portal-aware)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (permRef.current && !permRef.current.contains(event.target as Node)) {
-        setIsPermDropdownOpen(false);
-      }
+      if (permTriggerRef.current?.contains(event.target as Node)) return;
+      if (permPopupRef.current?.contains(event.target as Node)) return;
+      setIsPermDropdownOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Reposition permissions popup on open + scroll/resize
+  useEffect(() => {
+    if (!isPermDropdownOpen) return;
+    const reposition = () => {
+      const el = permTriggerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setPermPopupPos({ top: r.bottom + 6, left: r.left, width: r.width });
+    };
+    reposition();
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [isPermDropdownOpen]);
 
   // Logic for automatic sequential outlet code adjustment
   useEffect(() => {
@@ -1266,6 +1301,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     });
   };
 
+  const toggleLinkVisibility = (id: string) => {
+    setVisibleLinks(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const handleEnroll = async () => {
     if (!enrollName || !enrollEmail || !enrollPosition || !enrollOutlet) {
       showToast("Please complete all enrollment fields.", 'error');
@@ -1294,7 +1338,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       email: enrollEmail,
       role: enrollRole.toLowerCase(),
       position: enrollPosition,
-      outlet_code: enrollOutlet,
       pincode: password
     };
     
@@ -1302,6 +1345,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     if (enrollId && enrollId.includes('-')) {
       dbPayload.id = enrollId;
     }
+    // personnel table uses outlet_id (UUID), not outlet_code
     if (mappedOutlet && mappedOutlet.id) {
        dbPayload.outlet_id = mappedOutlet.id;
     }
@@ -1353,8 +1397,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       setUsers(prev => [...prev, newUser]);
     }
 
-    setGenPassword(password);
-    setGenLink(link);
+    setGenPassword('');
+    setGenLink('');
 
     setEnrollId(null);
     setEnrollName('');
@@ -1369,6 +1413,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   };
 
   const handleEdit = (user: UserProfile & { password?: string }) => {
+    isEditingUserRef.current = true; // Prevent auto-permission override
     setEnrollId(user.id);
     setEnrollName(user.fullName);
     setEnrollEmail(user.email);
@@ -1575,6 +1620,120 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       setSaveStatus('idle');
     }
   };
+
+  // ── Auto-save: Company identity + Audit config (debounced 3s) ──
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isAutoSaveReady = useRef(false); // Skip the initial hydration load
+
+  // Lightweight save — only company_settings row (no outlets, no toast, no edit-lock toggle)
+  const persistCompanyAndAudit = async (isAutoSave = false) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { error } = await supabase.from('company_settings').upsert({
+        user_id: session.user.id,
+        admin_name: user.fullName,
+        company_name: company.name,
+        city_country: company.city,
+        region: company.region,
+        audit_cycle: auditReport.cycle,
+        audit_from_date: auditReport.fromDate,
+        audit_to_date: auditReport.toDate,
+        audit_outlet_selection: auditReport.outletSelection,
+        audit_comments: auditReport.comments
+      }, { onConflict: 'user_id' });
+      if (error) throw error;
+      if (isAutoSave) {
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 1500);
+      }
+    } catch (e: any) {
+      console.error('AUTO_SAVE_ERROR:', e);
+      if (isAutoSave) setSaveStatus('idle');
+    }
+  };
+
+  // Debounced auto-save — triggers 3s after company/auditReport changes while editing
+  useEffect(() => {
+    // Don't auto-save until the user has actually started editing
+    if (!isAutoSaveReady.current) return;
+    if (!isEditingIdentity && !isEditingAudit) return;
+
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    setSaveStatus('saving');
+    autoSaveRef.current = setTimeout(async () => {
+      await persistCompanyAndAudit(true);
+    }, 3000);
+
+    return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company.name, company.region, company.city, company.currentOutletName,
+      auditReport.cycle, auditReport.fromDate, auditReport.toDate,
+      auditReport.outletSelection, auditReport.comments,
+      isEditingIdentity, isEditingAudit]);
+
+  // Enable auto-save after first edit (not on initial load)
+  useEffect(() => {
+    if (isEditingIdentity || isEditingAudit) {
+      isAutoSaveReady.current = true;
+    }
+  }, [isEditingIdentity, isEditingAudit]);
+
+  // ── Auto-save: Team tab (personnel edit, debounced 3s) ──
+  // Only auto-saves when editing an existing user (enrollId is a UUID).
+  // New enrollments still need the explicit button to generate credentials.
+  const teamAutoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Only auto-save when editing an existing user (UUID id) with all required fields
+    if (!enrollId || !enrollId.includes('-')) return;
+    if (!enrollName || !enrollEmail || !enrollPosition) return;
+
+    if (teamAutoSaveRef.current) clearTimeout(teamAutoSaveRef.current);
+    setSaveStatus('saving');
+
+    teamAutoSaveRef.current = setTimeout(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { setSaveStatus('idle'); return; }
+
+        const mappedOutlet = outlets.find(o => o.code === enrollOutlet);
+        const dbPayload: any = {
+          id: enrollId,
+          user_id: session.user.id,
+          full_name: enrollName,
+          email: enrollEmail,
+          role: enrollRole.toLowerCase(),
+          position: enrollPosition,
+          permissions: enrollPermissions,
+        };
+        if (mappedOutlet?.id) dbPayload.outlet_id = mappedOutlet.id;
+
+        const { error } = await supabase.from('personnel').upsert(dbPayload);
+        if (error) throw error;
+
+        // Update local state silently
+        setUsers(prev => prev.map(u => u.id === enrollId ? {
+          ...u,
+          fullName: enrollName,
+          email: enrollEmail,
+          position: enrollPosition as any,
+          outletCode: enrollOutlet,
+          role: enrollRole.toLowerCase() as any,
+          permissions: enrollPermissions,
+        } : u));
+
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 1500);
+      } catch (e: any) {
+        console.error('TEAM_AUTO_SAVE_ERROR:', e);
+        setSaveStatus('idle');
+      }
+    }, 3000);
+
+    return () => { if (teamAutoSaveRef.current) clearTimeout(teamAutoSaveRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrollName, enrollEmail, enrollPosition, enrollOutlet, enrollRole, enrollPermissions, enrollId]);
 
   const handleSaveBenchmarks = async () => {
     setSaveStatus('saving');
@@ -1933,19 +2092,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
             <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
             <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
+            <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
           </div>
 
           <div className="flex items-center gap-2 shrink-0 pb-1">
-            {/* Save button */}
-            {activeView !== PortalView.DASHBOARD && activeView !== PortalView.SYSTEM && (
+            {/* Save button — not shown on Team (auto-save + inline enroll button) or Audit Log */}
+            {activeView !== PortalView.DASHBOARD && activeView !== PortalView.SYSTEM && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && (
               <button
                 onClick={handleSaveAll}
                 disabled={saveStatus !== 'idle'}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
               >
                 {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
-                {saveStatus === 'success' ? 'Saved' : 'Save'}
+                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
               </button>
+            )}
+
+            {/* Auto-save indicator (Team tab edit mode) */}
+            {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold tracking-wide ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
+                {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : <Check size={12} />}
+                {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
+              </div>
             )}
 
             {/* System diagnostics — icon-only */}
@@ -1970,6 +2138,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
+                    {activeView === PortalView.AUDIT_LOG && "Activity Trail & Action History"}
                     {activeView === PortalView.SYSTEM && "Raw System Response Stream"}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white/90 leading-tight">
@@ -1977,6 +2146,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.IDENTITY && "Company Identity"}
                     {activeView === PortalView.TEAM && "Staff Registry"}
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
+                    {activeView === PortalView.AUDIT_LOG && "Audit Log"}
                     {activeView === PortalView.SYSTEM && "System Diagnostics"}
                   </h3>
                 </div>
@@ -2412,8 +2582,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <CustomSelect
                                 value={company.region}
                                 options={Object.keys(REGION_DATA)}
-                                onChange={(newRegion) => setCompany({ ...company, region: newRegion, city: REGION_DATA[newRegion][0] })}
+                                onChange={(newRegion) => setCompany({ ...company, region: newRegion, city: '' })}
                                 disabled={!isEditingIdentity}
+                                placeholder="Select Region"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -2423,6 +2594,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 options={REGION_DATA[company.region] ?? []}
                                 onChange={(city) => setCompany({ ...company, city })}
                                 disabled={!isEditingIdentity}
+                                placeholder="Select City / Country"
+                                emptyMessage="Select a region first"
                               />
                             </div>
                           </div>
@@ -2591,41 +2764,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* ── Operational Context ── */}
-                    <div className="rounded-2xl overflow-hidden border border-white/8">
-                      <div className="bg-gradient-to-r from-white/5 to-transparent px-6 sm:px-8 py-5 border-b border-white/8 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
-                          <Globe size={17} className="text-brand-gold" />
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Live</p>
-                          <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Operational Context</h4>
-                        </div>
-                      </div>
-                      <div className="p-6 sm:p-8 bg-brand-dark/40 flex flex-col sm:flex-row items-center gap-6">
-                        <div className="flex-1 space-y-3 w-full">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Dynamic Timezone Adjustment</p>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-sm font-bold text-white">{company.city}, {company.region}</span>
-                            <div className="px-3 py-1.5 bg-brand-eco/10 border border-brand-eco/30 rounded-full inline-flex items-center gap-2">
-                              <Clock size={12} className="text-brand-eco" />
-                              <span className="text-[10px] font-black text-brand-eco uppercase tracking-widest">{currentTimezone}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-white/30 shrink-0">
-                          <Activity size={13} className="text-brand-gold/60" />
-                          <p className="text-[9px] font-bold uppercase tracking-widest">Next Sync: 12:00 AM {currentTimezone.split(' ')[0]}</p>
-                        </div>
-                      </div>
-                    </div>
+                )}
+
+
+
+                {activeView === PortalView.AUDIT_LOG && (
+                  <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
 
                     {/* ── Audit Log ── */}
                     <div className="rounded-2xl overflow-hidden border border-white/8">
                       <div className="bg-gradient-to-r from-white/5 to-transparent px-6 sm:px-8 py-5 border-b border-white/8 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
-                          <FileText size={17} className="text-brand-gold" />
+                          <ScrollText size={17} className="text-brand-gold" />
                         </div>
                         <div className="flex-1">
                           <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Activity Trail</p>
@@ -2639,12 +2791,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <RefreshCcw size={14} />
                         </button>
                       </div>
-                      <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[400px] overflow-y-auto scrollbar-gold">
+                      <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[600px] overflow-y-auto scrollbar-gold">
                         {auditLogs.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-12 text-center">
-                            <FileText size={28} className="text-white/10 mb-3" />
-                            <p className="text-xs text-white/30 font-medium">No activity recorded yet</p>
-                            <p className="text-[10px] text-white/20 mt-1">Actions by you and your team will appear here</p>
+                          <div className="flex flex-col items-center justify-center py-16 text-center">
+                            <ScrollText size={32} className="text-white/10 mb-4" />
+                            <p className="text-sm text-white/30 font-medium">No activity recorded yet</p>
+                            <p className="text-[11px] text-white/20 mt-1.5">Actions by you and your team will appear here</p>
                           </div>
                         ) : (
                           <div className="space-y-1">
@@ -2671,18 +2823,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               const color = colorMap[log.action] || 'text-white/40 bg-white/5';
                               const time = new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                               return (
-                                <div key={log.id} className="flex items-start gap-3 py-2.5 px-3 rounded-lg hover:bg-white/3 transition-colors">
-                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
-                                    <Icon size={12} />
+                                <div key={log.id} className="flex items-start gap-3 py-3 px-3 rounded-lg hover:bg-white/3 transition-colors">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                                    <Icon size={13} />
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-[10px] font-bold text-white uppercase tracking-wide">{log.actor_name}</span>
-                                      <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold">{log.actor_role}</span>
+                                      <span className="text-[11px] font-bold text-white uppercase tracking-wide">{log.actor_name}</span>
+                                      <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold px-1.5 py-0.5 rounded bg-white/5">{log.actor_role}</span>
                                       <span className="text-[9px] text-white/20">·</span>
                                       <span className="text-[9px] text-white/30">{time}</span>
                                     </div>
-                                    <p className="text-[11px] text-white/50 mt-0.5 leading-snug">{log.description}</p>
+                                    <p className="text-xs text-white/50 mt-1 leading-snug">{log.description}</p>
+                                    {log.entity_name && (
+                                      <span className="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-widest text-brand-gold/50 bg-brand-gold/5 px-2 py-0.5 rounded">
+                                        {log.entity_type}: {log.entity_name}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               );
@@ -2718,11 +2875,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         {enrollId && (
                           <button
                             onClick={() => {
+                              isEditingUserRef.current = false;
                               setEnrollId(null); setEnrollName(''); setEnrollEmail('');
                               setEnrollPosition(''); setEnrollOutlet(''); setEnrollRole('');
                               setEnrollPermissions([]); setGenPassword(''); setGenLink('');
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white/70 hover:border-white/20 transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white/70 hover:border-white/20 transition-colors"
                           >
                             <X size={10} /> Cancel
                           </button>
@@ -2782,12 +2940,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <div className="h-px bg-white/5" />
 
                         {/* Permissions */}
-                        <div className="space-y-3 relative" ref={permRef}>
+                        <div className="space-y-3">
                           <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
                             <span className="w-3 h-px bg-white/20" />Permissions
                           </p>
                           {/* Trigger — matches CustomSelect style */}
                           <button
+                            ref={permTriggerRef}
                             onClick={() => setIsPermDropdownOpen(!isPermDropdownOpen)}
                             className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors cursor-pointer
                               ${isPermDropdownOpen ? 'border-brand-gold' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
@@ -2800,14 +2959,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${isPermDropdownOpen ? 'rotate-180' : ''}`} />
                           </button>
 
-                          {isPermDropdownOpen && (
-                            <div className="absolute top-full left-0 w-full mt-1 bg-[#152E2A] border border-brand-gold/25 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                          {isPermDropdownOpen && ReactDOM.createPortal(
+                            <div
+                              ref={permPopupRef}
+                              style={{ position: 'fixed', top: permPopupPos.top, left: permPopupPos.left, width: permPopupPos.width, zIndex: 99999 }}
+                              className="bg-[#152E2A] border border-brand-gold/25 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+                            >
                               <div className="max-h-64 overflow-y-auto scrollbar-gold p-2 grid grid-cols-1 md:grid-cols-2 gap-1">
                                 {AVAILABLE_PERMISSIONS.map(p => {
                                   const checked = enrollPermissions.includes(p);
                                   return (
                                     <button key={p} type="button" onClick={() => togglePermission(p)}
-                                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-left
+                                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors text-left
                                         ${checked
                                           ? 'bg-brand-gold/10 text-brand-gold'
                                           : 'text-white/50 hover:bg-white/5 hover:text-white/80'}`}
@@ -2829,7 +2992,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <button type="button" onClick={() => setEnrollPermissions(AVAILABLE_PERMISSIONS)}
                                   className="text-[10px] font-bold text-brand-gold hover:text-brand-gold/70 transition-colors uppercase tracking-widest">Select all</button>
                               </div>
-                            </div>
+                            </div>,
+                            document.body
                           )}
                         </div>
 
@@ -2861,7 +3025,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
 
                         <button onClick={handleEnroll}
-                          className="w-full py-3.5 bg-brand-eco text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_6px_20px_rgba(119,177,57,0.3)] hover:brightness-110 active:scale-[0.98] transition-all">
+                          className="w-full py-3.5 bg-brand-eco text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_6px_20px_rgba(119,177,57,0.3)] hover:brightness-110 active:scale-[0.98] transition-[filter,transform]">
                           {enrollId ? 'Save Role Changes' : 'Enroll & Generate Access'}
                         </button>
                       </div>
@@ -2879,7 +3043,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <div className="space-y-3">
                           {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').map((u) => (
-                            <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-brand-gold/5 rounded-2xl border border-brand-gold/20 group hover:bg-brand-gold/10 transition-all gap-4">
+                            <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-brand-gold/5 rounded-2xl border border-brand-gold/20 group hover:bg-brand-gold/10 transition-colors gap-4">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-gold/20 flex items-center justify-center text-brand-gold text-xs font-black shadow-inner border border-brand-gold/40">
                                   {u.fullName.charAt(0)}
@@ -2905,6 +3069,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   </button>
                                 </div>
 
+                                {/* Login link */}
+                                <div className="flex items-center gap-2 px-4 py-1.5 bg-brand-dark/60 rounded-full border border-brand-eco/20">
+                                  <Link2 size={12} className="text-brand-eco/60 shrink-0" />
+                                  <span className="text-[9px] font-mono text-brand-eco/80 truncate max-w-[200px]">
+                                    {visibleLinks.has(u.id)
+                                      ? `ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
+                                      : '••••••••••••••••'}
+                                  </span>
+                                  <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/60 hover:text-brand-eco ml-1 shrink-0">
+                                    {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
+                                  </button>
+                                  {visibleLinks.has(u.id) && (
+                                    <button
+                                      onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
+                                      className="text-brand-eco/60 hover:text-brand-eco ml-0.5 shrink-0"
+                                      title="Copy link"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
+                                  )}
+                                </div>
+
                                 <div className="flex gap-4">
                                   <button onClick={() => handleEdit(u)} className="text-gray-500 hover:text-brand-gold transition-colors p-1.5 bg-white/5 rounded-lg"><Edit2 size={16} /></button>
                                   <button onClick={() => handleDeletePersonnel(u.id)} className="text-gray-500 hover:text-brand-alert transition-colors p-1.5 bg-white/5 rounded-lg"><Trash2 size={16} /></button>
@@ -2927,7 +3113,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="space-y-3">
                               {members.map((u) => (
-                                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5 group hover:border-brand-gold/30 transition-all gap-4">
+                                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5 group hover:border-brand-gold/30 transition-colors gap-4">
                                   <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xs font-black shadow-inner border border-brand-gold/20">
                                       {u.fullName.charAt(0)}
@@ -2951,6 +3137,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/40 hover:text-brand-gold ml-2">
                                         {visiblePasswords.has(u.id) ? <EyeOff size={14} /> : <Eye size={14} />}
                                       </button>
+                                    </div>
+
+                                    {/* Login link */}
+                                    <div className="flex items-center gap-2 px-4 py-1.5 bg-brand-dark/60 rounded-full border border-brand-eco/15">
+                                      <Link2 size={12} className="text-brand-eco/60 shrink-0" />
+                                      <span className="text-[9px] font-mono text-brand-eco/80 truncate max-w-[200px]">
+                                        {visibleLinks.has(u.id)
+                                          ? `ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
+                                          : '••••••••••••••••'}
+                                      </span>
+                                      <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/60 hover:text-brand-eco ml-1 shrink-0">
+                                        {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
+                                      </button>
+                                      {visibleLinks.has(u.id) && (
+                                        <button
+                                          onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.app/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
+                                          className="text-brand-eco/60 hover:text-brand-eco ml-0.5 shrink-0"
+                                          title="Copy link"
+                                        >
+                                          <Copy size={12} />
+                                        </button>
+                                      )}
                                     </div>
 
                                     <div className="flex gap-4">

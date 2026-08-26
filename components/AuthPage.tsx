@@ -173,11 +173,48 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
   const [password, setPassword]         = useState('');
   const [verifyPassword, setVerifyPassword] = useState('');
   const [fullName, setFullName]         = useState('');
-  const role = 'admin'; // New sign-ups are always workspace admins; roles are assigned via invites
   const [acceptTerms, setAcceptTerms]   = useState(false);
   const [isLoading, setIsLoading]       = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [successMsg, setSuccessMsg]     = useState<string | null>(null);
+
+  // ── Invite link detection ──
+  // URL format: /access/OUTL01?token=abc123
+  // When detected, look up the personnel record by access_code and pre-fill
+  // the signup form with the correct role/permissions (not admin).
+  const [inviteData, setInviteData] = useState<{ role: string; position: string; email: string; fullName: string; outletCode: string } | null>(null);
+  const role = inviteData?.role || 'admin'; // Default admin only for direct sign-ups
+  const [inviteLoading, setInviteLoading] = useState(false);
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    const token = new URLSearchParams(window.location.search).get('token');
+    if (path.startsWith('/access/') && token) {
+      setInviteLoading(true);
+      // Extract outlet code from path: /access/OUTL01 → OUTL01
+      const outletCode = path.replace('/access/', '').split('/')[0] || '';
+      // Look up personnel by access_code (token)
+      supabase.from('personnel').select('*').eq('access_code', token.toUpperCase()).maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setInviteData({
+              role: data.role || 'supervisor',
+              position: data.position || 'Staff',
+              email: data.email || '',
+              fullName: data.full_name || '',
+              outletCode: data.outlet_id || outletCode,
+            });
+            // Pre-fill the form
+            if (data.email) setEmail(data.email);
+            if (data.full_name) setFullName(data.full_name);
+            // Switch to sign-up view
+            onNavigate(Page.SIGN_UP);
+          }
+          setInviteLoading(false);
+        })
+        .catch(() => setInviteLoading(false));
+    }
+  }, []);
 
   // Rate limiting
   const lastAttemptTime = useRef<number>(0);
@@ -188,6 +225,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
   const isSignIn = currentView === Page.SIGN_IN;
   const isSignUp = currentView === Page.SIGN_UP;
   const isForgot = currentView === Page.FORGOT_PASSWORD;
+  const isInvite = !!inviteData; // Arrived via access link
 
   // Detect ?confirmed=true set by App.tsx after email link is clicked
   const isEmailConfirmed = new URLSearchParams(window.location.search).get('confirmed') === 'true';
@@ -259,7 +297,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
           email,
           password,
           options: {
-            data: { full_name: fullName, role, auth_origin: 'registration' },
+            data: {
+              full_name: fullName,
+              role,
+              position: inviteData?.position || 'GM',
+              outlet_code: inviteData?.outletCode || '',
+              auth_origin: inviteData ? 'invite' : 'registration',
+            },
             emailRedirectTo: `${window.location.origin}/login`,
           },
         });
@@ -277,16 +321,19 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
             await supabase.from('profiles').upsert({
               id: authUser.id,
               full_name: fullName,
-              role: 'admin',
-              position: 'GM',
+              role, // From invite or default 'admin'
+              position: inviteData?.position || 'GM',
               legal_consent: false,
             }, { onConflict: 'id' });
-            await supabase.from('company_settings').upsert({
-              user_id: authUser.id,
-              admin_name: fullName,
-              company_name: 'My Organization',
-              audit_cycle: 'Monthly',
-            }, { onConflict: 'user_id' });
+            // Only create company_settings for direct sign-ups (admins), not invited staff
+            if (!inviteData) {
+              await supabase.from('company_settings').upsert({
+                user_id: authUser.id,
+                admin_name: fullName,
+                company_name: 'My Organization',
+                audit_cycle: 'Monthly',
+              }, { onConflict: 'user_id' });
+            }
           } catch (syncErr: any) {
             console.warn('Profile sync warning:', syncErr.message);
           }
@@ -298,8 +345,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       if (!authUser) throw new Error(t('auth.errAuthFailed'));
 
       const dynamicFullName = fullName || authUser.user_metadata?.full_name || 'Admin User';
-      const finalRole = authUser.user_metadata?.role || 'admin';
-      const finalPosition = authUser.user_metadata?.position || 'GM';
+      const finalRole = authUser.user_metadata?.role || inviteData?.role || 'admin';
+      const finalPosition = authUser.user_metadata?.position || inviteData?.position || 'GM';
+      const finalOutletCode = authUser.user_metadata?.outlet_code || inviteData?.outletCode || 'ROY02';
 
       onLogin({
         id: authUser.id,
@@ -307,7 +355,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         email: authUser.email || email,
         role: finalRole as any,
         position: finalPosition as any,
-        outletCode: authUser.user_metadata?.outlet_code || 'ROY02',
+        outletCode: finalOutletCode,
         legal_consent: authUser.user_metadata?.legal_consent === true,
       });
 
@@ -498,6 +546,27 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
 
                 {/* Form card */}
                 <form onSubmit={handleSubmit} className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-6 space-y-4">
+
+                  {/* Invite banner */}
+                  {isInvite && isSignUp && (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-brand-gold/10 border border-brand-gold/25">
+                      <ShieldCheck size={16} className="text-brand-gold shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Invitation</p>
+                        <p className="text-xs text-white/70 mt-0.5">
+                          You've been invited as <span className="text-brand-gold font-bold">{inviteData?.position}</span>
+                          {inviteData?.email && <> for <span className="text-white">{inviteData.email}</span></>}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {inviteLoading && (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="w-5 h-5 border-2 border-brand-gold/30 border-t-brand-gold rounded-full animate-spin" />
+                      <span className="ml-3 text-xs text-white/50">Loading invitation…</span>
+                    </div>
+                  )}
 
                   {isSignUp && (
                     <Field label={t('auth.fullName')} value={fullName} onChange={setFullName} placeholder={t('auth.fullNamePlaceholder')} required icon={<User size={14} />} />
