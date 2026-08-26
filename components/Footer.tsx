@@ -41,7 +41,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
             <p className="text-xs text-gray-500 leading-relaxed max-w-[220px]">
               {t('footer.brandTagline')}
             </p>
-            <p className="text-[10px] text-gray-700 uppercase tracking-widest leading-relaxed">
+            <p className="text-[10px] text-white/40 uppercase tracking-widest leading-relaxed">
               {t('footer.byBureau')}
             </p>
           </div>
@@ -94,12 +94,12 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
       {/* Bottom bar */}
       <div className="border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-[10px] text-gray-700 uppercase tracking-widest">
+          <p className="text-[10px] text-white/40 uppercase tracking-widest">
             {t('footer.copyright', { year: String(year) })}
           </p>
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-eco animate-pulse" />
-            <p className="text-[10px] text-gray-700 uppercase tracking-widest">{t('footer.engineActive')}</p>
+            <p className="text-[10px] text-brand-eco/70 uppercase tracking-widest">{t('footer.engineActive')}</p>
           </div>
         </div>
       </div>
