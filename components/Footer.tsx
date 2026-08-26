@@ -32,11 +32,11 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
       <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(200,164,19,0.04), transparent 55%)' }} />
 
       {/* Main footer */}
-      <div className="relative max-w-7xl mx-auto px-6 py-12 sm:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16">
+      <div className="relative max-w-7xl mx-auto px-5 sm:px-6 py-10 sm:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10 md:gap-16">
 
           {/* Brand */}
-          <div className="space-y-5">
+          <div className="space-y-4 sm:space-y-5">
             <Logo size="md" withLabel />
             <p className="text-xs text-gray-500 leading-relaxed max-w-[220px]">
               {t('footer.brandTagline')}
@@ -93,7 +93,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
 
       {/* Bottom bar */}
       <div className="border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2 text-center">
           <p className="text-[10px] text-white/40 uppercase tracking-widest">
             {t('footer.copyright', { year: String(year) })}
           </p>

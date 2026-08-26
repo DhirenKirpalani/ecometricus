@@ -61,21 +61,21 @@ const PrivacyPage: React.FC = () => {
       {/* Hero header */}
       <div className="relative overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 100%, rgba(200,164,19,0.07), transparent 55%)' }} />
-        <div className="max-w-4xl mx-auto px-6 py-20 sm:py-28 text-center relative">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-gold/10 border border-brand-gold/30 mb-6">
-            <ShieldCheck className="text-brand-gold" size={30} />
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 py-14 sm:py-28 text-center relative">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-brand-gold/10 border border-brand-gold/30 mb-5 sm:mb-6">
+            <ShieldCheck className="text-brand-gold" size={26} />
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-3">{t('privacy.legal')}</p>
-          <h1 className="text-3xl sm:text-5xl font-geometric font-black text-white uppercase tracking-widest mb-4">
+          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-brand-gold mb-3">{t('privacy.legal')}</p>
+          <h1 className="text-2xl sm:text-5xl font-geometric font-black text-white uppercase tracking-[0.15em] sm:tracking-widest mb-4">
             {t('privacy.title')}
           </h1>
-          <p className="text-sm text-gray-500 uppercase tracking-widest">{t('privacy.lastUpdated')} {new Date().toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p className="text-xs sm:text-sm text-gray-500 uppercase tracking-widest">{t('privacy.lastUpdated')} {new Date().toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
       </div>
 
       {/* Intro */}
-      <div className="max-w-4xl mx-auto px-6 pt-14 pb-4">
-        <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-2xl p-6 sm:p-8">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 pt-10 sm:pt-14 pb-4">
+        <div className="bg-brand-gold/5 border border-brand-gold/20 rounded-2xl p-5 sm:p-8">
           <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
             {t('privacy.intro')}
           </p>
@@ -83,19 +83,19 @@ const PrivacyPage: React.FC = () => {
       </div>
 
       {/* Sections */}
-      <div className="max-w-4xl mx-auto px-6 py-10 space-y-6 pb-24">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10 space-y-4 sm:space-y-6 pb-24">
         {sections.map((section, i) => (
-          <div key={i} className="bg-brand-dark/60 border border-brand-gold/10 rounded-2xl p-6 sm:p-8 hover:border-brand-gold/25 transition-all duration-300">
-            <div className="flex items-start gap-4 mb-4">
+          <div key={i} className="bg-brand-dark/60 border border-brand-gold/10 rounded-2xl p-5 sm:p-8 hover:border-brand-gold/25 transition-all duration-300">
+            <div className="flex items-start gap-3 sm:gap-4 mb-4">
               <span className="shrink-0 text-xs font-black text-brand-gold/40 font-geometric tabular-nums mt-1">
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <h2 className="text-base sm:text-lg font-geometric font-black text-white uppercase tracking-widest">
+              <h2 className="text-sm sm:text-lg font-geometric font-black text-white uppercase tracking-widest">
                 {t(section.titleKey)}
               </h2>
             </div>
             {Array.isArray(section.content) ? (
-              <ul className="space-y-3 ml-8">
+              <ul className="space-y-2.5 sm:space-y-3 ml-6 sm:ml-8">
                 {section.content.map((item, j) => (
                   <li key={j} className="flex items-start gap-3 text-sm text-gray-400 leading-relaxed">
                     <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-brand-gold/60 mt-2" />
@@ -104,7 +104,7 @@ const PrivacyPage: React.FC = () => {
                 ))}
               </ul>
             ) : (
-              <p className="ml-8 text-sm text-gray-400 leading-relaxed">{section.content}</p>
+              <p className="ml-6 sm:ml-8 text-sm text-gray-400 leading-relaxed">{section.content}</p>
             )}
           </div>
         ))}

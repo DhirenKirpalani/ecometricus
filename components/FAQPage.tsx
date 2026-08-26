@@ -20,7 +20,7 @@ const FAQPage: React.FC = () => {
     {
       question: t('faq.q2'),
       answer: (
-        <div className="grid sm:grid-cols-2 gap-6 mt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-2">
           <div className="space-y-3">
             <h4 className="text-brand-gold font-bold text-xs uppercase tracking-widest flex items-center gap-2">
               <PieChart size={14} className="text-brand-gold" /> {t('faq.financialMetrics')}
@@ -105,12 +105,12 @@ const FAQPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-brand-dark">
-      <div className="max-w-4xl mx-auto px-6 py-20 sm:py-28">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 py-14 sm:py-28">
 
         {/* Title */}
-        <div className="text-center mb-14">
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold/70 mb-3">{t('faq.knowledgeBase')}</p>
-          <h1 className="text-4xl sm:text-5xl font-geometric font-black text-white uppercase tracking-widest">{t('faq.title')}</h1>
+        <div className="text-center mb-10 sm:mb-14">
+          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-brand-gold/70 mb-3">{t('faq.knowledgeBase')}</p>
+          <h1 className="text-3xl sm:text-5xl font-geometric font-black text-white uppercase tracking-[0.15em] sm:tracking-widest">{t('faq.title')}</h1>
         </div>
 
         {/* Question list */}
@@ -119,11 +119,11 @@ const FAQPage: React.FC = () => {
             <button
               key={i}
               onClick={() => setActiveIndex(i)}
-              className="w-full text-left flex items-center justify-between gap-4 px-6 py-5 rounded-xl border border-brand-gold/12 bg-white/2 hover:bg-white/4 hover:border-brand-gold/35 transition-all duration-200 group"
+              className="w-full text-left flex items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 rounded-xl border border-brand-gold/12 bg-white/2 hover:bg-white/4 hover:border-brand-gold/35 transition-all duration-200 group"
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 <span className="text-[10px] font-black text-brand-gold/40 font-mono tabular-nums shrink-0">{String(i + 1).padStart(2, '0')}</span>
-                <span className="text-sm font-geometric font-bold text-white/80 group-hover:text-white tracking-wide">{faq.question}</span>
+                <span className="text-xs sm:text-sm font-geometric font-bold text-white/80 group-hover:text-white tracking-wide">{faq.question}</span>
               </div>
               <span className="shrink-0 w-5 h-5 rounded-full border border-brand-gold/30 flex items-center justify-center group-hover:border-brand-gold group-hover:bg-brand-gold/10 transition-all">
                 <span className="text-brand-gold text-xs leading-none">+</span>
@@ -136,7 +136,7 @@ const FAQPage: React.FC = () => {
       {/* Modal overlay */}
       {activeFaq && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6"
           onClick={() => setActiveIndex(null)}
         >
           {/* Backdrop */}
@@ -144,7 +144,7 @@ const FAQPage: React.FC = () => {
 
           {/* Modal */}
           <div
-            className="relative w-full max-w-xl bg-[#1c3933] border border-brand-gold/30 rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.6)] p-7 sm:p-9 animate-in fade-in zoom-in-95 duration-200"
+            className="relative w-full max-w-xl max-h-[85vh] overflow-y-auto scrollbar-gold bg-[#1c3933] border border-brand-gold/30 rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.6)] p-5 sm:p-9 animate-in fade-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
             {/* Top accent */}

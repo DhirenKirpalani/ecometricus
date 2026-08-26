@@ -336,7 +336,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
       <header className="sticky top-0 z-50 shrink-0 border-b border-white/6"
         style={{ background: 'linear-gradient(180deg, #0e1f1c 0%, rgba(14,31,28,0.97) 100%)', backdropFilter: 'blur(20px)' }}>
 
-        <div className="max-w-[1920px] mx-auto h-14 px-4 sm:px-6 flex items-center justify-between gap-4">
+        <div className="max-w-[1920px] mx-auto h-14 px-4 sm:px-6 flex items-center justify-between gap-3">
 
           {/* Left: Logo */}
           <button
@@ -348,21 +348,21 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
           </button>
 
           {/* Right: user + logout */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
-              <span className="text-brand-gold text-sm font-black leading-none">{user.fullName?.[0] ?? 'S'}</span>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
+              <span className="text-brand-gold text-xs sm:text-sm font-black leading-none">{user.fullName?.[0] ?? 'S'}</span>
             </div>
-            <div className="hidden sm:block text-left leading-tight">
+            <div className="hidden md:block text-left leading-tight">
               <p className="text-[13px] font-semibold text-white">{user.fullName}</p>
               <p className="text-[10px] text-brand-gold/60 font-medium tracking-wide mt-0.5">
                 {user.position} · {currentOutletName}
               </p>
             </div>
-            <div className="hidden sm:block w-px h-7 bg-white/8" />
+            <div className="hidden md:block w-px h-7 bg-white/8" />
             <button
               onClick={onLogout}
               title="Log out"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white/30 hover:text-brand-alert hover:bg-brand-alert/8 transition-all"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-white/30 hover:text-brand-alert hover:bg-brand-alert/8 transition-all"
             >
               <LogOut size={14} />
               <span className="hidden lg:inline text-[11px] font-medium">Log out</span>
@@ -371,7 +371,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
         </div>
       </header>
 
-      <main className="flex-grow p-4 sm:p-8 lg:p-10 max-w-[1600px] mx-auto w-full space-y-8 sm:space-y-10">
+      <main className="flex-grow p-4 sm:p-8 lg:p-10 max-w-[1600px] mx-auto w-full space-y-6 sm:space-y-10">
 
         {/* Greeting */}
         {(() => {
@@ -380,10 +380,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
           const firstName = user.fullName?.split(' ')[0] ?? 'there';
           return (
             <div>
-              <h2 className="text-3xl sm:text-4xl font-geometric font-black text-white leading-none tracking-tight">
+              <h2 className="text-2xl sm:text-4xl font-geometric font-black text-white leading-none tracking-tight">
                 {greeting}, <span className="text-brand-gold">{firstName}</span>
               </h2>
-              <p className="text-[11px] font-medium text-white/30 mt-2 tracking-wide">
+              <p className="text-[10px] sm:text-[11px] font-medium text-white/30 mt-2 tracking-wide">
                 {currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} · {currentOutletName}
               </p>
             </div>
@@ -391,7 +391,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
         })()}
 
         {/* Mila Intelligence — ESG Snapshot */}
-        <div className="bg-[#0e1f1c] border border-brand-gold/25 rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
+        <div className="bg-[#0e1f1c] border border-brand-gold/25 rounded-2xl p-4 sm:p-8 relative overflow-hidden shadow-xl">
           <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'radial-gradient(ellipse at 80% 0%, rgba(200,164,19,0.05), transparent 55%)'}} />
 
           <div className="flex items-center gap-4 mb-6">
@@ -614,7 +614,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
 
 
         {/* Weekly Performance Cycle — compact action bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#0e1f1c] border border-white/8 rounded-2xl p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#0e1f1c] border border-white/8 rounded-2xl p-4 sm:p-6">
           <div className="flex items-center gap-3">
             <Calendar className="text-brand-gold/60 shrink-0" size={18} />
             <div>
@@ -622,16 +622,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
               <p className="text-[10px] text-white/30 mt-0.5">Cut period: Sun 12:00 AM — Sat 11:59 PM</p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={handleDigitalReport}
-              className="flex items-center gap-2 px-5 py-2.5 bg-brand-eco text-brand-dark rounded-xl text-[11px] font-bold tracking-wide hover:brightness-110 transition-all"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 bg-brand-eco text-brand-dark rounded-xl text-[11px] font-bold tracking-wide hover:brightness-110 transition-all"
             >
               <Printer size={14} /> Print Report
             </button>
             <button
               onClick={() => setShowAuditModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 border border-white/15 text-white/60 rounded-xl text-[11px] font-bold tracking-wide hover:border-brand-gold/40 hover:text-brand-gold transition-all"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 border border-white/15 text-white/60 rounded-xl text-[11px] font-bold tracking-wide hover:border-brand-gold/40 hover:text-brand-gold transition-all"
             >
               <ClipboardList size={14} /> Audit Entries
             </button>
@@ -641,16 +641,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
 
       {/* Audit Modal */}
       {showAuditModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-dark/95 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="max-w-4xl w-full bg-[#0e1f1c] border border-brand-gold/30 rounded-2xl p-8 shadow-2xl relative">
-            <button onClick={() => setShowAuditModal(false)} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-brand-dark/95 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="max-w-4xl w-full bg-[#0e1f1c] border border-brand-gold/30 rounded-2xl p-4 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto scrollbar-gold">
+            <button onClick={() => setShowAuditModal(false)} className="absolute top-4 right-4 sm:top-6 sm:right-6 text-gray-500 hover:text-white transition-colors z-10">
               <XIcon size={20} />
             </button>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-geometric font-black text-white">Daily Data Audit Registry</h3>
+            <div className="flex justify-between items-center mb-4 sm:mb-6 pr-8">
+              <h3 className="text-base sm:text-lg font-geometric font-black text-white">Daily Data Audit Registry</h3>
             </div>
-            <div className="max-h-[500px] overflow-y-auto custom-scrollbar pr-4">
-              <table className="w-full text-left">
+            <div className="overflow-x-auto scrollbar-gold">
+              <table className="w-full text-left min-w-[500px]">
                 <thead>
                   <tr className="border-b border-white/10">
                     <th className="py-3 text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest">Entry Date/Time</th>

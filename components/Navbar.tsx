@@ -37,13 +37,14 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
   };
 
   return (
+    <>
     <nav className={`sticky top-0 z-50 transition-all duration-300 ${
       scrolled
         ? 'bg-brand-dark/98 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.4)]'
         : 'bg-brand-dark/90 backdrop-blur-xl'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 sm:h-20">
 
           {/* Logo */}
           <div
@@ -151,88 +152,92 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
       {/* Gold separator line */}
       <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent" />
 
-      {/* Mobile drawer */}
+    </nav>
+
+      {/* Mobile drawer — outside nav to escape backdrop-blur containing block */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-brand-dark/98 backdrop-blur-xl border-b border-brand-gold/20 animate-in slide-in-from-top duration-200 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
-          <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-2">
+        <div className="md:hidden fixed inset-x-0 top-16 z-40 bg-[#0f2420] border-b border-brand-gold/15 shadow-[0_12px_40px_rgba(0,0,0,0.7)] animate-in slide-in-from-top duration-200">
+
+          {/* Nav links */}
+          <div className="px-4 pt-3 pb-1">
             {navLinks.map((link) => {
               const active = currentPage === link.page;
               return (
                 <button
                   key={link.page}
                   onClick={() => handleNavigate(link.page)}
-                  className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-[0.15em] transition-all ${
+                  className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
                     active
-                      ? 'text-brand-gold bg-brand-gold/10'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      ? 'text-brand-gold'
+                      : 'text-white/50 hover:text-white'
                   }`}
                 >
+                  {active && <span className="w-1 h-4 rounded-full bg-brand-gold shrink-0" />}
+                  {!active && <span className="w-1 h-4 rounded-full bg-transparent shrink-0" />}
                   {link.label}
                 </button>
               );
             })}
-            <div className="h-px bg-white/5 my-2" />
+          </div>
 
-            {/* Mobile language toggle */}
-            <div className="flex items-center justify-center gap-0.5 bg-white/5 border border-white/10 rounded-full p-0.5 self-center my-1">
+          {/* Divider */}
+          <div className="mx-4 h-px bg-white/5" />
+
+          {/* Bottom row: lang + actions */}
+          <div className="px-4 py-3 flex items-center justify-between gap-3">
+
+            {/* Language toggle */}
+            <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-full p-0.5">
               <button
                 onClick={() => changeLang('en')}
-                className={`px-5 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200 ${lang === 'en' ? 'bg-brand-gold text-brand-dark' : 'text-white/35'}`}
-              >
-                EN
-              </button>
+                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${lang === 'en' ? 'bg-brand-gold text-brand-dark' : 'text-white/30 hover:text-white/60'}`}
+              >EN</button>
               <button
                 onClick={() => changeLang('es')}
-                className={`px-5 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200 ${lang === 'es' ? 'bg-brand-gold text-brand-dark' : 'text-white/35'}`}
-              >
-                ES
-              </button>
+                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${lang === 'es' ? 'bg-brand-gold text-brand-dark' : 'text-white/30 hover:text-white/60'}`}
+              >ES</button>
             </div>
 
-            <div className="flex flex-col gap-3">
-              {isLoggedIn ? (
-                <div className="flex items-center gap-3">
-                  {/* Avatar — matches dashboard */}
-                  <button
-                    onClick={() => handleNavigate(Page.DASHBOARD)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl border border-brand-gold/20 bg-brand-gold/5 hover:bg-brand-gold/10 transition-all flex-1"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
-                      <span className="text-brand-gold text-xs font-black leading-none tracking-tight">{userInitial.toUpperCase()}</span>
-                    </div>
-                    <span className="text-sm font-bold text-white/80 uppercase tracking-widest">{t('navbar.myDashboard')}</span>
-                  </button>
-                  {/* Logout — matches dashboard */}
-                  <button
-                    onClick={onLogout}
-                    title="Log out"
-                    className="flex items-center gap-1.5 px-4 py-3 rounded-xl border border-white/15 text-white/60 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
-                  >
-                    <LogOut size={15} />
-                    <span className="text-[11px] font-semibold">Log out</span>
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => handleNavigate(Page.SIGN_IN)}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-300 border border-white/10 hover:border-white/25 transition-all"
-                  >
-                    <LogIn size={14} /> {t('navbar.logIn')}
-                  </button>
-                  <button
-                    onClick={() => handleNavigate(Page.SIGN_UP)}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-brand-eco text-brand-dark shadow-[0_4px_15px_rgba(119,177,57,0.3)]"
-                  >
-                    <UserPlus size={14} /> {t('navbar.signUp')}
-                  </button>
-                </>
-              )}
-            </div>
+            {/* Auth actions */}
+            {isLoggedIn ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleNavigate(Page.DASHBOARD)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl border border-brand-gold/20 bg-brand-gold/8 hover:bg-brand-gold/15 transition-all"
+                >
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-gold/30 to-brand-gold/10 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                    <span className="text-brand-gold text-[10px] font-black">{userInitial.toUpperCase()}</span>
+                  </div>
+                  <span className="text-xs font-bold text-white/70 uppercase tracking-widest">{t('navbar.myDashboard')}</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 text-white/40 hover:text-brand-alert hover:border-brand-alert/40 transition-all"
+                >
+                  <LogOut size={13} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleNavigate(Page.SIGN_IN)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest text-white/60 border border-white/10 hover:border-white/25 hover:text-white transition-all"
+                >
+                  <LogIn size={13} /> {t('navbar.logIn')}
+                </button>
+                <button
+                  onClick={() => handleNavigate(Page.SIGN_UP)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-brand-eco text-brand-dark shadow-[0_4px_15px_rgba(119,177,57,0.35)]"
+                >
+                  <UserPlus size={13} /> {t('navbar.signUp')}
+                </button>
+              </div>
+            )}
           </div>
+
         </div>
       )}
-    </nav>
+    </>
   );
 };
 

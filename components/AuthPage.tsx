@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Page, UserProfile } from '../types';
-import Logo from './Logo';
 import {
   CheckCircle2, Eye, EyeOff, Lock, Mail, User,
   ShieldCheck, Send
@@ -88,7 +87,7 @@ const PasswordStrength: React.FC<{ password: string }> = ({ password }) => {
 };
 
 // ─── Shared input base class ─────────────────────────────────────────────────
-const inputBase = 'w-full bg-brand-dark border border-brand-gold/20 focus:border-brand-gold rounded-xl py-3.5 text-sm text-white outline-none transition-all placeholder:text-white/20 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]';
+const inputBase = 'w-full bg-brand-dark border border-brand-gold/20 focus:border-brand-gold rounded-xl py-3 sm:py-3.5 text-sm text-white outline-none transition-all placeholder:text-white/20 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]';
 
 // ─── Reusable input ───────────────────────────────────────────────────────────
 const Field: React.FC<{
@@ -194,7 +193,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       // Extract outlet code from path: /access/OUTL01 → OUTL01
       const outletCode = path.replace('/access/', '').split('/')[0] || '';
       // Look up personnel by access_code (token)
-      supabase.from('personnel').select('*').eq('access_code', token.toUpperCase()).maybeSingle()
+      Promise.resolve(supabase.from('personnel').select('*').eq('access_code', token.toUpperCase()).maybeSingle())
         .then(({ data }) => {
           if (data) {
             setInviteData({
@@ -390,9 +389,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
           {/* Main content */}
           <div className="flex-1 flex flex-col justify-center items-center gap-10 text-center">
 
-            {/* Logo icon — click to go home */}
+            {/* Logo — click to go home */}
             <button onClick={() => onNavigate(Page.HOME)} className="hover:opacity-80 transition-opacity">
-              <Logo size="xl" />
+              <div className="w-28 h-28 xl:w-32 xl:h-32">
+                <img src="/logo.png" alt="Ecometricus" className="w-full h-full object-contain" />
+              </div>
             </button>
 
             {/* Tagline */}
@@ -433,30 +434,35 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       {/* ── Right form panel ─── */}
       <div className="flex-1 flex flex-col overflow-y-auto bg-brand-dark">
 
-        {/* Mobile logo */}
-        <div className="lg:hidden flex items-center justify-center p-6">
-          <button onClick={() => onNavigate(Page.HOME)} className="hover:opacity-80 transition-opacity">
-            <Logo size="lg" />
-          </button>
-        </div>
+        {/* Mobile logo — hidden, moved into centered container below */}
 
-        <div className="flex-1 flex items-center justify-center px-6 py-10">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
           <div className="w-full max-w-sm">
+
+            {/* Mobile logo — inside centered container */}
+            <div className="lg:hidden flex justify-center mb-6">
+              <button onClick={() => onNavigate(Page.HOME)} className="hover:opacity-80 transition-opacity">
+                <div className="w-14 h-14 sm:w-16 sm:h-16">
+                  <img src="/logo.png" alt="Ecometricus" className="w-full h-full object-contain" />
+                </div>
+              </button>
+            </div>
 
             {/* ── Check-your-email confirmation screen ── */}
             {successMsg === 'confirmation_sent' && (
-              <div className="flex flex-col items-center text-center gap-6 py-8">
-                <div className="relative w-20 h-20">
-                  <div className="w-20 h-20 rounded-2xl bg-brand-eco/10 border border-brand-eco/30 flex items-center justify-center">
-                    <Mail size={36} className="text-brand-eco" />
+              <div className="flex flex-col items-center text-center gap-5 sm:gap-6 py-4 sm:py-8">
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-brand-eco/10 border border-brand-eco/30 flex items-center justify-center">
+                    <Mail size={28} className="text-brand-eco sm:hidden" />
+                    <Mail size={36} className="text-brand-eco hidden sm:block" />
                   </div>
                   <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-brand-eco border-2 border-brand-dark flex items-center justify-center">
                     <CheckCircle2 size={11} className="text-brand-dark" />
                   </span>
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-geometric font-bold text-white">{t('auth.checkInbox')}</h2>
-                  <p className="text-sm text-white/40 leading-relaxed max-w-sm">
+                  <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white">{t('auth.checkInbox')}</h2>
+                  <p className="text-xs sm:text-sm text-white/40 leading-relaxed max-w-sm">
                     {t('auth.confirmationSent', { email })}
                   </p>
                 </div>
@@ -498,15 +504,15 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                 {/* Header */}
                 {isForgot ? (
                   <div className="space-y-1">
-                    <h1 className="text-2xl font-geometric font-bold text-white">{t('auth.forgotPassword')}</h1>
-                    <p className="text-sm text-white/40">{t('auth.forgotPasswordDesc')}</p>
+                    <h1 className="text-xl sm:text-2xl font-geometric font-bold text-white">{t('auth.forgotPassword')}</h1>
+                    <p className="text-xs sm:text-sm text-white/40">{t('auth.forgotPasswordDesc')}</p>
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <h1 className="text-2xl font-geometric font-bold text-white">
+                    <h1 className="text-xl sm:text-2xl font-geometric font-bold text-white">
                       {isSignIn ? t('auth.welcomeBack') : t('auth.createAccount')}
                     </h1>
-                    <p className="text-sm text-white/40">
+                    <p className="text-xs sm:text-sm text-white/40">
                       {isSignIn ? t('auth.signInAccount') : t('auth.setUpAccount')}
                     </p>
                   </div>
@@ -545,7 +551,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                 )}
 
                 {/* Form card */}
-                <form onSubmit={handleSubmit} className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-4 sm:p-6 space-y-4">
 
                   {/* Invite banner */}
                   {isInvite && isSignUp && (
@@ -616,7 +622,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   <button
                     type="submit"
                     disabled={isLoading || (isSignUp && !acceptTerms)}
-                    className="w-full flex items-center justify-center gap-2.5 bg-brand-eco text-brand-dark py-3.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all shadow-[0_6px_20px_rgba(119,177,57,0.3)] disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2.5 bg-brand-eco text-brand-dark py-3 sm:py-3.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all shadow-[0_6px_20px_rgba(119,177,57,0.3)] disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (
                       <><div className="w-4 h-4 border-2 border-brand-dark/30 border-t-brand-dark rounded-full animate-spin" />

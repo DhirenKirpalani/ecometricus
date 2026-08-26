@@ -171,29 +171,29 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center px-6 py-24">
-        <div className="max-w-xl w-full text-center space-y-8 animate-in fade-in zoom-in duration-500">
+      <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center px-4 py-16 sm:py-24">
+        <div className="max-w-xl w-full text-center space-y-6 sm:space-y-8 animate-in fade-in zoom-in duration-500">
           <div className="flex justify-center">
-            <div className="w-24 h-24 rounded-full bg-brand-eco/15 border-2 border-brand-eco flex items-center justify-center">
-              <Check className="text-brand-eco" size={48} strokeWidth={2.5} />
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-brand-eco/15 border-2 border-brand-eco flex items-center justify-center">
+              <Check className="text-brand-eco" size={40} strokeWidth={2.5} />
             </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-geometric font-black text-brand-gold tracking-widest uppercase">
+          <h1 className="text-2xl sm:text-4xl font-geometric font-black text-brand-gold tracking-widest uppercase">
             Thank You
           </h1>
-          <p className="text-base md:text-lg font-body text-white/80 leading-relaxed">
+          <p className="text-sm sm:text-lg font-body text-white/80 leading-relaxed">
             We sincerely appreciate your participation in this survey. Your input is invaluable in helping us explore how Ecometricus and AI can transform the F&B department processes. We invite you to stay engaged for the soon to come launch of the app.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center pt-4">
             <button
               onClick={() => onNavigate(Page.HOME)}
-              className="px-8 py-4 bg-brand-eco hover:bg-brand-eco/90 text-brand-dark font-geometric font-bold tracking-wide uppercase text-sm rounded-full transition-all shadow-[0_4px_14px_0_rgba(119,177,57,0.39)] hover:-translate-y-0.5"
+              className="px-6 sm:px-8 py-3.5 sm:py-4 bg-brand-eco hover:bg-brand-eco/90 text-brand-dark font-geometric font-bold tracking-wide uppercase text-sm rounded-full transition-all shadow-[0_4px_14px_0_rgba(119,177,57,0.39)] hover:-translate-y-0.5"
             >
               Back to Home
             </button>
             <button
               onClick={() => { setSubmitted(false); setAnswers({}); setProfile({}); setAttemptedSubmit(false); }}
-              className="px-8 py-4 border-2 border-brand-gold/50 text-brand-gold hover:bg-brand-gold/10 font-geometric font-bold tracking-wide uppercase text-sm rounded-full transition-all"
+              className="px-6 sm:px-8 py-3.5 sm:py-4 border-2 border-brand-gold/50 text-brand-gold hover:bg-brand-gold/10 font-geometric font-bold tracking-wide uppercase text-sm rounded-full transition-all"
             >
               Submit Another
             </button>
@@ -207,10 +207,10 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
     <div id="assessment-top" className="min-h-screen bg-brand-dark text-white">
       {/* Sticky progress bar */}
       <div className="sticky top-0 z-30 bg-brand-dark/95 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-3xl mx-auto px-6 py-3 flex items-center gap-4">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => onNavigate(Page.HOME)}
-            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-white/60 hover:text-brand-gold transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-white/60 hover:text-brand-gold transition-colors shrink-0"
           >
             <ChevronLeft size={16} /> Back
           </button>
@@ -220,13 +220,13 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
               style={{ width: `${progress}%` }}
             />
           </div>
-          <span className="text-xs font-bold text-brand-gold tabular-nums">{progress}%</span>
+          <span className="text-xs font-bold text-brand-gold tabular-nums shrink-0">{progress}%</span>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-3xl mx-auto px-6 pb-32">
+      <form onSubmit={handleSubmit} className="max-w-3xl mx-auto px-4 sm:px-6 pb-24">
         {/* Cover */}
-        <div className="relative h-40 sm:h-56 -mx-6 mb-0 overflow-hidden">
+        <div className="relative h-40 sm:h-56 -mx-4 sm:-mx-6 mb-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-brand-eco/40 via-brand-dark to-brand-gold/20" />
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, rgba(200,164,19,0.4), transparent 50%), radial-gradient(circle at 80% 70%, rgba(119,177,57,0.4), transparent 50%)' }} />
           <div className="relative h-full flex flex-col items-center justify-center text-center px-6">
@@ -238,8 +238,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
         </div>
 
         {/* Header card */}
-        <div className="bg-brand-dark/60 border border-brand-gold/20 rounded-b-3xl rounded-t-none px-6 sm:px-10 py-10 sm:py-12 -mt-1 shadow-2xl">
-          <h1 className="text-2xl sm:text-3xl font-geometric font-black text-white tracking-wide uppercase leading-tight">
+        <div className="bg-brand-dark/60 border border-brand-gold/20 rounded-b-3xl rounded-t-none px-4 sm:px-10 py-8 sm:py-12 -mt-1 shadow-2xl">
+          <h1 className="text-xl sm:text-3xl font-geometric font-black text-white tracking-wide uppercase leading-tight">
             F&B Sustainability Intelligence Assessment
           </h1>
           <p className="mt-3 text-sm sm:text-base text-white/70 font-body leading-relaxed">
@@ -283,8 +283,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
         {/* Sections */}
         <div className="mt-8 space-y-8">
           {sections.map(section => (
-            <div key={section.id} className="bg-brand-dark/60 border border-brand-gold/15 rounded-3xl px-6 sm:px-10 py-8 sm:py-10 shadow-xl">
-              <h2 className="text-lg sm:text-xl font-geometric font-black text-brand-gold tracking-wide uppercase mb-6 pb-4 border-b border-brand-gold/15">
+            <div key={section.id} className="bg-brand-dark/60 border border-brand-gold/15 rounded-3xl px-4 sm:px-10 py-6 sm:py-10 shadow-xl">
+              <h2 className="text-base sm:text-xl font-geometric font-black text-brand-gold tracking-wide uppercase mb-5 sm:mb-6 pb-4 border-b border-brand-gold/15">
                 {section.title}
               </h2>
               <div className="space-y-8">
@@ -304,13 +304,13 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
         </div>
 
         {/* Thank you note + submit */}
-        <div className="mt-8 bg-brand-dark/60 border border-brand-gold/20 rounded-3xl px-6 sm:px-10 py-8 sm:py-10 shadow-xl text-center">
+        <div className="mt-8 bg-brand-dark/60 border border-brand-gold/20 rounded-3xl px-4 sm:px-10 py-6 sm:py-10 shadow-xl text-center">
           <p className="text-sm text-white/70 leading-relaxed max-w-xl mx-auto">
             "We sincerely appreciate your participation in this survey. Your input is invaluable in helping us explore how Ecometricus and AI can transform the F&B department processes. We invite you to stay engaged for the soon to come launch of the app."
           </p>
           <button
             type="submit"
-            className="mt-6 inline-flex items-center gap-3 px-10 py-4 bg-brand-eco hover:bg-brand-eco/90 text-white font-geometric font-bold tracking-widest uppercase text-sm rounded-full transition-all shadow-[0_8px_24px_rgba(119,177,57,0.4)] hover:-translate-y-0.5"
+            className="mt-6 inline-flex items-center gap-3 px-8 sm:px-10 py-3.5 sm:py-4 bg-brand-eco hover:bg-brand-eco/90 text-white font-geometric font-bold tracking-widest uppercase text-sm rounded-full transition-all shadow-[0_8px_24px_rgba(119,177,57,0.4)] hover:-translate-y-0.5"
           >
             <Send size={16} /> Save Questionnaire
           </button>

@@ -72,7 +72,10 @@ import {
   Utensils,
   Star,
   Percent,
-  Receipt
+  Receipt,
+  Store,
+  User,
+  Briefcase
 } from 'lucide-react';
 import FoodWasteChart from './FoodWasteChart';
 import WaterUsageChart from './WaterUsageChart';
@@ -779,6 +782,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [isEditingAudit, setIsEditingAudit] = useState(false);
   const [isEditingBenchmarks, setIsEditingBenchmarks] = useState(false);
   const [isEditingApis, setIsEditingApis] = useState(false);
+  const [isEditingSustainability, setIsEditingSustainability] = useState(false);
+  const [isEditingFnB, setIsEditingFnB] = useState(false);
 
   // Enrollment Form State
   const [enrollId, setEnrollId] = useState<string | null>(null);
@@ -818,6 +823,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   // ── Audit Log ──
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditFilter, setAuditFilter] = useState<string | null>(null);
 
   // Log an action to the audit_logs table (silently fails if table doesn't exist yet)
   const logAction = async (
@@ -1163,6 +1169,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   });
 
   const [paramsUpdatedAt, setParamsUpdatedAt] = useState<string | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
+  const prevLoggedParams = useRef<typeof params | null>(null);
 
   // Dynamic fetch whenever the selected outlet changes
   useEffect(() => {
@@ -1635,11 +1645,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAutoSaveReady = useRef(false); // Skip the initial hydration load
 
-  // Lightweight save — only company_settings row (no outlets, no toast, no edit-lock toggle)
+  // Lightweight save — company_settings row + outlets (no toast, no edit-lock toggle)
   const persistCompanyAndAudit = async (isAutoSave = false) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+
+      // 1. Company settings + audit config
       const { error } = await supabase.from('company_settings').upsert({
         user_id: session.user.id,
         admin_name: user.fullName,
@@ -1653,6 +1665,29 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         audit_comments: auditReport.comments
       }, { onConflict: 'user_id' });
       if (error) throw error;
+
+      // 2. Sync outlets
+      for (const o of outlets) {
+        if (!o.name) continue;
+        const { data: existingDb } = await supabase.from('outlets')
+          .select('id').eq('user_id', session.user.id).eq('outlet_name', o.name).maybeSingle();
+        if (existingDb?.id) {
+          await supabase.from('outlets').update({
+            outlet_id: o.code,
+            location: o.location || company.city,
+            color_hex: o.color_hex || '#77B139'
+          }).eq('id', existingDb.id);
+        } else {
+          await supabase.from('outlets').insert({
+            user_id: session.user.id,
+            outlet_name: o.name,
+            outlet_id: o.code,
+            location: o.location || company.city,
+            color_hex: o.color_hex || '#77B139'
+          });
+        }
+      }
+
       if (isAutoSave) {
         setSaveStatus('success');
         setTimeout(() => setSaveStatus('idle'), 1500);
@@ -1663,7 +1698,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     }
   };
 
-  // Debounced auto-save — triggers 3s after company/auditReport changes while editing
+  // Debounced auto-save — triggers 3s after company/auditReport/outlets changes while editing
   useEffect(() => {
     // Don't auto-save until the user has actually started editing
     if (!isAutoSaveReady.current) return;
@@ -1680,7 +1715,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   }, [company.name, company.region, company.city, company.currentOutletName,
       auditReport.cycle, auditReport.fromDate, auditReport.toDate,
       auditReport.outletSelection, auditReport.comments,
-      isEditingIdentity, isEditingAudit]);
+      isEditingIdentity, isEditingAudit, outlets]);
 
   // Enable auto-save after first edit (not on initial load)
   useEffect(() => {
@@ -1812,6 +1847,87 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     }, 1000);
   };
 
+  // ── Auto-save: debounce 1.5 s after any params change ──
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    setAutoSaveStatus('saving');
+    autoSaveTimer.current = setTimeout(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { setAutoSaveStatus('idle'); return; }
+
+        const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
+          ? (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet')
+          : 'Unknown Outlet';
+
+        await supabase.from('benchmarks').upsert({
+          user_id: session.user.id,
+          outlet_name: selectedOutletName,
+          food_waste_target_kg: params.wasteTarget,
+          energy_limit_kwh: params.energyTarget,
+          water_usage_liters: params.waterTarget,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id, outlet_name' });
+
+        if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
+          setManualOutletSettings(prev => ({
+            ...prev,
+            [params.selectedManualOutlet]: {
+              wasteTarget: params.wasteTarget,
+              waterTarget: params.waterTarget,
+              energyTarget: params.energyTarget,
+              foodCostTarget: params.foodCostTarget,
+              laborCostTarget: params.laborCostTarget,
+              wasteUnit: params.wasteUnit
+            }
+          }));
+        }
+
+        // ── Audit log: record only the fields that changed since last save ──
+        const prev = prevLoggedParams.current;
+        const changes: Record<string, { from: any; to: any }> = {};
+        const trackedKeys: (keyof typeof params)[] = [
+          'wasteTarget', 'waterTarget', 'energyTarget',
+          'foodCostTarget', 'laborCostTarget', 'wasteUnit',
+          'benchmarkRegion', 'selectedManualOutlet',
+          'posApiKey', 'crmApiKey', 'pmsApiKey',
+          'alertsActive', 'milaLogic'
+        ];
+        for (const k of trackedKeys) {
+          if (prev && prev[k] !== params[k]) {
+            // Don't log raw API key values — just whether it was set/cleared
+            if (k === 'posApiKey' || k === 'crmApiKey' || k === 'pmsApiKey') {
+              changes[k] = { from: prev[k] ? 'set' : 'empty', to: params[k] ? 'set' : 'empty' };
+            } else {
+              changes[k] = { from: prev[k], to: params[k] };
+            }
+          }
+        }
+        if (Object.keys(changes).length > 0) {
+          const changedFields = Object.keys(changes).join(', ');
+          logAction(
+            'benchmarks_updated',
+            'benchmark',
+            params.benchmarkRegion,
+            `Auto-saved benchmark parameters (${params.benchmarkRegion}) — changed: ${changedFields}`,
+            changes
+          );
+        }
+        prevLoggedParams.current = { ...params };
+
+        const now = new Date();
+        setParamsUpdatedAt(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus('idle'), 2500);
+      } catch {
+        setAutoSaveStatus('idle');
+      }
+    }, 1500);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
+
   const handleGetReport = () => {
     showToast(`Generating ${auditReport.cycle} report for ${auditReport.outletSelection}…`, 'info');
   };
@@ -1861,7 +1977,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // Benchmarking Engine Values derived from selected profile
   const isManualBenchmark = params.benchmarkRegion === 'Manual';
   const effectiveParams = useMemo(() => {
-    if (!isManualBenchmark && BENCHMARK_PROFILES[params.benchmarkRegion]) {
+    // When editing, always use raw params so inputs are live and responsive
+    if (!isEditingSustainability && !isEditingFnB && !isManualBenchmark && BENCHMARK_PROFILES[params.benchmarkRegion]) {
       const profile = BENCHMARK_PROFILES[params.benchmarkRegion];
       return {
         ...params,
@@ -1873,9 +1990,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       };
     }
     return params;
-  }, [params, isManualBenchmark]);
+  }, [params, isManualBenchmark, isEditingSustainability, isEditingFnB]);
 
-  const isMetricCardEditable = (isManualBenchmark && isEditingBenchmarks);
+  const isSustainabilityEditable = isEditingSustainability;
+  const isFnBEditable = isEditingFnB;
 
   // DUPLICATION: Session Data Logic for Mila Actionable Intelligence
   const [sessionWasteEntries, setSessionWasteEntries] = useState<any[]>([]);
@@ -2021,7 +2139,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-white/6"
         style={{ background: 'linear-gradient(180deg, #0e1f1c 0%, rgba(14,31,28,0.97) 100%)', backdropFilter: 'blur(20px)' }}>
 
-        <div className="max-w-[1920px] mx-auto h-20 px-4 sm:px-6 flex items-center justify-between gap-4">
+        <div className="max-w-[1920px] mx-auto h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-3">
 
           {/* ── Left: Logo ── */}
           <button
@@ -2033,31 +2151,31 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           </button>
 
           {/* ── Right: user + logout ── */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
 
             {/* Avatar */}
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
-              <span className="text-brand-gold text-xs font-black leading-none tracking-tight">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
+              <span className="text-brand-gold text-[10px] sm:text-xs font-black leading-none tracking-tight">
                 {(user.fullName?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('') || 'A').toUpperCase()}
               </span>
             </div>
 
             {/* Role only — full name is already in the greeting below */}
-            <p className="hidden sm:block text-[11px] text-brand-gold/70 font-semibold tracking-widest uppercase">
+            <p className="hidden md:block text-[11px] text-brand-gold/70 font-semibold tracking-widest uppercase">
               {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
             </p>
 
             {/* Divider */}
-            <div className="hidden sm:block w-px h-7 bg-white/8" />
+            <div className="hidden md:block w-px h-7 bg-white/8" />
 
             {/* Logout */}
             <button
               onClick={onLogout}
               title="Log out"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-white/15 text-white/60 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg border border-white/15 text-white/60 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
             >
               <LogOut size={14} />
-              <span className="text-[11px] font-semibold">Log out</span>
+              <span className="hidden sm:inline text-[11px] font-semibold">Log out</span>
             </button>
           </div>
         </div>
@@ -2067,7 +2185,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       <div className={`transition-all duration-1000 flex flex-col min-h-screen ${isPendingConsent ? 'blur-2xl grayscale pointer-events-none' : ''}`}>
         <div className="flex-grow flex flex-col bg-[#0a1a17] text-gray-100 font-sans selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
 
-      <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8 flex-grow overflow-hidden">
+      <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-8 flex-grow overflow-hidden">
 
         {/* Greeting — below navbar, above nav tabs */}
         {(() => {
@@ -2076,16 +2194,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           const firstName = user.fullName?.split(' ')[0] ?? 'there';
           return (
             <div className="flex items-end justify-between gap-4 shrink-0">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-geometric font-bold text-white leading-none tracking-tight">
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-3xl font-geometric font-bold text-white leading-none tracking-tight">
                   {greeting}, <span className="text-brand-gold font-black">{firstName}</span>
                 </h2>
-                <p className="text-[11px] font-medium text-white/35 mt-2 tracking-wide flex items-center gap-2">
+                <p className="text-[10px] sm:text-[11px] font-medium text-white/35 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
                   <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                   <span className="w-1 h-1 rounded-full bg-white/15" />
                   <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   <span className="w-1 h-1 rounded-full bg-white/15" />
-                  <span>{company.currentOutletName || 'All Outlets'}</span>
+                  <span className="truncate">{company.currentOutletName || 'All Outlets'}</span>
                 </p>
               </div>
             </div>
@@ -2094,10 +2212,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
         {/* Top navigation card */}
         {/* Section nav — pill tabs */}
-        <div className="w-full flex items-center justify-between gap-4 shrink-0 border-b border-white/6 pb-1">
+        <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 border-b border-white/6 pb-1">
 
           {/* Nav tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide w-full sm:w-auto">
             <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
             <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
             <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
@@ -2105,9 +2223,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 pb-1">
-            {/* Save button — not shown on Team (auto-save + inline enroll button) or Audit Log */}
-            {activeView !== PortalView.DASHBOARD && activeView !== PortalView.SYSTEM && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && (
+          <div className="flex items-center gap-2 shrink-0 pb-1 self-end sm:self-auto">
+            {/* Benchmarks tab: auto-save indicator */}
+            {activeView === PortalView.PARAMETERS && (
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/20'}`}>
+                {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
+                {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : 'Auto-save on'}
+              </div>
+            )}
+            {/* Company tab: auto-save indicator */}
+            {activeView === PortalView.IDENTITY && (
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/20'}`}>
+                {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
+                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
+              </div>
+            )}
+            {/* Save button — not shown on Team, Audit Log, Dashboard, Benchmarks or Company */}
+            {activeView !== PortalView.DASHBOARD && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && (
               <button
                 onClick={handleSaveAll}
                 disabled={saveStatus !== 'idle'}
@@ -2126,20 +2258,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               </div>
             )}
 
-            {/* System diagnostics — icon-only */}
-            <button
-              onClick={() => setActiveView(PortalView.SYSTEM)}
-              title="System Diagnostics"
-              className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all ${activeView === PortalView.SYSTEM ? 'bg-brand-gold/15 border-brand-gold/40 text-brand-gold' : 'border-white/8 text-white/25 hover:border-white/20 hover:text-white/50'}`}
-            >
-              <Database size={15} />
-            </button>
+            {/* System diagnostics button removed */}
           </div>
         </div>
 
         <>
           <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-hidden">
-            <div className="bg-brand-dark border border-white/8 rounded-2xl p-5 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
+            <div className="bg-brand-dark border border-white/8 rounded-2xl p-3 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
               {/* Main View Header */}
               <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-5 shrink-0">
                 <div>
@@ -2148,8 +2273,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
-                    {activeView === PortalView.AUDIT_LOG && "Activity Trail & Action History"}
-                    {activeView === PortalView.SYSTEM && "Raw System Response Stream"}
+                    {activeView === PortalView.AUDIT_LOG && "System Activity & Change Tracking"}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white/90 leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
@@ -2157,7 +2281,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.TEAM && "Staff Registry"}
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
                     {activeView === PortalView.AUDIT_LOG && "Audit Log"}
-                    {activeView === PortalView.SYSTEM && "System Diagnostics"}
                   </h3>
                 </div>
               </div>
@@ -2199,7 +2322,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {/* MILA ACTIONABLE INTELLIGENCE - ADMIN CUMULATIVE VIEW */}
                           {/* "Mount this duplicate at the absolute top of the Overview tab content... directly above the Earth Keeper Engagement % chart" */}
                           <div className="w-full max-w-full mb-8">
-                            <div className="bg-[#0e1f1c] border border-brand-gold/25 rounded-2xl p-6 sm:p-8 relative overflow-hidden group shadow-xl">
+                            <div className="bg-[#0e1f1c] border border-brand-gold/25 rounded-2xl p-4 sm:p-8 relative overflow-hidden group shadow-xl">
                               {/* Subtle glow */}
                               <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'radial-gradient(ellipse at 80% 0%, rgba(200,164,19,0.05), transparent 55%)'}} />
 
@@ -2312,7 +2435,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                             return (
                               <div className="w-full max-w-full mb-8">
-                                <div className="bg-[#0e1f1c] border border-white/8 rounded-2xl p-6 relative overflow-hidden shadow-xl">
+                                <div className="bg-[#0e1f1c] border border-white/8 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
 
                                   {/* HEADER SECTION */}
                                   <div className="flex justify-between items-start mb-6">
@@ -2558,17 +2681,57 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 {activeView === PortalView.IDENTITY && (
                   <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
 
+                    {/* ── Completion Progress Bar ── */}
+                    {(() => {
+                      const steps = [
+                        { done: !!company.region, label: 'Region' },
+                        { done: !!company.city, label: 'City' },
+                        { done: !!company.name, label: 'Company Name' },
+                        { done: outlets.filter(o => o.name && o.code).length > 0, label: 'Outlets' },
+                        { done: !!auditReport.cycle, label: 'Audit Cycle' },
+                      ];
+                      const completed = steps.filter(s => s.done).length;
+                      const pct = Math.round((completed / steps.length) * 100);
+                      return (
+                        <div className="rounded-2xl border border-white/8 bg-gradient-to-r from-brand-gold/5 to-transparent p-5">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center">
+                                <Trophy size={15} className="text-brand-gold" />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Profile Completion</p>
+                                <p className="text-[9px] text-white/30">{completed} of {steps.length} steps complete</p>
+                              </div>
+                            </div>
+                            <span className="text-2xl font-geometric font-black text-brand-gold tabular-nums">{pct}%</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                            <div className="h-full rounded-full bg-gradient-to-r from-brand-eco to-brand-gold transition-all duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 mt-3">
+                            {steps.map((s, i) => (
+                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-white/3 border border-white/5'}`}>
+                                {s.done ? <CheckCircle2 size={9} /> : <div className="w-2 h-2 rounded-full border border-current" />}
+                                {s.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* ── Company Identity Card ── */}
                     <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.05)]">
                       {/* Card header */}
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-6 sm:px-8 py-5 flex items-center justify-between border-b border-brand-gold/15">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between border-b border-brand-gold/15 gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
                             <Building2 size={18} className="text-brand-gold" />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Profile Settings</p>
-                            <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Company Identity</h4>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5 truncate">Company Identity</h4>
                           </div>
                         </div>
                         <button
@@ -2580,13 +2743,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </button>
                       </div>
 
-                      <div className="p-6 sm:p-8 space-y-6 bg-brand-dark/40">
-                        {/* Location group */}
-                        <div className="space-y-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
-                            <span className="w-3 h-px bg-white/20" />Location
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 bg-brand-dark/40">
+                        {/* ── Step 1: Location ── */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${company.region && company.city ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-gold/15 text-brand-gold border border-brand-gold/30'}`}>
+                              {company.region && company.city ? <CheckCircle2 size={14} /> : '1'}
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <MapPin size={13} className="text-brand-gold/50" />
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Location</p>
+                            </div>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Region</label>
                               <CustomSelect
@@ -2611,14 +2781,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                         </div>
 
-                        <div className="h-px bg-white/5" />
-
-                        {/* Property group */}
-                        <div className="space-y-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
-                            <span className="w-3 h-px bg-white/20" />Property
-                          </p>
-                          <div className="space-y-1.5">
+                        {/* ── Step 2: Property ── */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${company.name ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-gold/15 text-brand-gold border border-brand-gold/30'}`}>
+                              {company.name ? <CheckCircle2 size={14} /> : '2'}
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <Building2 size={13} className="text-brand-gold/50" />
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Property</p>
+                            </div>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                          </div>
+                          <div className="space-y-1.5 pl-2 sm:pl-10">
                             <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Hotel / Company Name</label>
                             <input
                               type="text"
@@ -2630,14 +2805,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                         </div>
 
-                        <div className="h-px bg-white/5" />
+                        {/* ── Step 3: Outlets ── */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${outlets.filter(o => o.name && o.code).length > 0 ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-gold/15 text-brand-gold border border-brand-gold/30'}`}>
+                              {outlets.filter(o => o.name && o.code).length > 0 ? <CheckCircle2 size={14} /> : '3'}
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <Store size={13} className="text-brand-gold/50" />
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Outlets</p>
+                              {outlets.filter(o => o.name && o.code).length > 0 && (
+                                <span className="text-[9px] font-bold text-brand-eco bg-brand-eco/10 px-2 py-0.5 rounded-full border border-brand-eco/20">{outlets.filter(o => o.name && o.code).length} Active</span>
+                              )}
+                            </div>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                          </div>
 
-                        {/* Outlet registration */}
-                        <div className="space-y-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
-                            <span className="w-3 h-px bg-white/20" />Outlets
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Add Outlet Name</label>
                               <input
@@ -2661,27 +2845,32 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <button
                                   onClick={handleAddOutlet}
                                   disabled={!isEditingIdentity}
-                                  className={`w-10 h-10 rounded-xl bg-brand-eco text-brand-dark hover:brightness-110 active:scale-95 transition-all shadow-lg flex items-center justify-center shrink-0 ${!isEditingIdentity ? 'opacity-40' : ''}`}
+                                  className={`flex items-center gap-1.5 px-4 h-[46px] rounded-xl bg-brand-eco text-brand-dark text-[10px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shrink-0 ${!isEditingIdentity ? 'opacity-40' : ''}`}
                                 >
-                                  <Plus size={18} strokeWidth={3} />
+                                  <Plus size={16} strokeWidth={3} />
+                                  Add
                                 </button>
                               </div>
                             </div>
                           </div>
 
-                          {/* Active outlets */}
+                          {/* Active outlets — gamified cards */}
                           {outlets.filter(o => o.name && o.code).length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                              {outlets.filter(o => o.name && o.code).map((o) => (
-                                <div key={o.code} className="flex items-center justify-between px-4 py-3 bg-brand-gold/5 border border-brand-gold/15 rounded-xl group hover:border-brand-gold/35 transition-all">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-brand-eco" />
-                                    <div>
-                                      <div className="text-[10px] font-bold text-white uppercase tracking-tight">{o.name}</div>
-                                      <div className="text-[9px] font-mono text-brand-gold/70">{o.code}</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2 sm:pl-10 pt-1">
+                              {outlets.filter(o => o.name && o.code).map((o, idx) => (
+                                <div key={o.code} className="group relative flex items-center gap-3 px-4 py-3.5 bg-gradient-to-br from-brand-gold/8 to-brand-gold/2 border border-brand-gold/15 rounded-xl hover:border-brand-gold/40 hover:from-brand-gold/12 transition-all overflow-hidden">
+                                  <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-brand-gold/5 to-transparent pointer-events-none" />
+                                  <div className="w-10 h-10 rounded-lg bg-brand-gold/15 border border-brand-gold/25 flex items-center justify-center shrink-0">
+                                    <Store size={16} className="text-brand-gold" />
+                                  </div>
+                                  <div className="flex-1 min-w-0 relative">
+                                    <div className="text-[11px] font-bold text-white uppercase tracking-tight truncate">{o.name}</div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[9px] font-mono font-bold text-brand-gold bg-brand-gold/10 px-1.5 py-0.5 rounded">{o.code}</span>
+                                      <span className="text-[8px] text-white/20 uppercase tracking-widest">Outlet #{String(idx + 1).padStart(2, '0')}</span>
                                     </div>
                                   </div>
-                                  <button onClick={() => handleRemoveOutlet(o.code)} className="text-white/20 hover:text-brand-alert p-1.5 rounded-lg hover:bg-brand-alert/10 transition-all">
+                                  <button onClick={() => handleRemoveOutlet(o.code)} className="relative w-8 h-8 rounded-lg flex items-center justify-center text-white/20 hover:text-brand-alert hover:bg-brand-alert/10 transition-all shrink-0">
                                     <Trash2 size={13} />
                                   </button>
                                 </div>
@@ -2694,14 +2883,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                     {/* ── Audit Report Card ── */}
                     <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_40px_rgba(119,177,57,0.04)]">
-                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-6 sm:px-8 py-5 flex items-center justify-between border-b border-brand-eco/15">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center shrink-0">
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between border-b border-brand-eco/15 gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center shrink-0">
                             <FileText size={18} className="text-brand-eco" />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Compliance</p>
-                            <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Audit Report</h4>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Audit Report</h4>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -2714,63 +2903,93 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </button>
                           <button
                             onClick={handleGetReport}
-                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-eco text-brand-dark text-[9px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all"
+                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-eco text-brand-dark text-[9px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-[0_4px_15px_rgba(119,177,57,0.25)]"
                           >
+                            <Zap size={12} />
                             Get Report
                           </button>
                         </div>
                       </div>
 
-                      <div className="p-6 sm:p-8 space-y-5 bg-brand-dark/40">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Report Cycle</label>
-                            <CustomSelect
-                              value={auditReport.cycle}
-                              options={['Daily', 'Weekly', 'Monthly', 'Quarterly']}
-                              onChange={v => setAuditReport({ ...auditReport, cycle: v })}
-                              disabled={!isEditingAudit}
-                            />
+                      <div className="p-6 sm:p-8 space-y-6 bg-brand-dark/40">
+                        {/* Cycle + Outlet */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.cycle ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
+                              {auditReport.cycle ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Report Configuration</p>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Outlet Selection</label>
-                            <CustomSelect
-                              value={auditReport.outletSelection}
-                              options={['All outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
-                              onChange={v => setAuditReport({ ...auditReport, outletSelection: v })}
-                              disabled={!isEditingAudit}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">From Date</label>
-                            <CustomDatePicker
-                              value={auditReport.fromDate}
-                              onChange={v => setAuditReport({ ...auditReport, fromDate: v })}
-                              disabled={!isEditingAudit}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">To Date</label>
-                            <CustomDatePicker
-                              value={auditReport.toDate}
-                              onChange={v => setAuditReport({ ...auditReport, toDate: v })}
-                              disabled={!isEditingAudit}
-                            />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Report Cycle</label>
+                              <CustomSelect
+                                value={auditReport.cycle}
+                                options={['Daily', 'Weekly', 'Monthly', 'Quarterly']}
+                                onChange={v => setAuditReport({ ...auditReport, cycle: v })}
+                                disabled={!isEditingAudit}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Outlet Selection</label>
+                              <CustomSelect
+                                value={auditReport.outletSelection}
+                                options={['All outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
+                                onChange={v => setAuditReport({ ...auditReport, outletSelection: v })}
+                                disabled={!isEditingAudit}
+                              />
+                            </div>
                           </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Audit Comments</label>
-                          <textarea
-                            placeholder="Add operational notes or compliance details for the current reporting cycle..."
-                            value={auditReport.comments}
-                            onChange={e => setAuditReport({ ...auditReport, comments: e.target.value })}
-                            disabled={!isEditingAudit}
-                            className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
-                          />
+                        {/* Date range */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.fromDate && auditReport.toDate ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
+                              {auditReport.fromDate && auditReport.toDate ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Date Range</p>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">From Date</label>
+                              <CustomDatePicker
+                                value={auditReport.fromDate}
+                                onChange={v => setAuditReport({ ...auditReport, fromDate: v })}
+                                disabled={!isEditingAudit}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">To Date</label>
+                              <CustomDatePicker
+                                value={auditReport.toDate}
+                                onChange={v => setAuditReport({ ...auditReport, toDate: v })}
+                                disabled={!isEditingAudit}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Comments */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.comments ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
+                              {auditReport.comments ? <CheckCircle2 size={14} /> : <FileText size={13} />}
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Audit Comments</p>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                          </div>
+                          <div className="space-y-1.5 pl-2 sm:pl-10">
+                            <textarea
+                              placeholder="Add operational notes or compliance details for the current reporting cycle..."
+                              value={auditReport.comments}
+                              onChange={e => setAuditReport({ ...auditReport, comments: e.target.value })}
+                              disabled={!isEditingAudit}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2786,13 +3005,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {/* ── Audit Log ── */}
                     <div className="rounded-2xl overflow-hidden border border-white/8">
                       {/* Header */}
-                      <div className="bg-gradient-to-r from-brand-gold/8 to-transparent px-6 sm:px-8 py-5 border-b border-brand-gold/15 flex items-center gap-3">
+                      <div className="bg-gradient-to-r from-brand-gold/8 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-gold/15 flex items-center gap-3 flex-wrap">
                         <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
                           <ScrollText size={18} className="text-brand-gold" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/50">Activity Trail</p>
-                          <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Audit Log</h4>
                         </div>
                         {auditLogs.length > 0 && (
                           <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-white/8">
@@ -2801,13 +3016,49 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         )}
                         <button
                           onClick={fetchAuditLogs}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors text-[10px] font-bold uppercase tracking-widest"
+                          className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors text-[10px] font-bold uppercase tracking-widest"
                           title="Refresh"
                         >
                           <RefreshCcw size={13} />
                           <span className="hidden sm:inline">Refresh</span>
                         </button>
                       </div>
+
+                      {/* Filter chips */}
+                      {auditLogs.length > 0 && (() => {
+                        const actionTypes = [...new Set(auditLogs.map((l: any) => l.action))];
+                        const labelMap: Record<string, string> = {
+                          outlet_added: 'Outlets',
+                          outlet_removed: 'Outlets',
+                          settings_saved: 'Settings',
+                          personnel_enrolled: 'Personnel',
+                          personnel_updated: 'Personnel',
+                          personnel_removed: 'Personnel',
+                          benchmarks_saved: 'Benchmarks',
+                          benchmarks_updated: 'Benchmarks',
+                        };
+                        const categories = [...new Set(actionTypes.map((a: string) => labelMap[a as string] || 'Other'))];
+                        return (
+                          <div className="px-4 sm:px-8 py-3 border-b border-white/5 flex items-center gap-2 flex-wrap bg-brand-dark/20">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 mr-1">Filter</span>
+                            <button
+                              onClick={() => setAuditFilter(null)}
+                              className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
+                            >
+                              All
+                            </button>
+                            {categories.map(cat => (
+                              <button
+                                key={cat}
+                                onClick={() => setAuditFilter(cat)}
+                                className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
 
                       {/* Body */}
                       <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[600px] overflow-y-auto scrollbar-gold">
@@ -2819,85 +3070,137 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <p className="text-sm text-white/40 font-medium">No activity recorded yet</p>
                             <p className="text-[11px] text-white/25 mt-2 max-w-[280px]">Actions by you and your team — outlets, settings, personnel, benchmarks — will appear here in real time</p>
                           </div>
-                        ) : (
-                          <div className="relative">
-                            {/* Timeline line */}
-                            <div className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-white/10 via-white/5 to-transparent" />
+                        ) : (() => {
+                          const labelMap: Record<string, string> = {
+                            outlet_added: 'Outlets',
+                            outlet_removed: 'Outlets',
+                            settings_saved: 'Settings',
+                            personnel_enrolled: 'Personnel',
+                            personnel_updated: 'Personnel',
+                            personnel_removed: 'Personnel',
+                            benchmarks_saved: 'Benchmarks',
+                            benchmarks_updated: 'Benchmarks',
+                          };
+                          const filtered = auditFilter
+                            ? auditLogs.filter((l: any) => (labelMap[l.action] || 'Other') === auditFilter)
+                            : auditLogs;
 
-                            <div className="space-y-1">
-                              {auditLogs.map((log: any) => {
-                                const iconMap: Record<string, any> = {
-                                  outlet_added: Plus,
-                                  outlet_removed: Trash2,
-                                  settings_saved: Save,
-                                  personnel_enrolled: UserPlus,
-                                  personnel_updated: Edit2,
-                                  personnel_removed: Trash2,
-                                  benchmarks_saved: Target,
-                                };
-                                const colorMap: Record<string, string> = {
-                                  outlet_added: 'text-brand-eco bg-brand-eco/15 border-brand-eco/30',
-                                  outlet_removed: 'text-brand-alert bg-brand-alert/15 border-brand-alert/30',
-                                  settings_saved: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
-                                  personnel_enrolled: 'text-brand-eco bg-brand-eco/15 border-brand-eco/30',
-                                  personnel_updated: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
-                                  personnel_removed: 'text-brand-alert bg-brand-alert/15 border-brand-alert/30',
-                                  benchmarks_saved: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
-                                };
-                                const labelMap: Record<string, string> = {
-                                  outlet_added: 'Outlet Added',
-                                  outlet_removed: 'Outlet Removed',
-                                  settings_saved: 'Settings Saved',
-                                  personnel_enrolled: 'Personnel Enrolled',
-                                  personnel_updated: 'Personnel Updated',
-                                  personnel_removed: 'Personnel Removed',
-                                  benchmarks_saved: 'Benchmarks Saved',
-                                };
-                                const Icon = iconMap[log.action] || Activity;
-                                const color = colorMap[log.action] || 'text-white/40 bg-white/5 border-white/10';
-                                const label = labelMap[log.action] || log.action;
-                                const time = new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                                const initials = (log.actor_name || '?').split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
-                                return (
-                                  <div key={log.id} className="relative flex items-start gap-4 py-3 pl-1 group">
-                                    {/* Icon node on timeline */}
-                                    <div className={`relative z-10 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${color}`}>
-                                      <Icon size={15} />
+                          if (filtered.length === 0) {
+                            return (
+                              <div className="flex flex-col items-center justify-center py-16 text-center">
+                                <p className="text-sm text-white/30 font-medium">No {auditFilter?.toLowerCase()} activity</p>
+                                <p className="text-[11px] text-white/20 mt-1">Try a different filter</p>
+                              </div>
+                            );
+                          }
+
+                          // Group by date
+                          const groups: Record<string, any[]> = {};
+                          const today = new Date(); today.setHours(0, 0, 0, 0);
+                          const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+                          filtered.forEach((log: any) => {
+                            const d = new Date(log.created_at); d.setHours(0, 0, 0, 0);
+                            let key: string;
+                            if (d.getTime() === today.getTime()) key = 'Today';
+                            else if (d.getTime() === yesterday.getTime()) key = 'Yesterday';
+                            else key = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                            if (!groups[key]) groups[key] = [];
+                            groups[key].push(log);
+                          });
+
+                          return (
+                            <div className="space-y-6">
+                              {Object.entries(groups).map(([dateKey, logs]) => (
+                                <div key={dateKey}>
+                                  {/* Date header */}
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <Calendar size={11} className="text-brand-gold/50" />
+                                      <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">{dateKey}</span>
                                     </div>
+                                    <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{logs.length} {logs.length === 1 ? 'event' : 'events'}</span>
+                                  </div>
 
-                                    {/* Content card */}
-                                    <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-white/5 group-hover:border-white/10 group-hover:bg-white/5 transition-colors p-4">
-                                      {/* Top row: action label + time */}
-                                      <div className="flex items-center justify-between gap-3 mb-2">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${color.split(' ')[0]}`}>{label}</span>
-                                        <span className="text-[10px] text-white/30 font-medium shrink-0">{time}</span>
-                                      </div>
+                                  {/* Timeline entries */}
+                                  <div className="relative">
+                                    <div className="absolute left-[15px] top-3 bottom-3 w-px bg-gradient-to-b from-white/10 via-white/5 to-transparent" />
+                                    <div className="space-y-2">
+                                      {logs.map((log: any) => {
+                                        const iconMap: Record<string, any> = {
+                                          outlet_added: Plus,
+                                          outlet_removed: Trash2,
+                                          settings_saved: Save,
+                                          personnel_enrolled: UserPlus,
+                                          personnel_updated: Edit2,
+                                          personnel_removed: Trash2,
+                                          benchmarks_saved: Target,
+                                          benchmarks_updated: Target,
+                                        };
+                                        const colorMap: Record<string, string> = {
+                                          outlet_added: 'text-brand-eco bg-brand-eco/15 border-brand-eco/30',
+                                          outlet_removed: 'text-brand-alert bg-brand-alert/15 border-brand-alert/30',
+                                          settings_saved: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
+                                          personnel_enrolled: 'text-brand-eco bg-brand-eco/15 border-brand-eco/30',
+                                          personnel_updated: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
+                                          personnel_removed: 'text-brand-alert bg-brand-alert/15 border-brand-alert/30',
+                                          benchmarks_saved: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
+                                          benchmarks_updated: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
+                                        };
+                                        const labelMap: Record<string, string> = {
+                                          outlet_added: 'Outlet Added',
+                                          outlet_removed: 'Outlet Removed',
+                                          settings_saved: 'Settings Saved',
+                                          personnel_enrolled: 'Personnel Enrolled',
+                                          personnel_updated: 'Personnel Updated',
+                                          personnel_removed: 'Personnel Removed',
+                                          benchmarks_saved: 'Benchmarks Saved',
+                                          benchmarks_updated: 'Benchmarks Updated',
+                                        };
+                                        const Icon = iconMap[log.action] || Activity;
+                                        const color = colorMap[log.action] || 'text-white/40 bg-white/5 border-white/10';
+                                        const label = labelMap[log.action] || log.action.replace(/_/g, ' ');
+                                        const time = new Date(log.created_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
+                                        const initials = (log.actor_name || '?').split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
+                                        return (
+                                          <div key={log.id} className="relative flex items-start gap-3 group">
+                                            {/* Icon node */}
+                                            <div className={`relative z-10 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${color}`}>
+                                              <Icon size={13} />
+                                            </div>
 
-                                      {/* Description */}
-                                      <p className="text-xs text-white/70 leading-relaxed">{log.description}</p>
-
-                                      {/* Bottom row: actor + entity */}
-                                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5">
-                                        <div className="flex items-center gap-2">
-                                          <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
-                                            <span className="text-brand-gold text-[8px] font-black leading-none">{initials}</span>
-                                          </span>
-                                          <span className="text-[10px] font-bold text-white/60">{log.actor_name}</span>
-                                          <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/5">{log.actor_role}</span>
-                                        </div>
-                                        {log.entity_name && (
-                                          <span className="ml-auto text-[9px] font-bold uppercase tracking-widest text-brand-gold/60 bg-brand-gold/8 px-2.5 py-1 rounded-md border border-brand-gold/10 shrink-0">
-                                            {log.entity_type} · {log.entity_name}
-                                          </span>
-                                        )}
-                                      </div>
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-white/5 group-hover:border-white/10 group-hover:bg-white/5 transition-colors px-4 py-3">
+                                              <div className="flex items-center justify-between gap-3 mb-1.5">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                  <span className={`text-[9px] font-black uppercase tracking-widest ${color.split(' ')[0]} shrink-0`}>{label}</span>
+                                                  {log.entity_name && (
+                                                    <span className="text-[8px] font-bold uppercase tracking-widest text-brand-gold/50 bg-brand-gold/8 px-2 py-0.5 rounded border border-brand-gold/10 truncate">
+                                                      {log.entity_type} · {log.entity_name}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <span className="text-[9px] text-white/30 font-medium shrink-0 tabular-nums">{time}</span>
+                                              </div>
+                                              <p className="text-xs text-white/70 leading-relaxed mb-2">{log.description}</p>
+                                              <div className="flex items-center gap-2">
+                                                <span className="w-5 h-5 rounded-md bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                                                  <span className="text-brand-gold text-[7px] font-black leading-none">{initials}</span>
+                                                </span>
+                                                <span className="text-[10px] font-bold text-white/50">{log.actor_name}</span>
+                                                <span className="text-[8px] font-bold text-white/25 uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/5">{log.actor_role}</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   </div>
-                                );
-                              })}
+                                </div>
+                              ))}
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -2912,14 +3215,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {/* ── Enroll / Edit card ── */}
                     <div id="enrollment-form" className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.04)]">
                       {/* Card header */}
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-6 sm:px-8 py-5 flex items-center justify-between border-b border-brand-gold/15">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
-                            <UserPlus size={17} className="text-brand-gold" />
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between border-b border-brand-gold/15 gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <UserPlus size={18} className="text-brand-gold" />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Role & Permission Registry</p>
-                            <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">
                               {enrollId ? 'Edit Role Position' : 'Enroll Personnel'}
                             </h4>
                           </div>
@@ -2939,13 +3242,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         )}
                       </div>
 
-                      <div className="p-6 sm:p-8 space-y-5 bg-brand-dark/40">
-                        {/* Name + Email */}
-                        <div className="space-y-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
-                            <span className="w-3 h-px bg-white/20" />Identity
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 bg-brand-dark/40">
+                        {/* ── Step 1: Identity ── */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${enrollName && enrollEmail ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-gold/15 text-brand-gold border border-brand-gold/30'}`}>
+                              {enrollName && enrollEmail ? <CheckCircle2 size={14} /> : '1'}
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <User size={13} className="text-brand-gold/50" />
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Identity</p>
+                            </div>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Full Name</label>
                               <input type="text" value={enrollName} onChange={e => setEnrollName(e.target.value)} placeholder="Hotel Staff Name"
@@ -2959,14 +3269,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                         </div>
 
-                        <div className="h-px bg-white/5" />
-
-                        {/* Position + Outlet */}
-                        <div className="space-y-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
-                            <span className="w-3 h-px bg-white/20" />Assignment
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* ── Step 2: Assignment ── */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${enrollPosition && enrollOutlet ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-gold/15 text-brand-gold border border-brand-gold/30'}`}>
+                              {enrollPosition && enrollOutlet ? <CheckCircle2 size={14} /> : '2'}
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <Briefcase size={13} className="text-brand-gold/50" />
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Assignment</p>
+                            </div>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Position</label>
                               <CustomSelect
@@ -2989,76 +3304,94 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                         </div>
 
-                        <div className="h-px bg-white/5" />
-
-                        {/* Permissions */}
-                        <div className="space-y-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
-                            <span className="w-3 h-px bg-white/20" />Permissions
-                          </p>
-                          {/* Trigger — matches CustomSelect style */}
-                          <button
-                            ref={permTriggerRef}
-                            onClick={() => setIsPermDropdownOpen(!isPermDropdownOpen)}
-                            className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors cursor-pointer
-                              ${isPermDropdownOpen ? 'border-brand-gold' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
-                          >
-                            <span className={enrollPermissions.length ? 'text-white text-sm' : 'text-white/40 text-sm'}>
-                              {enrollPermissions.length === 0
-                                ? 'Select Permissions'
-                                : `${enrollPermissions.length} Permission${enrollPermissions.length > 1 ? 's' : ''} Selected`}
-                            </span>
-                            <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${isPermDropdownOpen ? 'rotate-180' : ''}`} />
-                          </button>
-
-                          {isPermDropdownOpen && ReactDOM.createPortal(
-                            <div
-                              ref={permPopupRef}
-                              style={{ position: 'fixed', top: permPopupPos.top, left: permPopupPos.left, width: permPopupPos.width, zIndex: 99999 }}
-                              className="bg-[#152E2A] border border-brand-gold/25 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+                        {/* ── Step 3: Permissions ── */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${enrollPermissions.length > 0 ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-gold/15 text-brand-gold border border-brand-gold/30'}`}>
+                              {enrollPermissions.length > 0 ? <CheckCircle2 size={14} /> : '3'}
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <ShieldCheck size={13} className="text-brand-gold/50" />
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Permissions</p>
+                              {enrollPermissions.length > 0 && (
+                                <span className="text-[9px] font-bold text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded-full border border-brand-gold/20">{enrollPermissions.length} Selected</span>
+                              )}
+                            </div>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                          </div>
+                          <div className="pl-2 sm:pl-10">
+                            {/* Trigger — matches CustomSelect style */}
+                            <button
+                              ref={permTriggerRef}
+                              onClick={() => setIsPermDropdownOpen(!isPermDropdownOpen)}
+                              className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors cursor-pointer
+                                ${isPermDropdownOpen ? 'border-brand-gold' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
                             >
-                              <div className="max-h-64 overflow-y-auto scrollbar-gold p-2 grid grid-cols-1 md:grid-cols-2 gap-1">
-                                {AVAILABLE_PERMISSIONS.map(p => {
-                                  const checked = enrollPermissions.includes(p);
-                                  return (
-                                    <button key={p} type="button" onClick={() => togglePermission(p)}
-                                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors text-left
-                                        ${checked
-                                          ? 'bg-brand-gold/10 text-brand-gold'
-                                          : 'text-white/50 hover:bg-white/5 hover:text-white/80'}`}
-                                    >
-                                      {/* Custom themed checkbox */}
-                                      <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-colors
-                                        ${checked ? 'bg-brand-gold border-brand-gold' : 'border-white/20 bg-transparent'}`}>
-                                        {checked && <Check size={10} className="text-[#0e1f1c]" strokeWidth={3} />}
-                                      </span>
-                                      <span className="text-[9px] font-bold uppercase tracking-tight leading-tight">{p}</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                              {/* Select all / Clear all footer */}
-                              <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/8">
-                                <button type="button" onClick={() => setEnrollPermissions([])}
-                                  className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">Clear all</button>
-                                <button type="button" onClick={() => setEnrollPermissions(AVAILABLE_PERMISSIONS)}
-                                  className="text-[10px] font-bold text-brand-gold hover:text-brand-gold/70 transition-colors uppercase tracking-widest">Select all</button>
-                              </div>
-                            </div>,
-                            document.body
-                          )}
+                              <span className={enrollPermissions.length ? 'text-white text-sm' : 'text-white/40 text-sm'}>
+                                {enrollPermissions.length === 0
+                                  ? 'Select Permissions'
+                                  : `${enrollPermissions.length} Permission${enrollPermissions.length > 1 ? 's' : ''} Selected`}
+                              </span>
+                              <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${isPermDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isPermDropdownOpen && ReactDOM.createPortal(
+                              <div
+                                ref={permPopupRef}
+                                style={{ position: 'fixed', top: permPopupPos.top, left: permPopupPos.left, width: permPopupPos.width, zIndex: 99999 }}
+                                className="bg-[#152E2A] border border-brand-gold/25 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+                              >
+                                <div className="max-h-64 overflow-y-auto scrollbar-gold p-2 grid grid-cols-1 md:grid-cols-2 gap-1">
+                                  {AVAILABLE_PERMISSIONS.map(p => {
+                                    const checked = enrollPermissions.includes(p);
+                                    return (
+                                      <button key={p} type="button" onClick={() => togglePermission(p)}
+                                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors text-left
+                                          ${checked
+                                            ? 'bg-brand-gold/10 text-brand-gold'
+                                            : 'text-white/50 hover:bg-white/5 hover:text-white/80'}`}
+                                      >
+                                        {/* Custom themed checkbox */}
+                                        <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-colors
+                                          ${checked ? 'bg-brand-gold border-brand-gold' : 'border-white/20 bg-transparent'}`}>
+                                          {checked && <Check size={10} className="text-[#0e1f1c]" strokeWidth={3} />}
+                                        </span>
+                                        <span className="text-[9px] font-bold uppercase tracking-tight leading-tight">{p}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                {/* Select all / Clear all footer */}
+                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/8">
+                                  <button type="button" onClick={() => setEnrollPermissions([])}
+                                    className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">Clear all</button>
+                                  <button type="button" onClick={() => setEnrollPermissions(AVAILABLE_PERMISSIONS)}
+                                    className="text-[10px] font-bold text-brand-gold hover:text-brand-gold/70 transition-colors uppercase tracking-widest">Select all</button>
+                                </div>
+                              </div>,
+                              document.body
+                            )}
+                          </div>
                         </div>
 
-                        <div className="h-px bg-white/5" />
-
-                        {/* Generated credentials */}
-                        <div className="space-y-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
-                            <span className="w-3 h-px bg-white/20" />Generated Credentials
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* ── Step 4: Generated Credentials ── */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${genPassword ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-gold/15 text-brand-gold border border-brand-gold/30'}`}>
+                              {genPassword ? <CheckCircle2 size={14} /> : '4'}
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <Key size={13} className="text-brand-gold/50" />
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Generated Credentials</p>
+                              {genPassword && (
+                                <span className="text-[9px] font-bold text-brand-eco bg-brand-eco/10 px-2 py-0.5 rounded-full border border-brand-eco/20">Ready</span>
+                              )}
+                            </div>
+                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Password</label>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Password / PIN</label>
                               <div className="relative">
                                 <input type="text" readOnly value={genPassword} placeholder="Generated upon save…"
                                   className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3 px-4 pl-9 text-brand-gold font-mono font-bold text-sm outline-none placeholder:text-white/20" />
@@ -3076,9 +3409,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                         </div>
 
+                        {/* ── Submit button ── */}
                         <button onClick={handleEnroll}
-                          className="w-full py-3.5 bg-brand-eco text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_6px_20px_rgba(119,177,57,0.3)] hover:brightness-110 active:scale-[0.98] transition-[filter,transform]">
-                          {enrollId ? 'Save Role Changes' : 'Enroll & Generate Access'}
+                          className="w-full flex items-center justify-center gap-2.5 py-4 bg-gradient-to-r from-brand-eco to-brand-eco/90 text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_6px_20px_rgba(119,177,57,0.3)] hover:brightness-110 hover:shadow-[0_8px_28px_rgba(119,177,57,0.4)] active:scale-[0.98] transition-all">
+                          {enrollId ? <><Save size={14} /> Save Role Changes</> : <><UserPlus size={14} /> Enroll & Generate Access</>}
                         </button>
                       </div>
                     </div>
@@ -3255,300 +3589,300 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 )}
 
                 {activeView === PortalView.PARAMETERS && (
-                  <div className="space-y-8 sm:space-y-12 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10">
-                      {/* Sustainability Metrics Section */}
-                      <section className="space-y-6 sm:space-y-8">
-                        <div className="flex items-center gap-3">
-                          <Leaf size={20} className="text-brand-eco" />
-                          <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">Sustainability Metrics</h4>
+                  <div className="space-y-6 sm:space-y-10 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide">
+
+                    {/* ── STEP 1: Sustainability Metrics ── */}
+                    <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_30px_rgba(119,177,57,0.04)]">
+                      {/* Step header */}
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-eco/15 flex-wrap">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black shrink-0 transition-all ${isSustainabilityEditable ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/40' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
+                            <Leaf size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Step 01</p>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Sustainability Metrics</h4>
+                          </div>
                         </div>
-                        <div className="space-y-4">
-                          {/* Food Waste Card */}
-                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
-                            {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
-                              <Lock size={12} className="text-brand-gold" />
-                              <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
-                            </div>}
-                            <div className="flex justify-between items-start mb-2 gap-4">
-                              <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Food Waste Target</span>
-                                <div className="flex bg-brand-dark/80 rounded-full p-1 border border-white/5 w-fit mt-1">
-                                  <button
-                                    disabled={!isMetricCardEditable}
-                                    onClick={() => setParams({ ...params, wasteUnit: 'kg' })}
-                                    className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${effectiveParams.wasteUnit === 'kg' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}
-                                  >KG</button>
-                                  <button
-                                    disabled={!isMetricCardEditable}
-                                    onClick={() => setParams({ ...params, wasteUnit: 'lbs' })}
-                                    className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${effectiveParams.wasteUnit === 'lbs' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}
-                                  >LBS</button>
-                                </div>
-                              </div>
-                              <div className="flex flex-col items-end gap-2 shrink-0">
-                                <div className="relative w-24 sm:w-32">
-                                  <input
-                                    type="number"
-                                    disabled={!isMetricCardEditable}
-                                    value={effectiveParams.wasteTarget}
-                                    onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) || 0 })}
-                                    className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right pr-10 ${isMetricCardEditable ? 'border-white/10 text-brand-gold focus:border-brand-gold' : 'border-brand-gold/40 text-brand-gold cursor-default'}`}
-                                  />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-bold uppercase">{effectiveParams.wasteUnit}</span>
-                                </div>
-                              </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => setIsEditingSustainability(!isEditingSustainability)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isEditingSustainability ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                          >
+                            {isEditingSustainability ? <Unlock size={12} /> : <Edit2 size={12} />}
+                            {isEditingSustainability ? 'Lock' : 'Edit'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Cards */}
+
+                      {/* Cards */}
+                      <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-brand-dark/40">
+                        {/* Food Waste */}
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-white/5 border-brand-gold/30' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
+                          {!isSustainabilityEditable && (
+                            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
+                              <Lock size={9} className="text-brand-gold" />
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
                             </div>
-                            <input
-                              type="range" min="10" max="1000"
-                              disabled={!isMetricCardEditable}
-                              value={effectiveParams.wasteTarget}
-                              onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) })}
-                              className={`w-full h-1.5 bg-brand-dark rounded-full appearance-none accent-brand-gold ${isMetricCardEditable ? 'cursor-pointer' : 'opacity-20'}`}
+                          )}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                              <Leaf size={14} className="text-brand-gold" />
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Food Waste</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-brand-gold leading-none">{effectiveParams.wasteTarget}</span>
+                            <span className="text-xs text-white/30 font-bold uppercase mb-0.5">{effectiveParams.wasteUnit}</span>
+                          </div>
+                          <div className="flex bg-brand-dark/80 rounded-full p-0.5 border border-white/5 w-fit mb-3">
+                            <button disabled={!isSustainabilityEditable} onClick={() => setParams({ ...params, wasteUnit: 'kg' })} className={`px-3 py-1 rounded-full text-[8px] font-black transition-all ${effectiveParams.wasteUnit === 'kg' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}>KG</button>
+                            <button disabled={!isSustainabilityEditable} onClick={() => setParams({ ...params, wasteUnit: 'lbs' })} className={`px-3 py-1 rounded-full text-[8px] font-black transition-all ${effectiveParams.wasteUnit === 'lbs' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}>LBS</button>
+                          </div>
+                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.wasteTarget} onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-white/10 text-brand-gold focus:border-brand-gold' : 'border-brand-gold/30 text-brand-gold cursor-default'}`} />
+                          <input type="range" min="10" max="1000" disabled={!isSustainabilityEditable} value={effectiveParams.wasteTarget} onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-gold ${isSustainabilityEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
+                        </div>
+
+                        {/* Water Usage */}
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-white/5 border-blue-500/30' : 'bg-brand-dark/60 border-blue-500/15'}`}>
+                          {!isSustainabilityEditable && (
+                            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
+                              <Lock size={9} className="text-brand-gold" />
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                              <Droplets size={14} className="text-blue-400" />
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Water Usage</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-blue-400 leading-none">{effectiveParams.waterTarget.toLocaleString()}</span>
+                            <span className="text-xs text-white/30 font-bold uppercase mb-0.5">L</span>
+                          </div>
+                          <div className="h-7 mb-3" />
+                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.waterTarget} onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-white/10 text-blue-400 focus:border-brand-gold' : 'border-brand-gold/30 text-blue-400 cursor-default'}`} />
+                          <input type="range" min="1000" max="100000" step="500" disabled={!isSustainabilityEditable} value={effectiveParams.waterTarget} onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-blue-500 ${isSustainabilityEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
+                        </div>
+
+                        {/* Energy Limit */}
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-white/5 border-brand-energy/30' : 'bg-brand-dark/60 border-brand-energy/15'}`}>
+                          {!isSustainabilityEditable && (
+                            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
+                              <Lock size={9} className="text-brand-gold" />
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-energy/10 border border-brand-energy/20 flex items-center justify-center shrink-0">
+                              <Zap size={14} className="text-brand-energy" />
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Energy Limit</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-brand-energy leading-none">{effectiveParams.energyTarget.toLocaleString()}</span>
+                            <span className="text-xs text-white/30 font-bold uppercase mb-0.5">kWh</span>
+                          </div>
+                          <div className="h-7 mb-3" />
+                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.energyTarget} onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-white/10 text-brand-energy focus:border-brand-gold' : 'border-brand-gold/30 text-brand-energy cursor-default'}`} />
+                          <input type="range" min="100" max="10000" step="100" disabled={!isSustainabilityEditable} value={effectiveParams.energyTarget} onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-energy ${isSustainabilityEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── STEP 2: F&B KPIs ── */}
+                    <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-gold/15 flex-wrap">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <BarChart3 size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 02</p>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">F&B KPIs</h4>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => setIsEditingFnB(!isEditingFnB)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isEditingFnB ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                          >
+                            {isEditingFnB ? <Unlock size={12} /> : <Edit2 size={12} />}
+                            {isEditingFnB ? 'Lock' : 'Edit'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-brand-dark/40">
+                        {/* Food Cost */}
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-white/5 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
+                          {!isFnBEditable && (
+                            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
+                              <Lock size={9} className="text-brand-gold" />
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                              <Utensils size={14} className="text-brand-eco" />
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Food Cost Cap</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.foodCostTarget}</span>
+                            <span className="text-xs text-white/30 font-bold uppercase mb-0.5">%</span>
+                          </div>
+                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.foodCostTarget} onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-white/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="range" min="10" max="60" step="0.5" disabled={!isFnBEditable} value={effectiveParams.foodCostTarget} onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'opacity-20'}`} />
+                        </div>
+
+                        {/* Labor Cost */}
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-white/5 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
+                          {!isFnBEditable && (
+                            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
+                              <Lock size={9} className="text-brand-gold" />
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                              <Users size={14} className="text-brand-eco" />
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Labor Cost Cap</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.laborCostTarget}</span>
+                            <span className="text-xs text-white/30 font-bold uppercase mb-0.5">%</span>
+                          </div>
+                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-white/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="range" min="5" max="50" step="0.5" disabled={!isFnBEditable} value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── STEP 3: Industry Benchmarking ── */}
+                    <div className="rounded-2xl border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-gold/15 flex-wrap">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <Globe size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 03</p>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Industry Benchmarking</h4>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setIsEditingBenchmarks(!isEditingBenchmarks)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingBenchmarks ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                        >
+                          {isEditingBenchmarks ? <Unlock size={12} /> : <Edit2 size={12} />}
+                          {isEditingBenchmarks ? 'Lock' : 'Edit'}
+                        </button>
+                      </div>
+
+                      <div className="p-4 sm:p-6 bg-brand-dark/40 space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Profile Category</label>
+                          <CustomSelect
+                            value={params.benchmarkRegion}
+                            options={['ASEAN Luxury Hotels', 'European Michelin Standard', 'North American Premium', 'Middle East Luxury Collection', 'Manual Entry']}
+                            onChange={v => setParams({ ...params, benchmarkRegion: v === 'Manual Entry' ? 'Manual' : v, selectedManualOutlet: '' })}
+                            disabled={!isEditingBenchmarks}
+                          />
+                        </div>
+
+                        {isManualBenchmark && (
+                          <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Outlet Selection</label>
+                            <CustomSelect
+                              value={outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : ''}
+                              options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                              onChange={v => {
+                                const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
+                                setParams({ ...params, selectedManualOutlet: code });
+                              }}
+                              placeholder="Select Target Outlet"
+                              emptyMessage="No outlets added yet — go to Company → Outlets"
+                              disabled={!isEditingBenchmarks}
                             />
+                            <p className="text-[8px] text-gray-500 uppercase font-black tracking-tight leading-tight mt-1 ml-1">
+                              Each outlet follows its individual parameters under manual entry mode.
+                            </p>
                           </div>
+                        )}
 
-                          {/* Water Usage Card */}
-                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
-                            {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
-                              <Lock size={12} className="text-brand-gold" />
-                              <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
-                            </div>}
-                            <div className="flex justify-between items-start gap-4">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-2">Water Usage (Liters)</span>
-                              <div className="flex flex-col items-end gap-2 shrink-0">
-                                <div className="relative w-24 sm:w-32">
-                                  <input
-                                    type="number"
-                                    disabled={!isMetricCardEditable}
-                                    value={effectiveParams.waterTarget}
-                                    onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) || 0 })}
-                                    className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right pr-8 ${isMetricCardEditable ? 'border-white/10 text-[#60a5fa] focus:border-brand-gold' : 'border-brand-gold/40 text-[#60a5fa] cursor-default'}`}
-                                  />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-bold uppercase">L</span>
-                                </div>
-                              </div>
-                            </div>
-                            <input
-                              type="range" min="1000" max="100000" step="500"
-                              disabled={!isMetricCardEditable}
-                              value={effectiveParams.waterTarget}
-                              onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) })}
-                              className={`w-full h-1.5 bg-brand-dark rounded-full appearance-none accent-blue-500 ${isMetricCardEditable ? 'cursor-pointer' : 'opacity-20'}`}
-                            />
-                          </div>
+                        {paramsUpdatedAt && (
+                          <p className="text-[8px] font-black text-gray-400/80 uppercase tracking-[0.2em] animate-pulse text-center pt-1">
+                            Last Updated: {paramsUpdatedAt}
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-                          {/* Energy Usage Card */}
-                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
-                            {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
-                              <Lock size={12} className="text-brand-gold" />
-                              <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
-                            </div>}
-                            <div className="flex justify-between items-start gap-4">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-2">Energy Limit (kWh)</span>
-                              <div className="flex flex-col items-end gap-2 shrink-0">
-                                <div className="relative w-24 sm:w-32">
-                                  <input
-                                    type="number"
-                                    disabled={!isMetricCardEditable}
-                                    value={effectiveParams.energyTarget}
-                                    onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) || 0 })}
-                                    className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right pr-12 ${isMetricCardEditable ? 'border-white/10 text-brand-energy focus:border-brand-gold' : 'border-brand-gold/40 text-brand-energy cursor-default'}`}
-                                  />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-bold uppercase">kWh</span>
-                                </div>
-                              </div>
-                            </div>
-                            <input
-                              type="range" min="100" max="10000" step="100"
-                              disabled={!isMetricCardEditable}
-                              value={effectiveParams.energyTarget}
-                              onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) })}
-                              className={`w-full h-1.5 bg-brand-dark rounded-full appearance-none accent-brand-energy ${isMetricCardEditable ? 'cursor-pointer' : 'opacity-20'}`}
-                            />
-                          </div>
+                    {/* ── STEP 4: Mila AI Logic ── */}
+                    <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_30px_rgba(119,177,57,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-6 py-4 flex items-center gap-4 border-b border-brand-eco/15">
+                        <div className="w-9 h-9 rounded-xl bg-brand-eco/15 text-brand-eco border border-brand-eco/30 flex items-center justify-center shrink-0">
+                          <Cpu size={18} />
                         </div>
-                      </section>
-
-                      {/* F&B KPIs Section */}
-                      <section className="space-y-6 sm:space-y-8">
-                        <div className="flex items-center gap-3">
-                          <BarChart3 size={20} className="text-brand-gold" />
-                          <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">F&B KPIs</h4>
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Step 04</p>
+                          <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Mila AI Logic</h4>
                         </div>
-                        <div className="space-y-4">
-                          {/* Food Cost Card */}
-                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
-                            {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
-                              <Lock size={12} className="text-brand-gold" />
-                              <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
-                            </div>}
-                            <div className="flex justify-between items-start gap-4">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-2">Food Cost Cap (%)</span>
-                              <div className="flex flex-col items-end gap-2 shrink-0">
-                                <div className="relative w-24 sm:w-32">
-                                  <input
-                                    type="number"
-                                    disabled={!isMetricCardEditable}
-                                    step="0.1"
-                                    value={effectiveParams.foodCostTarget}
-                                    onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) || 0 })}
-                                    className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right pr-8 ${isMetricCardEditable ? 'border-white/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/40 text-brand-eco cursor-default'}`}
-                                  />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-bold uppercase">%</span>
-                                </div>
-                              </div>
+                      </div>
+
+                      <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-brand-dark/40">
+                        {/* Deviation Alerts */}
+                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.alertsActive ? 'bg-brand-gold/8 border-brand-gold/25' : 'bg-brand-dark/60 border-white/8'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl transition-all ${params.alertsActive ? 'bg-brand-gold/15' : 'bg-white/5'}`}>
+                              <AlertCircle size={18} className={params.alertsActive ? 'text-brand-gold' : 'text-white/30'} />
                             </div>
-                            <input
-                              type="range" min="10" max="60" step="0.5"
-                              disabled={!isMetricCardEditable}
-                              value={effectiveParams.foodCostTarget}
-                              onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) })}
-                              className={`w-full h-1.5 bg-brand-dark rounded-full appearance-none accent-brand-eco ${isMetricCardEditable ? 'cursor-pointer' : 'opacity-20'}`}
-                            />
-                          </div>
-
-                          {/* Labor Cost Card */}
-                          <div className={`p-6 sm:p-8 rounded-2xl space-y-6 border shadow-inner transition-all relative ${isMetricCardEditable ? 'bg-white/5 border-white/5' : 'bg-brand-dark/40 border-brand-gold/20'}`}>
-                            {!isMetricCardEditable && <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
-                              <Lock size={12} className="text-brand-gold" />
-                              <span className="text-[8px] font-black uppercase text-brand-gold tracking-widest">Read Only</span>
-                            </div>}
-                            <div className="flex justify-between items-start gap-4">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-2">Labor Cost Cap (%)</span>
-                              <div className="flex flex-col items-end gap-2 shrink-0">
-                                <div className="relative w-24 sm:w-32">
-                                  <input
-                                    type="number"
-                                    disabled={!isMetricCardEditable}
-                                    step="0.1"
-                                    value={effectiveParams.laborCostTarget}
-                                    onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) || 0 })}
-                                    className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right pr-8 ${isMetricCardEditable ? 'border-white/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/40 text-brand-eco cursor-default'}`}
-                                  />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-bold uppercase">%</span>
-                                </div>
-                              </div>
-                            </div>
-                            <input
-                              type="range" min="5" max="50" step="0.5"
-                              disabled={!isMetricCardEditable}
-                              value={effectiveParams.laborCostTarget}
-                              onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) })}
-                              className={`w-full h-1.5 bg-brand-dark rounded-full appearance-none accent-brand-eco ${isMetricCardEditable ? 'cursor-pointer' : 'opacity-20'}`}
-                            />
-                          </div>
-
-                          {/* Industry Benchmark Selection */}
-                          <div className="p-6 sm:p-8 bg-brand-gold/5 border border-brand-gold/20 rounded-2xl space-y-6 group relative shadow-xl">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-3">
-                                <Globe size={18} className="text-brand-gold" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white">Industry Benchmarking Logic</span>
-                              </div>
-                              {isEditingBenchmarks && (
-                                <button
-                                  onClick={handleSaveBenchmarks}
-                                  className="bg-brand-eco text-brand-dark px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg flex items-center gap-2"
-                                >
-                                  <Check size={12} /> Save Benchmarks
-                                </button>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-4">
-                              <div className="space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-1">Profile Category</label>
-                                <CustomSelect
-                                  value={params.benchmarkRegion}
-                                  options={['ASEAN Luxury Hotels', 'European Michelin Standard', 'North American Premium', 'Middle East Luxury Collection', 'Manual Entry']}
-                                  onChange={v => setParams({ ...params, benchmarkRegion: v === 'Manual Entry' ? 'Manual' : v, selectedManualOutlet: '' })}
-                                />
-                              </div>
-
-                              {isManualBenchmark && (
-                                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
-                                  <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-1">Outlet Selection (Drop Menu)</label>
-                                  <CustomSelect
-                                    value={outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : ''}
-                                    options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
-                                    onChange={v => {
-                                      const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
-                                      setParams({ ...params, selectedManualOutlet: code });
-                                    }}
-                                    placeholder="Select Target Outlet"
-                                    emptyMessage="No outlets added yet — go to Company → Outlets"
-                                  />
-                                  <p className="text-[8px] text-gray-500 uppercase font-black tracking-tight leading-tight mt-1 ml-1">
-                                    Each outlet follows its individual parameters under manual entry mode.
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex flex-col items-center pt-2 gap-3">
-                              <button
-                                onClick={() => setIsEditingBenchmarks(!isEditingBenchmarks)}
-                                className={`px-8 py-2.5 rounded-full flex items-center gap-3 text-[9px] font-black uppercase tracking-widest shadow-xl transition-all ${isEditingBenchmarks ? 'bg-brand-eco text-brand-dark ring-2 ring-brand-eco/30' : 'bg-brand-eco text-brand-dark hover:scale-105'}`}
-                              >
-                                {isEditingBenchmarks ? <Unlock size={12} /> : <Edit2 size={12} />}
-                                {isEditingBenchmarks ? 'Benchmarks Unlocked' : 'Edit Parameters'}
-                              </button>
-                              
-                              {paramsUpdatedAt && (
-                                <div className="text-[8px] font-black text-gray-400/80 uppercase tracking-[0.2em] animate-pulse">
-                                  Last Updated: {paramsUpdatedAt}
-                                </div>
-                              )}
+                            <div>
+                              <span className="text-xs font-bold uppercase tracking-tight text-white block">Deviation Alerts</span>
+                              <span className={`text-[8px] font-black uppercase tracking-widest ${params.alertsActive ? 'text-brand-gold' : 'text-white/20'}`}>{params.alertsActive ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
+                          <button onClick={() => setParams({ ...params, alertsActive: !params.alertsActive })}>
+                            {params.alertsActive ? <ToggleRight className="text-brand-eco" size={36} /> : <ToggleLeft className="text-gray-600" size={36} />}
+                          </button>
                         </div>
-                      </section>
 
-
-                      {/* AI Logic Control Section */}
-                      <section className="md:col-span-2 space-y-6">
-                        <div className="flex items-center gap-3">
-                          <Cpu size={20} className="text-brand-eco" />
-                          <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">Mila AI Logic Configuration</h4>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="flex items-center justify-between p-6 bg-brand-gold/5 border border-brand-gold/10 rounded-2xl">
-                            <div className="flex items-center gap-4">
-                              <div className="p-2 bg-brand-gold/10 rounded-xl">
-                                <AlertCircle className="text-brand-gold" size={20} />
-                              </div>
-                              <span className="text-xs font-bold uppercase tracking-tight text-white">Deviation Alerts</span>
+                        {/* Suggestion Engine */}
+                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.milaLogic ? 'bg-brand-eco/8 border-brand-eco/25' : 'bg-brand-dark/60 border-white/8'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl transition-all ${params.milaLogic ? 'bg-brand-eco/15' : 'bg-white/5'}`}>
+                              <Lightbulb size={18} className={params.milaLogic ? 'text-brand-eco' : 'text-white/30'} />
                             </div>
-                            <button onClick={() => setParams({ ...params, alertsActive: !params.alertsActive })}>
-                              {params.alertsActive ? <ToggleRight className="text-brand-eco" size={32} /> : <ToggleLeft className="text-gray-600" size={32} />}
-                            </button>
-                          </div>
-                          <div className="flex items-center justify-between p-6 bg-brand-eco/5 border border-brand-eco/20 rounded-2xl">
-                            <div className="flex items-center gap-4">
-                              <div className="p-2 bg-brand-eco/10 rounded-xl">
-                                <Lightbulb className="text-brand-eco" size={20} />
-                              </div>
-                              <span className="text-xs font-bold uppercase tracking-tight text-white">Suggestion Engine</span>
+                            <div>
+                              <span className="text-xs font-bold uppercase tracking-tight text-white block">Suggestion Engine</span>
+                              <span className={`text-[8px] font-black uppercase tracking-widest ${params.milaLogic ? 'text-brand-eco' : 'text-white/20'}`}>{params.milaLogic ? 'Active' : 'Disabled'}</span>
                             </div>
-                            <button onClick={() => setParams({ ...params, milaLogic: !params.milaLogic })}>
-                              {params.milaLogic ? <ToggleRight className="text-brand-eco" size={32} /> : <ToggleLeft className="text-gray-600" size={32} />}
-                            </button>
                           </div>
+                          <button onClick={() => setParams({ ...params, milaLogic: !params.milaLogic })}>
+                            {params.milaLogic ? <ToggleRight className="text-brand-eco" size={36} /> : <ToggleLeft className="text-gray-600" size={36} />}
+                          </button>
                         </div>
-                      </section>
+                      </div>
+                    </div>
 
-                      {/* APIs Integration Section */}
-                      <section className="md:col-span-2 space-y-6 relative">
-                        <div className="flex items-center gap-3">
-                          <Database size={20} className="text-brand-gold" />
-                          <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold">APIs Integration</h4>
+                    {/* ── STEP 5: APIs Integration ── */}
+                    <div className="rounded-2xl border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-gold/15 flex-wrap">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <Database size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 05</p>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">APIs Integration</h4>
+                          </div>
                           <div className="relative group ml-1">
-                            <button
-                              onMouseEnter={() => setShowApiInfo(true)}
-                              onMouseLeave={() => setShowApiInfo(false)}
-                              className="text-gray-500 hover:text-brand-gold transition-colors"
-                            >
+                            <button onMouseEnter={() => setShowApiInfo(true)} onMouseLeave={() => setShowApiInfo(false)} className="text-gray-500 hover:text-brand-gold transition-colors">
                               <Info size={16} />
                             </button>
                             {showApiInfo && (
@@ -3561,110 +3895,60 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             )}
                           </div>
                         </div>
+                        <button
+                          onClick={() => setIsEditingApis(!isEditingApis)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingApis ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                        >
+                          {isEditingApis ? <Unlock size={12} /> : <Edit2 size={12} />}
+                          {isEditingApis ? 'Lock' : 'Edit'}
+                        </button>
+                      </div>
 
-                        <div className="bg-brand-dark/40 border border-brand-gold/20 rounded-2xl p-6 sm:p-10 relative">
-                          <div className="flex justify-end mb-6">
-                            {isEditingApis && (
-                              <button
-                                onClick={handleSaveApis}
-                                className="bg-brand-eco text-brand-dark px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg flex items-center gap-2"
-                              >
-                                <Check size={14} /> Save APIs
-                              </button>
-                            )}
+                      <div className="p-4 sm:p-6 bg-brand-dark/40">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                          {/* POS */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                                <Link2 size={13} className="text-brand-gold" />
+                              </div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70">POS API Key</label>
+                            </div>
+                            <input type="password" disabled={!isEditingApis} value={params.posApiKey} onChange={e => setParams({ ...params, posApiKey: e.target.value })} placeholder="Connect POS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
+                            <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Sales & Covers</p>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mb-8">
-                            {/* POS API Field */}
-                            <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-1">POS API Key</label>
-                              <div className="relative group">
-                                <input
-                                  type="password"
-                                  disabled={!isEditingApis}
-                                  value={params.posApiKey}
-                                  onChange={e => setParams({ ...params, posApiKey: e.target.value })}
-                                  placeholder="Connect POS..."
-                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
-                                />
-                                <Link2 size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
+                          {/* CRM */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                                <Users size={13} className="text-brand-gold" />
                               </div>
-                              <p className="text-[7px] text-gray-500 uppercase font-bold tracking-tighter ml-1">Extracts Sales & Covers</p>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70">CRM API Key</label>
                             </div>
-
-                            {/* CRM API Field */}
-                            <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-1">CRM API Key</label>
-                              <div className="relative group">
-                                <input
-                                  type="password"
-                                  disabled={!isEditingApis}
-                                  value={params.crmApiKey}
-                                  onChange={e => setParams({ ...params, crmApiKey: e.target.value })}
-                                  placeholder="Connect CRM..."
-                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
-                                />
-                                <Users size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
-                              </div>
-                              <p className="text-[7px] text-gray-500 uppercase font-bold tracking-tighter ml-1">Extracts Guest Loyalty Data</p>
-                            </div>
-
-                            {/* PMS API Field */}
-                            <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold ml-1">PMS API Key</label>
-                              <div className="relative group">
-                                <input
-                                  type="password"
-                                  disabled={!isEditingApis}
-                                  value={params.pmsApiKey}
-                                  onChange={e => setParams({ ...params, pmsApiKey: e.target.value })}
-                                  placeholder="Connect PMS..."
-                                  className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-10 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`}
-                                />
-                                <Building2 size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
-                              </div>
-                              <p className="text-[7px] text-gray-500 uppercase font-bold tracking-tighter ml-1">Extracts Occupancy & Forecast</p>
-                            </div>
+                            <input type="password" disabled={!isEditingApis} value={params.crmApiKey} onChange={e => setParams({ ...params, crmApiKey: e.target.value })} placeholder="Connect CRM..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
+                            <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Guest Loyalty Data</p>
                           </div>
 
-                          <div className="flex justify-center">
-                            <button
-                              onClick={() => setIsEditingApis(!isEditingApis)}
-                              className={`px-10 py-3 rounded-full flex items-center gap-3 text-[10px] font-black uppercase tracking-widest shadow-xl transition-all ${isEditingApis ? 'bg-brand-eco text-brand-dark ring-2 ring-brand-eco/20' : 'bg-brand-eco text-brand-dark hover:scale-105'}`}
-                            >
-                              {isEditingApis ? <Unlock size={14} /> : <Edit2 size={14} />}
-                              {isEditingApis ? 'API Hub Unlocked' : 'Edit APIs'}
-                            </button>
+                          {/* PMS */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                                <Building2 size={13} className="text-brand-gold" />
+                              </div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70">PMS API Key</label>
+                            </div>
+                            <input type="password" disabled={!isEditingApis} value={params.pmsApiKey} onChange={e => setParams({ ...params, pmsApiKey: e.target.value })} placeholder="Connect PMS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
+                            <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Occupancy & Forecast</p>
                           </div>
                         </div>
-                      </section>
+                      </div>
                     </div>
+
                   </div>
                 )
                 }
 
-                {activeView === PortalView.SYSTEM && (
-                  <div className="animate-in fade-in duration-500 flex flex-col flex-grow min-h-0">
-                    <div className="bg-black/40 border border-white/10 rounded-2xl overflow-hidden flex flex-col flex-grow shadow-2xl">
-                      <div className="bg-brand-dark/80 px-6 sm:px-8 py-4 border-b border-white/5 flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-4 text-[9px] sm:text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                          <Terminal size={14} className="text-brand-gold" /> DIAG_LOG_CORE_V3
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-brand-eco animate-pulse"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse delay-75"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-brand-energy animate-pulse delay-150"></div>
-                          </div>
-                          <RefreshCcw size={14} className="text-brand-gold animate-spin" />
-                        </div>
-                      </div>
-                      <div className="p-6 sm:p-8 font-mono text-[10px] sm:text-xs text-brand-eco overflow-y-auto flex-grow custom-scrollbar">
-                        <pre className="whitespace-pre-wrap opacity-90">{rawJson}</pre>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
 
               </div>
