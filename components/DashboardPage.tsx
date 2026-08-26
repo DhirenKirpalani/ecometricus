@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { useNavigate as useRouterNavigate } from 'react-router-dom';
 import MilaWidget from './MilaWidget';
 import GamificationHub from './GamificationHub';
@@ -491,8 +492,9 @@ interface CustomSelectProps {
   onChange: (v: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  emptyMessage?: string;
 }
-const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, disabled, placeholder }) => {
+const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, disabled, placeholder, emptyMessage }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -522,7 +524,11 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
       {open && (
         <div className="absolute z-[9999] mt-1 w-full rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
           <ul className="max-h-56 overflow-y-auto scrollbar-gold py-1">
-            {options.map(opt => (
+            {options.length === 0 ? (
+              <li className="px-4 py-3 text-xs text-white/30 italic text-center select-none">
+                {emptyMessage ?? 'No options available'}
+              </li>
+            ) : options.map(opt => (
               <li key={opt}>
                 <button
                   type="button"
@@ -562,17 +568,46 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
   const [open, setOpen]           = useState(false);
   const [viewYear, setViewYear]   = useState(parsed?.getFullYear() ?? today.getFullYear());
   const [viewMonth, setViewMonth] = useState(parsed?.getMonth()    ?? today.getMonth());
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popupRef   = useRef<HTMLDivElement>(null);
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 288 });
+
+  // Recompute popup position relative to trigger
+  const reposition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const popupW = 288;
+    let left = r.left;
+    // Keep popup on-screen horizontally
+    if (left + popupW > window.innerWidth - 8) left = window.innerWidth - popupW - 8;
+    if (left < 8) left = 8;
+    setPopupPos({ top: r.bottom + 6, left, width: popupW });
+  }, []);
 
   // Click-outside closes picker
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (popupRef.current?.contains(e.target as Node))   return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
+
+  // Position popup on open + on scroll/resize
+  useEffect(() => {
+    if (!open) return;
+    reposition();
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open, reposition]);
 
   // Sync view when value changes externally
   useEffect(() => {
@@ -605,10 +640,81 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
     ? `${String(parsed.getDate()).padStart(2,'0')}/${String(parsed.getMonth()+1).padStart(2,'0')}/${parsed.getFullYear()}`
     : '';
 
+  const popup = open ? ReactDOM.createPortal(
+    <div
+      ref={popupRef}
+      style={{ position: 'fixed', top: popupPos.top, left: popupPos.left, width: popupPos.width, zIndex: 99999 }}
+      className="rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.65)] overflow-hidden"
+    >
+      {/* Month / Year nav */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <button type="button" onClick={prevMonth}
+          className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+          <ChevronDown size={13} className="rotate-90" />
+        </button>
+        <span className="text-[11px] font-black uppercase tracking-widest text-white">
+          {MONTHS_LONG[viewMonth]} {viewYear}
+        </span>
+        <button type="button" onClick={nextMonth}
+          className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+          <ChevronDown size={13} className="-rotate-90" />
+        </button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 px-3 pb-1">
+        {DAY_LABELS.map((d, i) => (
+          <div key={i} className="text-center text-[9px] font-black uppercase tracking-widest text-brand-gold/40 py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
+        {cells.map((cell, i) => {
+          const iso        = toISO(cell.date);
+          const isSelected = iso === value;
+          const isToday    = iso === todayISO;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => { onChange(iso); setOpen(false); }}
+              className={[
+                'aspect-square flex items-center justify-center text-[11px] font-semibold rounded-lg transition-colors',
+                !cell.current                            ? 'text-white/15 hover:text-white/30'             : '',
+                cell.current && !isSelected && !isToday  ? 'text-white/70 hover:bg-white/10 hover:text-white' : '',
+                isToday && !isSelected                   ? 'text-brand-gold border border-brand-gold/40'   : '',
+                isSelected                               ? 'bg-brand-gold text-[#0e1f1c] font-black'       : '',
+              ].join(' ')}
+            >
+              {cell.date.getDate()}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-white/8">
+        <button type="button"
+          onClick={() => { onChange(''); setOpen(false); }}
+          className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">
+          Clear
+        </button>
+        <button type="button"
+          onClick={() => { onChange(todayISO); setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); setOpen(false); }}
+          className="text-[10px] font-bold text-brand-gold hover:text-brand-gold/70 transition-colors uppercase tracking-widest">
+          Today
+        </button>
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
-    <div ref={ref} className="relative w-full">
+    <div className="relative w-full">
       {/* Trigger */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
@@ -619,73 +725,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
         <Calendar size={13} className="text-brand-gold/60 shrink-0" />
         <span className={displayValue ? 'text-white text-xs' : 'text-white/35 text-xs'}>{displayValue || 'dd/mm/yyyy'}</span>
       </button>
-
-      {/* Calendar popup */}
-      {open && (
-        <div className="absolute z-[9999] mt-1 rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.65)] overflow-hidden w-72">
-
-          {/* Month / Year nav */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-2">
-            <button type="button" onClick={prevMonth}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
-              <ChevronDown size={13} className="rotate-90" />
-            </button>
-            <span className="text-[11px] font-black uppercase tracking-widest text-white">
-              {MONTHS_LONG[viewMonth]} {viewYear}
-            </span>
-            <button type="button" onClick={nextMonth}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
-              <ChevronDown size={13} className="-rotate-90" />
-            </button>
-          </div>
-
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 px-3 pb-1">
-            {DAY_LABELS.map((d, i) => (
-              <div key={i} className="text-center text-[9px] font-black uppercase tracking-widest text-brand-gold/40 py-1">{d}</div>
-            ))}
-          </div>
-
-          {/* Day cells */}
-          <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
-            {cells.map((cell, i) => {
-              const iso        = toISO(cell.date);
-              const isSelected = iso === value;
-              const isToday    = iso === todayISO;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => { onChange(iso); setOpen(false); }}
-                  className={[
-                    'aspect-square flex items-center justify-center text-[11px] font-semibold rounded-lg transition-colors',
-                    !cell.current                            ? 'text-white/15 hover:text-white/30'             : '',
-                    cell.current && !isSelected && !isToday  ? 'text-white/70 hover:bg-white/10 hover:text-white' : '',
-                    isToday && !isSelected                   ? 'text-brand-gold border border-brand-gold/40'   : '',
-                    isSelected                               ? 'bg-brand-gold text-[#0e1f1c] font-black'       : '',
-                  ].join(' ')}
-                >
-                  {cell.date.getDate()}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-white/8">
-            <button type="button"
-              onClick={() => { onChange(''); setOpen(false); }}
-              className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">
-              Clear
-            </button>
-            <button type="button"
-              onClick={() => { onChange(todayISO); setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); setOpen(false); }}
-              className="text-[10px] font-bold text-brand-gold hover:text-brand-gold/70 transition-colors uppercase tracking-widest">
-              Today
-            </button>
-          </div>
-        </div>
-      )}
+      {popup}
     </div>
   );
 };
@@ -747,7 +787,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // Shared Administrative Core State
   const [outlets, setOutlets] = useState<Outlet[]>(DEFAULT_OUTLETS); // Default to hardcoded if DB empty
 
-  const [sequenceCounter, setSequenceCounter] = useState(2);
+  const [sequenceCounter, setSequenceCounter] = useState(0);
 
   const [company, setCompany] = useState({
     name: '',
@@ -768,6 +808,51 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [sentimentLogs, setSentimentLogs] = useState<any[]>([]);
   const [rawWasteLogs, setRawWasteLogs] = useState<any[]>([]);
   const [rawResourceLogs, setRawResourceLogs] = useState<any[]>([]);
+
+  // ── Audit Log ──
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+
+  // Log an action to the audit_logs table (silently fails if table doesn't exist yet)
+  const logAction = async (
+    action: string,
+    entityType: string,
+    entityName: string,
+    description: string,
+    metadata?: Record<string, any>
+  ) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.from('audit_logs').insert({
+        user_id: session.user.id,
+        actor_name: user.fullName,
+        actor_role: user.role,
+        action,
+        entity_type: entityType,
+        entity_name: entityName,
+        description,
+        metadata: metadata || {}
+      });
+      // Refresh local audit logs
+      fetchAuditLogs();
+    } catch (e) {
+      // Silently ignore — audit logging should never break the main flow
+      console.warn('AUDIT_LOG_SKIP:', e);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data, error } = await supabase.from('audit_logs')
+        .select('*').eq('user_id', session.user.id)
+        .order('created_at', { ascending: false }).limit(50);
+      if (!error && data) setAuditLogs(data);
+    } catch (e) {
+      // Table might not exist yet — silently ignore
+    }
+  };
 
   // 🛡️ INITIAL HYDRATION: Fetch all database-anchored identity & settings
   useEffect(() => {
@@ -826,14 +911,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           setCompany(prev => ({ ...prev, name: '' }));
         }
 
-        // Map outlets from DB — code column does not exist in schema,
-        // so generate it deterministically: first 3 letters of name + zero-padded index.
+        // Map outlets from DB — schema uses 'outlet_name' (not 'name').
+        // 'outlet_id' stores the generated code (e.g. OUT01); fall back to deterministic generation.
         const dbOutlets: Outlet[] = (outletsRes.data || [])
-          .filter((o: any) => o.name)
+          .filter((o: any) => o.outlet_name)
           .map((o: any, idx: number) => ({
             id: o.id,
-            name: o.name,
-            code: o.name.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() + String(idx + 1).padStart(2, '0'),
+            name: o.outlet_name,
+            code: o.outlet_id || (o.outlet_name.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() + String(idx + 1).padStart(2, '0')),
             location: o.location || '',
             color_hex: o.color_hex
           }));
@@ -874,6 +959,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           }));
           setUsers(mappedUsers);
         }
+
+        // Fetch audit logs (non-blocking — table may not exist yet)
+        fetchAuditLogs();
       } catch (err) {
         console.error("Hydration BLOCKED:", err);
       } finally {
@@ -887,16 +975,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     // Note: Removed local onAuthStateChange listener to prevent infinite loop on Exit.
   }, []); // ✅ Run ONLY ONCE on mount. Stabilization applied.
-
-  // Sync currentOutletCode automatically when currentOutletName changes
-  useEffect(() => {
-    if (company.currentOutletName) {
-      const code = company.currentOutletName.substring(0, 4).toUpperCase() + Math.floor(Math.random() * 100).toString().padStart(2, '0');
-      setCompany(prev => ({ ...prev, currentOutletCode: code }));
-    } else {
-      setCompany(prev => ({ ...prev, currentOutletCode: 'XXXX00' }));
-    }
-  }, [company.currentOutletName]);
 
   useEffect(() => {
     const fetchOperationalData = async () => {
@@ -1158,7 +1236,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         setCompany(prev => ({ ...prev, currentOutletCode: existing.code }));
       } else {
         const base = company.currentOutletName.substring(0, 4).replace(/[^a-zA-Z]/g, '').padEnd(3, 'X').toUpperCase();
-        const code = `${base}${String(sequenceCounter + 1).padStart(2, '0')}`;
+        // Count existing outlets with the same prefix to determine next sequence
+        const samePrefixCount = outlets.filter(o => o.code?.startsWith(base)).length;
+        const seq = String(samePrefixCount + 1).padStart(2, '0');
+        const code = `${base}${seq}`;
         setCompany(prev => ({ ...prev, currentOutletCode: code }));
       }
     }
@@ -1284,6 +1365,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     setEnrollPermissions([]);
 
     showToast(`${enrollName || 'Staff member'} saved successfully.`, 'success');
+    logAction(enrollId ? 'personnel_updated' : 'personnel_enrolled', 'personnel', enrollName || 'Unknown', `${enrollName} enrolled as ${enrollPosition} for ${enrollOutlet}`, { role: enrollRole, position: enrollPosition, outlet: enrollOutlet });
   };
 
   const handleEdit = (user: UserProfile & { password?: string }) => {
@@ -1317,6 +1399,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       setUsers(prev => prev.filter(u => u.id !== id));
       showToast("Staff member removed.", 'success');
+      const removedUser = users.find(u => u.id === id);
+      logAction('personnel_removed', 'personnel', removedUser?.fullName || 'Unknown', `Removed ${removedUser?.fullName || 'staff member'} from registry`, { email: removedUser?.email });
     });
   };
 
@@ -1342,14 +1426,32 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const newOutlet: Outlet = { 
       name: cleanName, 
       code: company.currentOutletCode,
+      location: company.city || '',
       color_hex: '#718096'
     };
 
-    const { error, status } = await supabase.from('outlets').upsert({
-      user_id: session.user.id,
-      name: newOutlet.name,
-      color_hex: newOutlet.color_hex
-    }, { onConflict: 'user_id, name' });
+    // No unique constraint on (user_id, outlet_name) — check manually then insert
+    const { data: existingDb } = await supabase.from('outlets')
+      .select('id').eq('user_id', session.user.id).eq('outlet_name', newOutlet.name).maybeSingle();
+
+    let error: any, status: number, insertedId: string | undefined;
+    if (existingDb?.id) {
+      const r = await supabase.from('outlets').update({
+        color_hex: newOutlet.color_hex,
+        location: newOutlet.location,
+        outlet_id: newOutlet.code
+      }).eq('id', existingDb.id).select('id').single();
+      error = r.error; status = r.status; insertedId = existingDb.id;
+    } else {
+      const r = await supabase.from('outlets').insert({
+        user_id: session.user.id,
+        outlet_name: newOutlet.name,
+        outlet_id: newOutlet.code,
+        location: newOutlet.location,
+        color_hex: newOutlet.color_hex
+      }).select('id').single();
+      error = r.error; status = r.status; insertedId = r.data?.id;
+    }
 
     if (error || (status !== 201 && status !== 200)) {
       console.error("OUTLET_INSERT_FAILURE:", error);
@@ -1357,9 +1459,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       return;
     }
 
-    setOutlets(prev => [...prev, newOutlet]);
+    // Use the real DB id if we got it back
+    setOutlets(prev => [...prev, { ...newOutlet, id: insertedId }]);
     setSequenceCounter(prev => prev + 1);
     setCompany(prev => ({ ...prev, currentOutletName: '', currentOutletCode: 'XXX01' }));
+    logAction('outlet_added', 'outlet', newOutlet.name, `Added outlet "${newOutlet.name}" (${newOutlet.code})`, { code: newOutlet.code, location: newOutlet.location });
   };
 
   const handleRemoveOutlet = (code: string) => {
@@ -1368,11 +1472,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { showToast("Authentication required.", 'error'); return; }
 
-      // Delete by name (no code column in DB)
+      // Delete by outlet_name (actual DB column)
       const name = outlets.find(o => o.code === code)?.name;
       if (!name) return;
       const { error, status } = await supabase.from('outlets').delete()
-        .eq('user_id', session.user.id).eq('name', name);
+        .eq('user_id', session.user.id).eq('outlet_name', name);
 
       if (error || (status !== 204 && status !== 200)) {
         console.error("OUTLET_DELETE_FAILURE:", error);
@@ -1382,6 +1486,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       setOutlets(prev => prev.filter(o => o.code !== code));
       showToast(`"${outletName}" removed.`, 'success');
+      logAction('outlet_removed', 'outlet', outletName, `Removed outlet "${outletName}" (${code})`, { code });
     });
   };
 
@@ -1406,8 +1511,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // 1. Upsert Company Identity
       const { error: companyError, status: companyStatus } = await supabase.from('company_settings').upsert({
         user_id: userId,
-        admin_name: company.name,
-        company_name: company.company_name || company.name,
+        admin_name: user.fullName,
+        company_name: company.name,
         city_country: company.city,
         region: company.region,
         
@@ -1425,24 +1530,40 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       }
 
       // 2. Persist All Current Outlets (Registry Sync)
-      // This ensures defaults become permanent in the DB so they can be managed/deleted
+      // No unique constraint on (user_id, outlet_name) — sync each outlet individually
       if (outlets.length > 0) {
-        const { error: outletError, status: outletStatus } = await supabase.from('outlets').upsert(
-          outlets.map(o => ({
-            name: o.name,
-            code: o.code,
-            location: o.location || company.city,
-            color_hex: o.color_hex || '#77B139'
-          })),
-          { onConflict: 'name' }
-        );
-        if (outletError || (outletStatus !== 200 && outletStatus !== 201)) {
-          console.error("OUTLET_UPSERT_FAILURE:", outletError);
-          throw outletError || new Error(`Database rejected outlet registry update (Status: ${outletStatus})`);
+        for (const o of outlets) {
+          if (!o.name) continue;
+          const { data: existingDb } = await supabase.from('outlets')
+            .select('id').eq('user_id', session.user.id).eq('outlet_name', o.name).maybeSingle();
+
+          let outletError: any, outletStatus: number;
+          if (existingDb?.id) {
+            const r = await supabase.from('outlets').update({
+              outlet_id: o.code,
+              location: o.location || company.city,
+              color_hex: o.color_hex || '#77B139'
+            }).eq('id', existingDb.id);
+            outletError = r.error; outletStatus = r.status;
+          } else {
+            const r = await supabase.from('outlets').insert({
+              user_id: session.user.id,
+              outlet_name: o.name,
+              outlet_id: o.code,
+              location: o.location || company.city,
+              color_hex: o.color_hex || '#77B139'
+            });
+            outletError = r.error; outletStatus = r.status;
+          }
+          if (outletError || (outletStatus !== 200 && outletStatus !== 201 && outletStatus !== 204)) {
+            console.error("OUTLET_UPSERT_FAILURE:", outletError);
+            throw outletError || new Error(`Database rejected outlet "${o.name}" (Status: ${outletStatus})`);
+          }
         }
       }
 
       showToast("Saved successfully.", 'success');
+      logAction('settings_saved', 'company', company.name || 'Organization', `Updated company identity, audit config, and ${outlets.length} outlet(s)`, { region: company.region, city: company.city, outletCount: outlets.length });
       setSaveStatus('success');
       setIsEditingIdentity(false);
       setIsEditingAudit(false);
@@ -1491,6 +1612,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     } else {
       showToast('Benchmarks saved.', 'success');
       setParamsUpdatedAt(new Date().toLocaleString());
+      logAction('benchmarks_saved', 'benchmark', params.benchmarkRegion, `Saved benchmark parameters (${params.benchmarkRegion})`, { wasteTarget: params.wasteTarget, energyTarget: params.energyTarget, waterTarget: params.waterTarget });
     }
 
     if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
@@ -2498,6 +2620,77 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                       </div>
                     </div>
+
+                    {/* ── Audit Log ── */}
+                    <div className="rounded-2xl overflow-hidden border border-white/8">
+                      <div className="bg-gradient-to-r from-white/5 to-transparent px-6 sm:px-8 py-5 border-b border-white/8 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
+                          <FileText size={17} className="text-brand-gold" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Activity Trail</p>
+                          <h4 className="text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Audit Log</h4>
+                        </div>
+                        <button
+                          onClick={fetchAuditLogs}
+                          className="p-2 rounded-lg hover:bg-white/8 text-white/30 hover:text-white/60 transition-colors"
+                          title="Refresh"
+                        >
+                          <RefreshCcw size={14} />
+                        </button>
+                      </div>
+                      <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[400px] overflow-y-auto scrollbar-gold">
+                        {auditLogs.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <FileText size={28} className="text-white/10 mb-3" />
+                            <p className="text-xs text-white/30 font-medium">No activity recorded yet</p>
+                            <p className="text-[10px] text-white/20 mt-1">Actions by you and your team will appear here</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {auditLogs.map((log: any) => {
+                              const iconMap: Record<string, any> = {
+                                outlet_added: Plus,
+                                outlet_removed: Trash2,
+                                settings_saved: Save,
+                                personnel_enrolled: UserPlus,
+                                personnel_updated: Edit2,
+                                personnel_removed: Trash2,
+                                benchmarks_saved: Target,
+                              };
+                              const colorMap: Record<string, string> = {
+                                outlet_added: 'text-brand-eco bg-brand-eco/10',
+                                outlet_removed: 'text-brand-alert bg-brand-alert/10',
+                                settings_saved: 'text-brand-gold bg-brand-gold/10',
+                                personnel_enrolled: 'text-brand-eco bg-brand-eco/10',
+                                personnel_updated: 'text-brand-gold bg-brand-gold/10',
+                                personnel_removed: 'text-brand-alert bg-brand-alert/10',
+                                benchmarks_saved: 'text-brand-gold bg-brand-gold/10',
+                              };
+                              const Icon = iconMap[log.action] || Activity;
+                              const color = colorMap[log.action] || 'text-white/40 bg-white/5';
+                              const time = new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                              return (
+                                <div key={log.id} className="flex items-start gap-3 py-2.5 px-3 rounded-lg hover:bg-white/3 transition-colors">
+                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                                    <Icon size={12} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-[10px] font-bold text-white uppercase tracking-wide">{log.actor_name}</span>
+                                      <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold">{log.actor_role}</span>
+                                      <span className="text-[9px] text-white/20">·</span>
+                                      <span className="text-[9px] text-white/30">{time}</span>
+                                    </div>
+                                    <p className="text-[11px] text-white/50 mt-0.5 leading-snug">{log.description}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                 )}
@@ -2580,6 +2773,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
                                 onChange={v => setEnrollOutlet(outlets.find(o => `${o.name} (${o.code})` === v)?.code || v)}
                                 placeholder="Select Outlet"
+                                emptyMessage="No outlets added yet — go to Company → Outlets"
                               />
                             </div>
                           </div>
@@ -2592,25 +2786,48 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex items-center gap-2">
                             <span className="w-3 h-px bg-white/20" />Permissions
                           </p>
+                          {/* Trigger — matches CustomSelect style */}
                           <button
                             onClick={() => setIsPermDropdownOpen(!isPermDropdownOpen)}
-                            className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-left flex items-center justify-between hover:border-brand-gold/40 transition-all"
+                            className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors cursor-pointer
+                              ${isPermDropdownOpen ? 'border-brand-gold' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
                           >
-                            <span className={enrollPermissions.length ? 'text-brand-gold font-black text-xs uppercase tracking-widest' : 'text-white/25 text-sm'}>
-                              {enrollPermissions.length === 0 ? 'Select Permissions' : `${enrollPermissions.length} Permission${enrollPermissions.length > 1 ? 's' : ''} Selected`}
+                            <span className={enrollPermissions.length ? 'text-white text-sm' : 'text-white/40 text-sm'}>
+                              {enrollPermissions.length === 0
+                                ? 'Select Permissions'
+                                : `${enrollPermissions.length} Permission${enrollPermissions.length > 1 ? 's' : ''} Selected`}
                             </span>
-                            {isPermDropdownOpen ? <ChevronUp size={15} className="text-brand-gold" /> : <ChevronDown size={15} className="text-brand-gold/60" />}
+                            <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${isPermDropdownOpen ? 'rotate-180' : ''}`} />
                           </button>
+
                           {isPermDropdownOpen && (
-                            <div className="absolute top-full left-0 w-full mt-1.5 bg-[#0e1f1c] border border-brand-gold/25 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] z-[100] max-h-[280px] overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150">
-                              <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-1.5">
-                                {AVAILABLE_PERMISSIONS.map(p => (
-                                  <button key={p} onClick={() => togglePermission(p)}
-                                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-all text-left ${enrollPermissions.includes(p) ? 'bg-brand-gold/10 border-brand-gold/30 text-brand-gold' : 'border-transparent text-white/40 hover:bg-white/5 hover:text-white/70'}`}>
-                                    {enrollPermissions.includes(p) ? <CheckSquare size={14} /> : <Square size={14} />}
-                                    <span className="text-[9px] font-bold uppercase tracking-tight">{p}</span>
-                                  </button>
-                                ))}
+                            <div className="absolute top-full left-0 w-full mt-1 bg-[#152E2A] border border-brand-gold/25 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                              <div className="max-h-64 overflow-y-auto scrollbar-gold p-2 grid grid-cols-1 md:grid-cols-2 gap-1">
+                                {AVAILABLE_PERMISSIONS.map(p => {
+                                  const checked = enrollPermissions.includes(p);
+                                  return (
+                                    <button key={p} type="button" onClick={() => togglePermission(p)}
+                                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-left
+                                        ${checked
+                                          ? 'bg-brand-gold/10 text-brand-gold'
+                                          : 'text-white/50 hover:bg-white/5 hover:text-white/80'}`}
+                                    >
+                                      {/* Custom themed checkbox */}
+                                      <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-colors
+                                        ${checked ? 'bg-brand-gold border-brand-gold' : 'border-white/20 bg-transparent'}`}>
+                                        {checked && <Check size={10} className="text-[#0e1f1c]" strokeWidth={3} />}
+                                      </span>
+                                      <span className="text-[9px] font-bold uppercase tracking-tight leading-tight">{p}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {/* Select all / Clear all footer */}
+                              <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/8">
+                                <button type="button" onClick={() => setEnrollPermissions([])}
+                                  className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">Clear all</button>
+                                <button type="button" onClick={() => setEnrollPermissions(AVAILABLE_PERMISSIONS)}
+                                  className="text-[10px] font-bold text-brand-gold hover:text-brand-gold/70 transition-colors uppercase tracking-widest">Select all</button>
                               </div>
                             </div>
                           )}
@@ -2974,6 +3191,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       setParams({ ...params, selectedManualOutlet: code });
                                     }}
                                     placeholder="Select Target Outlet"
+                                    emptyMessage="No outlets added yet — go to Company → Outlets"
                                   />
                                   <p className="text-[8px] text-gray-500 uppercase font-black tracking-tight leading-tight mt-1 ml-1">
                                     Each outlet follows its individual parameters under manual entry mode.
