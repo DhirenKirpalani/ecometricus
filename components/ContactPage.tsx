@@ -24,7 +24,7 @@ const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: number) => void }> = (
   }, [toast.createdAt]);
 
   return (
-    <div className={`relative w-80 rounded-2xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.5)] pointer-events-auto animate-in slide-in-from-bottom-4 fade-in duration-300 ${
+    <div className={`relative w-[calc(100vw-2rem)] max-w-sm rounded-2xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.5)] pointer-events-auto animate-in slide-in-from-bottom-4 fade-in duration-300 ${
       isSuccess ? 'bg-[#0d2620]' : 'bg-[#200d0d]'
     }`}>
       {/* Left accent bar */}
@@ -255,24 +255,24 @@ const ContactPage: React.FC = () => {
       {/* Hero header */}
       <div className="relative overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 100%, rgba(200,164,19,0.07), transparent 55%)' }} />
-        <div className="max-w-4xl mx-auto px-6 py-20 sm:py-28 text-center relative">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-gold/10 border border-brand-gold/30 mb-6">
-            <MessageSquare className="text-brand-gold" size={30} />
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 py-14 sm:py-28 text-center relative">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-brand-gold/10 border border-brand-gold/30 mb-5 sm:mb-6">
+            <MessageSquare className="text-brand-gold" size={26} />
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gold mb-3">{t('contact.getInTouch')}</p>
-          <h1 className="text-3xl sm:text-5xl font-geometric font-black text-white uppercase tracking-widest mb-4">
+          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-brand-gold mb-3">{t('contact.getInTouch')}</p>
+          <h1 className="text-2xl sm:text-5xl font-geometric font-black text-white uppercase tracking-[0.15em] sm:tracking-widest mb-4">
             {t('contact.title')}
           </h1>
-          <p className="text-base text-gray-400 font-light max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-gray-400 font-light max-w-xl mx-auto leading-relaxed">
             {t('contact.subtitle')}
           </p>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-14 pb-24">
+      <div className="max-w-6xl mx-auto px-5 sm:px-6 py-10 sm:py-14 pb-24">
 
         {/* Contact channel cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5 mb-10 sm:mb-16">
           {channels.map((ch, i) => (
             <div key={i} className="bg-[#1c3933] border border-brand-gold/15 rounded-2xl p-6 hover:border-brand-gold/35 transition-all duration-300 flex flex-col gap-3 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]">
               <div className="w-12 h-12 rounded-xl bg-white/8 border border-white/8 flex items-center justify-center">
@@ -316,15 +316,15 @@ const ContactPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 sm:gap-10">
 
             {/* Left info panel */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-6 sm:p-8 shadow-[inset_0_1px_0_rgba(200,164,19,0.06)]">
-                <h2 className="text-lg font-geometric font-black text-white uppercase tracking-widest mb-4">
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+              <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-8 shadow-[inset_0_1px_0_rgba(200,164,19,0.06)]">
+                <h2 className="text-base sm:text-lg font-geometric font-black text-white uppercase tracking-widest mb-4">
                   {t('contact.whyReachOut')}
                 </h2>
-                <ul className="space-y-4">
+                <ul className="space-y-3 sm:space-y-4">
                   {[
                     t('contact.why1'),
                     t('contact.why2'),
@@ -339,15 +339,15 @@ const ContactPage: React.FC = () => {
                   ))}
                 </ul>
               </div>
-              <div className="bg-[#1c3933] border border-brand-gold/15 rounded-2xl p-6 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]">
+              <div className="bg-[#1c3933] border border-brand-gold/15 rounded-2xl p-5 sm:p-6 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand-eco mb-2">{t('contact.responseTime')}</p>
                 <p className="text-sm text-gray-400 leading-relaxed">{t('contact.responseTimeDesc')}</p>
               </div>
             </div>
 
             {/* Right form */}
-            <form onSubmit={handleSubmit} noValidate className="lg:col-span-3 bg-[#1c3933] border border-brand-gold/15 rounded-2xl p-6 sm:p-8 space-y-5 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]">
-              <h2 className="text-lg font-geometric font-black text-white uppercase tracking-widest mb-2">{t('contact.sendMessage')}</h2>
+            <form onSubmit={handleSubmit} noValidate className="lg:col-span-3 bg-[#1c3933] border border-brand-gold/15 rounded-2xl p-5 sm:p-8 space-y-5 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]">
+              <h2 className="text-base sm:text-lg font-geometric font-black text-white uppercase tracking-widest mb-2">{t('contact.sendMessage')}</h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
