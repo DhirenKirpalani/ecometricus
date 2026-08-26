@@ -559,6 +559,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>(DashboardTab.SUMMARIZED);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isHydrating, setIsHydrating] = useState(true);
+
+  // ── Toast + Confirm modal ──────────────────────────────────────────────────
+  const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Date.now();
+    setToast({ id, message, type });
+    setTimeout(() => setToast(prev => prev?.id === id ? null : prev), 3500);
+  };
+  const showConfirm = (message: string, onConfirm: () => void) => setConfirmModal({ message, onConfirm });
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [isPermDropdownOpen, setIsPermDropdownOpen] = useState(false);
   const permRef = useRef<HTMLDivElement>(null);
@@ -644,7 +655,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           supabase.from('benchmarks').select('*').eq('user_id', authUser.id).eq('outlet_name', 'Unknown Outlet').maybeSingle(),
           supabase.from('personnel').select('*').eq('user_id', authUser.id),
           supabase.from('company_settings').select('*').eq('user_id', authUser.id).maybeSingle(),
-          supabase.from('outlets').select('*')
+          supabase.from('outlets').select('*').eq('user_id', authUser.id)
         ]);
 
         if (companyRes.data) {
@@ -670,25 +681,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           setCompany(prev => ({ ...prev, name: '' }));
         }
 
-        // Hybrid Outlet Merging
+        // Map outlets from DB — code column does not exist in schema,
+        // so generate it deterministically: first 3 letters of name + zero-padded index.
         const dbOutlets: Outlet[] = (outletsRes.data || [])
-          .map((o: any) => ({
+          .filter((o: any) => o.name)
+          .map((o: any, idx: number) => ({
             id: o.id,
             name: o.name,
-            code: o.code,
+            code: o.name.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() + String(idx + 1).padStart(2, '0'),
             location: o.location || '',
             color_hex: o.color_hex
-          }))
-          // Filter out any rows with missing name or code (guard against corrupt data)
-          .filter((o: Outlet) => o.name && o.code);
+          }));
 
-        setOutlets(prev => {
-          // 🛡️ De-Duplication Fix: prefer DB results, only use defaults if DB is empty
-          if (dbOutlets.length > 0) {
-            return dbOutlets;
-          }
-          return DEFAULT_OUTLETS;
-        });
+        // Only show this user's outlets — never fall back to shared demo data
+        setOutlets(dbOutlets);
 
         if (parametersRes.data) {
           setParams(prev => ({
@@ -1036,7 +1042,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   const handleEnroll = async () => {
     if (!enrollName || !enrollEmail || !enrollPosition || !enrollOutlet) {
-      alert("Please complete all enrollment fields.");
+      showToast("Please complete all enrollment fields.", 'error');
       return;
     }
 
@@ -1050,7 +1056,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     // 🛡️ Auth Sync Gate (Phase 3 Repair)
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      alert("User authentication required for personnel management.");
+      showToast("Authentication required.", 'error');
       return;
     }
 
@@ -1092,11 +1098,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     if (error || (status !== 200 && status !== 201)) {
        console.error("PERSONNEL_UPSERT_FAILURE:", error);
-       alert("Database Error: " + (error?.message || `Failed to persist personnel (Status: ${status})`));
-       return; // STRICT EXIT ON ERROR - no success message shown
+       showToast("Database Error: " + (error?.message || `Failed to save (Status: ${status})`), 'error');
+       return;
     }
-
-    alert("Save Successful");
 
     if (enrollId) {
       setUsers(prev => prev.map(u => u.id === enrollId ? {
@@ -1134,7 +1138,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     setEnrollRole('');
     setEnrollPermissions([]);
 
-    alert(`Personnel record for ${enrollName || 'staff'} has been processed and saved.`);
+    showToast(`${enrollName || 'Staff member'} saved successfully.`, 'success');
   };
 
   const handleEdit = (user: UserProfile & { password?: string }) => {
@@ -1153,26 +1157,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     form?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleDeletePersonnel = async (id: string) => {
-    if (!confirm("Permanently remove this staff member from the registry?")) return;
+  const handleDeletePersonnel = (id: string) => {
+    showConfirm("Permanently remove this staff member from the registry?", async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { showToast("Authentication required.", 'error'); return; }
 
-    // 🛡️ Auth Persistence Sync (Phase 5)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      alert("User authentication required for registry management.");
-      return;
-    }
+      const { error, status } = await supabase.from('personnel').delete().eq('id', id);
 
-    const { error, status } = await supabase.from('personnel').delete().eq('id', id);
+      if (error || (status !== 204 && status !== 200)) {
+        console.error("PERSONNEL_DELETE_FAILURE:", error);
+        showToast("Database Error: " + (error?.message || `Failed to remove staff member.`), 'error');
+        return;
+      }
 
-    if (error || (status !== 204 && status !== 200)) {
-       console.error("PERSONNEL_DELETE_FAILURE:", error);
-       alert("Database Error: " + (error?.message || `Failed to remove staff member (Status: ${status})`));
-       return;
-    }
-
-    setUsers(prev => prev.filter(u => u.id !== id));
-    alert("Save Successful");
+      setUsers(prev => prev.filter(u => u.id !== id));
+      showToast("Staff member removed.", 'success');
+    });
   };
 
   const handleAddOutlet = async () => {
@@ -1182,33 +1182,33 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const existing = outlets.filter(o => o.name).find(o => o.name.toLowerCase() === cleanName.toLowerCase());
 
     if (existing) {
-      alert("Outlet already registered in core session.");
+      showToast("Outlet already registered.", 'error');
       return;
     }
 
     // 🛡️ Auth Persistence Sync (Phase 4)
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      alert("User authentication required for registry management.");
+      showToast("Authentication required.", 'error');
       return;
     }
 
+    // code is generated client-side — the DB 'outlets' table has no code column
     const newOutlet: Outlet = { 
       name: cleanName, 
       code: company.currentOutletCode,
-      color_hex: '#718096' // Default Grey for new outlets
+      color_hex: '#718096'
     };
 
     const { error, status } = await supabase.from('outlets').upsert({
       user_id: session.user.id,
       name: newOutlet.name,
-      code: newOutlet.code,
       color_hex: newOutlet.color_hex
-    }, { onConflict: 'name' });
+    }, { onConflict: 'user_id, name' });
 
     if (error || (status !== 201 && status !== 200)) {
       console.error("OUTLET_INSERT_FAILURE:", error);
-      alert("Database Error: " + (error?.message || `Failed to persist outlet (Status: ${status})`));
+      showToast("Database Error: " + (error?.message || `Failed to save outlet.`), 'error');
       return;
     }
 
@@ -1217,39 +1217,27 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     setCompany(prev => ({ ...prev, currentOutletName: '', currentOutletCode: 'XXX01' }));
   };
 
-  const handleRemoveOutlet = async (code: string) => {
-    if (!confirm(`Remove outlet ${code} from registry?`)) return;
+  const handleRemoveOutlet = (code: string) => {
+    const outletName = outlets.find(o => o.code === code)?.name || code;
+    showConfirm(`Remove "${outletName}" from your outlets?`, async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { showToast("Authentication required.", 'error'); return; }
 
-    // 🛡️ Auth Persistence Sync (Phase 4)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      alert("User authentication required for registry management.");
-      return;
-    }
+      // Delete by name (no code column in DB)
+      const name = outlets.find(o => o.code === code)?.name;
+      if (!name) return;
+      const { error, status } = await supabase.from('outlets').delete()
+        .eq('user_id', session.user.id).eq('name', name);
 
-    const { error, status } = await supabase.from('outlets').delete().eq('code', code);
-
-    if (error || (status !== 204 && status !== 200)) {
-       console.error("OUTLET_DELETE_FAILURE:", error);
-       alert("Database Error: " + (error?.message || `Failed to remove outlet (Status: ${status})`));
-       return;
-    }
-
-    setOutlets(prev => {
-      const remaining = prev.filter(o => o.code !== code);
-      // 🔥 FIX: Persist remaining outlets to DB so default ones don't resurrect if the DB was empty!
-      if (remaining.length > 0) {
-        supabase.from('outlets').upsert(remaining.map(o => ({
-          user_id: session.user.id,
-          name: o.name,
-          code: o.code,
-          location: o.location || company.city,
-          color_hex: o.color_hex || '#77B139'
-        })), { onConflict: 'code' }).then();
+      if (error || (status !== 204 && status !== 200)) {
+        console.error("OUTLET_DELETE_FAILURE:", error);
+        showToast("Database Error: " + (error?.message || `Failed to remove outlet.`), 'error');
+        return;
       }
-      return remaining;
+
+      setOutlets(prev => prev.filter(o => o.code !== code));
+      showToast(`"${outletName}" removed.`, 'success');
     });
-    alert("Outlet Removed Successfully.");
   };
 
   const togglePermission = (perm: string) => {
@@ -1309,8 +1297,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         }
       }
 
-      // ONLY UPDATE LOCAL UI STATE ON SUCCESS
-      alert("Save Successful");
+      showToast("Saved successfully.", 'success');
       setSaveStatus('success');
       setIsEditingIdentity(false);
       setIsEditingAudit(false);
@@ -1318,7 +1305,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       setIsEditingApis(false);
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error: any) {
-      alert("Database Error: " + error.message);
+      showToast("Database Error: " + error.message, 'error');
       setSaveStatus('idle');
     }
   };
@@ -1328,7 +1315,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      alert("User authentication required.");
+      showToast("Authentication required.", 'error');
       setSaveStatus('idle');
       return;
     }
@@ -1354,10 +1341,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       }, { onConflict: 'user_id, outlet_name' });
 
     if (error) {
-      alert('DATABASE REJECTION: ' + error.message);
+      showToast('Database Error: ' + error.message, 'error');
       console.error(error);
     } else {
-      alert('SUCCESS: DATA PERSISTED AT ' + new Date().toLocaleTimeString());
+      showToast('Benchmarks saved.', 'success');
       setParamsUpdatedAt(new Date().toLocaleString());
     }
 
@@ -1390,7 +1377,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   };
 
   const handleGetReport = () => {
-    alert(`Generating ${auditReport.cycle} Audit Report for ${auditReport.outletSelection}...\n(Digital ESG Workflow Active)`);
+    showToast(`Generating ${auditReport.cycle} report for ${auditReport.outletSelection}…`, 'info');
   };
 
   const rawJson = useMemo(() => JSON.stringify({
@@ -1559,6 +1546,41 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   return (
     <div className={`relative min-h-screen ${isPendingConsent ? 'overflow-hidden' : ''}`}>
+
+      {/* ── Toast notification ── */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-[99999] flex items-start gap-3 px-4 py-3 rounded-xl border shadow-[0_8px_32px_rgba(0,0,0,0.5)] max-w-sm animate-in slide-in-from-top-2 duration-300
+          ${toast.type === 'success' ? 'bg-[#1a3d2e] border-brand-eco/40 text-brand-eco' : ''}
+          ${toast.type === 'error'   ? 'bg-[#2d1a1a] border-brand-alert/40 text-brand-alert' : ''}
+          ${toast.type === 'info'    ? 'bg-[#1c3933] border-brand-gold/30 text-brand-gold' : ''}`}
+        >
+          <span className="text-sm font-medium leading-snug flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="opacity-50 hover:opacity-100 transition-opacity shrink-0 mt-0.5">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Confirm modal ── */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-[99998] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-6 shadow-[0_16px_64px_rgba(0,0,0,0.7)] max-w-sm w-full mx-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60 mb-2">Confirm Action</p>
+            <p className="text-sm text-white/80 leading-relaxed mb-6">{confirmModal.message}</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 rounded-lg border border-white/15 text-white/50 hover:text-white hover:border-white/30 text-[11px] font-semibold transition-colors"
+              >Cancel</button>
+              <button
+                onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
+                className="px-4 py-2 rounded-lg bg-brand-alert/20 border border-brand-alert/40 text-brand-alert hover:bg-brand-alert/30 text-[11px] font-semibold transition-colors"
+              >Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Navbar ── */}
       <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-white/6"
         style={{ background: 'linear-gradient(180deg, #0e1f1c 0%, rgba(14,31,28,0.97) 100%)', backdropFilter: 'blur(20px)' }}>
@@ -1596,10 +1618,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <button
               onClick={onLogout}
               title="Log out"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white/30 hover:text-brand-alert hover:bg-brand-alert/8 transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-white/15 text-white/60 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
             >
               <LogOut size={14} />
-              <span className="hidden lg:inline text-[11px] font-medium">Log out</span>
+              <span className="text-[11px] font-semibold">Log out</span>
             </button>
           </div>
         </div>
