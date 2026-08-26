@@ -110,40 +110,164 @@ enum DashboardTab {
 }
 
 const REGION_DATA: Record<string, string[]> = {
-  'Asia': ['Vietnam', 'Kuala Lumpur', 'Singapore', 'Indonesia', 'Bangkok', 'Tokyo', 'Hong Kong'],
-  'USA': ['New York', 'Los Angeles', 'Chicago', 'Miami', 'San Francisco'],
-  'Mexico': ['Mexico City', 'Cancun', 'Guadalajara', 'Monterrey'],
-  'Middle East': ['Dubai', 'Abu Dhabi', 'Riyadh', 'Doha', 'Muscat'],
-  'Europe': ['London', 'Paris', 'Berlin', 'Rome', 'Madrid']
+  'Asia': [
+    'Bangkok, Thailand', 'Singapore', 'Kuala Lumpur, Malaysia', 'Ho Chi Minh City, Vietnam',
+    'Hanoi, Vietnam', 'Jakarta, Indonesia', 'Bali, Indonesia', 'Tokyo, Japan', 'Osaka, Japan',
+    'Hong Kong', 'Seoul, South Korea', 'Taipei, Taiwan', 'Manila, Philippines', 'Phuket, Thailand',
+    'Chiang Mai, Thailand', 'Colombo, Sri Lanka', 'Dhaka, Bangladesh', 'Kathmandu, Nepal',
+    'Maldives', 'Phnom Penh, Cambodia', 'Vientiane, Laos', 'Yangon, Myanmar', 'Macau',
+    'Shanghai, China', 'Beijing, China', 'Shenzhen, China', 'Mumbai, India', 'Delhi, India',
+    'Bengaluru, India', 'Chennai, India', 'Goa, India', 'Hyderabad, India',
+  ],
+  'Middle East': [
+    'Dubai, UAE', 'Abu Dhabi, UAE', 'Sharjah, UAE', 'Riyadh, Saudi Arabia',
+    'Jeddah, Saudi Arabia', 'Mecca, Saudi Arabia', 'Doha, Qatar', 'Muscat, Oman',
+    'Kuwait City, Kuwait', 'Manama, Bahrain', 'Amman, Jordan', 'Beirut, Lebanon',
+    'Tel Aviv, Israel', 'Cairo, Egypt', 'Istanbul, Turkey', 'Ankara, Turkey',
+    'Tehran, Iran', 'Baghdad, Iraq',
+  ],
+  'Europe': [
+    'London, UK', 'Manchester, UK', 'Edinburgh, UK', 'Paris, France', 'Lyon, France',
+    'Berlin, Germany', 'Munich, Germany', 'Frankfurt, Germany', 'Hamburg, Germany',
+    'Rome, Italy', 'Milan, Italy', 'Florence, Italy', 'Venice, Italy', 'Naples, Italy',
+    'Madrid, Spain', 'Barcelona, Spain', 'Seville, Spain', 'Lisbon, Portugal', 'Porto, Portugal',
+    'Amsterdam, Netherlands', 'Brussels, Belgium', 'Vienna, Austria', 'Zurich, Switzerland',
+    'Geneva, Switzerland', 'Copenhagen, Denmark', 'Stockholm, Sweden', 'Oslo, Norway',
+    'Helsinki, Finland', 'Warsaw, Poland', 'Prague, Czech Republic', 'Budapest, Hungary',
+    'Athens, Greece', 'Santorini, Greece', 'Dubrovnik, Croatia', 'Monaco', 'Luxembourg',
+  ],
+  'USA': [
+    'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Miami, FL', 'San Francisco, CA',
+    'Las Vegas, NV', 'Seattle, WA', 'Boston, MA', 'Washington DC', 'Houston, TX',
+    'Dallas, TX', 'Austin, TX', 'Atlanta, GA', 'New Orleans, LA', 'Nashville, TN',
+    'Denver, CO', 'Phoenix, AZ', 'San Diego, CA', 'Portland, OR', 'Honolulu, HI',
+    'Orlando, FL', 'Tampa, FL', 'Charlotte, NC', 'Minneapolis, MN', 'Detroit, MI',
+  ],
+  'Caribbean': [
+    'Cancun, Mexico', 'Mexico City, Mexico', 'Guadalajara, Mexico', 'Monterrey, Mexico',
+    'Havana, Cuba', 'Nassau, Bahamas', 'Kingston, Jamaica', 'San Juan, Puerto Rico',
+    'Bridgetown, Barbados', 'Port of Spain, Trinidad', 'Punta Cana, Dominican Republic',
+    'Santo Domingo, Dominican Republic', 'Georgetown, Cayman Islands', 'Philipsburg, St Maarten',
+  ],
+  'Africa': [
+    'Cape Town, South Africa', 'Johannesburg, South Africa', 'Nairobi, Kenya',
+    'Lagos, Nigeria', 'Accra, Ghana', 'Casablanca, Morocco', 'Marrakech, Morocco',
+    'Tunis, Tunisia', 'Algiers, Algeria', 'Addis Ababa, Ethiopia', 'Dar es Salaam, Tanzania',
+    'Kampala, Uganda', 'Kigali, Rwanda', 'Maputo, Mozambique', 'Mauritius',
+  ],
+  'Oceania': [
+    'Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia',
+    'Gold Coast, Australia', 'Adelaide, Australia', 'Cairns, Australia',
+    'Auckland, New Zealand', 'Queenstown, New Zealand', 'Wellington, New Zealand',
+    'Fiji', 'Bora Bora, French Polynesia', 'Noumea, New Caledonia',
+  ],
+  'South America': [
+    'Buenos Aires, Argentina', 'Mendoza, Argentina', 'São Paulo, Brazil', 'Rio de Janeiro, Brazil',
+    'Brasília, Brazil', 'Santiago, Chile', 'Lima, Peru', 'Cusco, Peru', 'Bogotá, Colombia',
+    'Medellín, Colombia', 'Cartagena, Colombia', 'Quito, Ecuador', 'Caracas, Venezuela',
+    'Montevideo, Uruguay', 'Asunción, Paraguay', 'La Paz, Bolivia',
+  ],
+  'Canada': [
+    'Toronto, Canada', 'Vancouver, Canada', 'Montreal, Canada', 'Calgary, Canada',
+    'Ottawa, Canada', 'Edmonton, Canada', 'Quebec City, Canada', 'Winnipeg, Canada',
+    'Halifax, Canada',
+  ],
 };
 
 const TIMEZONES: Record<string, string> = {
-  'Vietnam': 'ICT (UTC+7)',
-  'Kuala Lumpur': 'MYT (UTC+8)',
-  'Singapore': 'SGT (UTC+8)',
-  'Indonesia': 'WIB (UTC+7)',
-  'Bangkok': 'ICT (UTC+7)',
-  'Tokyo': 'JST (UTC+9)',
-  'Hong Kong': 'HKT (UTC+8)',
-  'New York': 'EDT (UTC-4)',
-  'Los Angeles': 'PDT (UTC-7)',
-  'Chicago': 'CDT (UTC-5)',
-  'Miami': 'EDT (UTC-4)',
-  'San Francisco': 'PDT (UTC-7)',
-  'Mexico City': 'CST (UTC-6)',
-  'Cancun': 'EST (UTC-5)',
-  'Guadalajara': 'CST (UTC-6)',
-  'Monterrey': 'CST (UTC-6)',
-  'Dubai': 'GST (UTC+4)',
-  'Abu Dhabi': 'GST (UTC+4)',
-  'Riyadh': 'AST (UTC+3)',
-  'Doha': 'AST (UTC+3)',
-  'Muscat': 'GST (UTC+4)',
-  'London': 'BST (UTC+1)',
-  'Paris': 'CEST (UTC+2)',
-  'Berlin': 'CEST (UTC+2)',
-  'Rome': 'CEST (UTC+2)',
-  'Madrid': 'CEST (UTC+2)'
+  // Asia
+  'Bangkok, Thailand': 'ICT (UTC+7)', 'Singapore': 'SGT (UTC+8)', 'Kuala Lumpur, Malaysia': 'MYT (UTC+8)',
+  'Ho Chi Minh City, Vietnam': 'ICT (UTC+7)', 'Hanoi, Vietnam': 'ICT (UTC+7)',
+  'Jakarta, Indonesia': 'WIB (UTC+7)', 'Bali, Indonesia': 'WITA (UTC+8)',
+  'Tokyo, Japan': 'JST (UTC+9)', 'Osaka, Japan': 'JST (UTC+9)', 'Hong Kong': 'HKT (UTC+8)',
+  'Seoul, South Korea': 'KST (UTC+9)', 'Taipei, Taiwan': 'CST (UTC+8)',
+  'Manila, Philippines': 'PHT (UTC+8)', 'Phuket, Thailand': 'ICT (UTC+7)',
+  'Chiang Mai, Thailand': 'ICT (UTC+7)', 'Colombo, Sri Lanka': 'IST (UTC+5:30)',
+  'Dhaka, Bangladesh': 'BST (UTC+6)', 'Kathmandu, Nepal': 'NPT (UTC+5:45)',
+  'Maldives': 'MVT (UTC+5)', 'Phnom Penh, Cambodia': 'ICT (UTC+7)',
+  'Vientiane, Laos': 'ICT (UTC+7)', 'Yangon, Myanmar': 'MMT (UTC+6:30)', 'Macau': 'CST (UTC+8)',
+  'Shanghai, China': 'CST (UTC+8)', 'Beijing, China': 'CST (UTC+8)',
+  'Shenzhen, China': 'CST (UTC+8)', 'Mumbai, India': 'IST (UTC+5:30)',
+  'Delhi, India': 'IST (UTC+5:30)', 'Bengaluru, India': 'IST (UTC+5:30)',
+  'Chennai, India': 'IST (UTC+5:30)', 'Goa, India': 'IST (UTC+5:30)',
+  'Hyderabad, India': 'IST (UTC+5:30)',
+  // Middle East
+  'Dubai, UAE': 'GST (UTC+4)', 'Abu Dhabi, UAE': 'GST (UTC+4)', 'Sharjah, UAE': 'GST (UTC+4)',
+  'Riyadh, Saudi Arabia': 'AST (UTC+3)', 'Jeddah, Saudi Arabia': 'AST (UTC+3)',
+  'Mecca, Saudi Arabia': 'AST (UTC+3)', 'Doha, Qatar': 'AST (UTC+3)',
+  'Muscat, Oman': 'GST (UTC+4)', 'Kuwait City, Kuwait': 'AST (UTC+3)',
+  'Manama, Bahrain': 'AST (UTC+3)', 'Amman, Jordan': 'EET (UTC+3)',
+  'Beirut, Lebanon': 'EET (UTC+3)', 'Tel Aviv, Israel': 'IDT (UTC+3)',
+  'Cairo, Egypt': 'EET (UTC+2)', 'Istanbul, Turkey': 'TRT (UTC+3)',
+  'Ankara, Turkey': 'TRT (UTC+3)', 'Tehran, Iran': 'IRST (UTC+3:30)',
+  'Baghdad, Iraq': 'AST (UTC+3)',
+  // Europe
+  'London, UK': 'BST (UTC+1)', 'Manchester, UK': 'BST (UTC+1)', 'Edinburgh, UK': 'BST (UTC+1)',
+  'Paris, France': 'CEST (UTC+2)', 'Lyon, France': 'CEST (UTC+2)',
+  'Berlin, Germany': 'CEST (UTC+2)', 'Munich, Germany': 'CEST (UTC+2)',
+  'Frankfurt, Germany': 'CEST (UTC+2)', 'Hamburg, Germany': 'CEST (UTC+2)',
+  'Rome, Italy': 'CEST (UTC+2)', 'Milan, Italy': 'CEST (UTC+2)',
+  'Florence, Italy': 'CEST (UTC+2)', 'Venice, Italy': 'CEST (UTC+2)',
+  'Naples, Italy': 'CEST (UTC+2)', 'Madrid, Spain': 'CEST (UTC+2)',
+  'Barcelona, Spain': 'CEST (UTC+2)', 'Seville, Spain': 'CEST (UTC+2)',
+  'Lisbon, Portugal': 'WEST (UTC+1)', 'Porto, Portugal': 'WEST (UTC+1)',
+  'Amsterdam, Netherlands': 'CEST (UTC+2)', 'Brussels, Belgium': 'CEST (UTC+2)',
+  'Vienna, Austria': 'CEST (UTC+2)', 'Zurich, Switzerland': 'CEST (UTC+2)',
+  'Geneva, Switzerland': 'CEST (UTC+2)', 'Copenhagen, Denmark': 'CEST (UTC+2)',
+  'Stockholm, Sweden': 'CEST (UTC+2)', 'Oslo, Norway': 'CEST (UTC+2)',
+  'Helsinki, Finland': 'EEST (UTC+3)', 'Warsaw, Poland': 'CEST (UTC+2)',
+  'Prague, Czech Republic': 'CEST (UTC+2)', 'Budapest, Hungary': 'CEST (UTC+2)',
+  'Athens, Greece': 'EEST (UTC+3)', 'Santorini, Greece': 'EEST (UTC+3)',
+  'Dubrovnik, Croatia': 'CEST (UTC+2)', 'Monaco': 'CEST (UTC+2)', 'Luxembourg': 'CEST (UTC+2)',
+  // USA
+  'New York, NY': 'EDT (UTC-4)', 'Los Angeles, CA': 'PDT (UTC-7)', 'Chicago, IL': 'CDT (UTC-5)',
+  'Miami, FL': 'EDT (UTC-4)', 'San Francisco, CA': 'PDT (UTC-7)', 'Las Vegas, NV': 'PDT (UTC-7)',
+  'Seattle, WA': 'PDT (UTC-7)', 'Boston, MA': 'EDT (UTC-4)', 'Washington DC': 'EDT (UTC-4)',
+  'Houston, TX': 'CDT (UTC-5)', 'Dallas, TX': 'CDT (UTC-5)', 'Austin, TX': 'CDT (UTC-5)',
+  'Atlanta, GA': 'EDT (UTC-4)', 'New Orleans, LA': 'CDT (UTC-5)', 'Nashville, TN': 'CDT (UTC-5)',
+  'Denver, CO': 'MDT (UTC-6)', 'Phoenix, AZ': 'MST (UTC-7)', 'San Diego, CA': 'PDT (UTC-7)',
+  'Portland, OR': 'PDT (UTC-7)', 'Honolulu, HI': 'HST (UTC-10)', 'Orlando, FL': 'EDT (UTC-4)',
+  'Tampa, FL': 'EDT (UTC-4)', 'Charlotte, NC': 'EDT (UTC-4)',
+  'Minneapolis, MN': 'CDT (UTC-5)', 'Detroit, MI': 'EDT (UTC-4)',
+  // Caribbean / Mexico
+  'Cancun, Mexico': 'EST (UTC-5)', 'Mexico City, Mexico': 'CST (UTC-6)',
+  'Guadalajara, Mexico': 'CST (UTC-6)', 'Monterrey, Mexico': 'CST (UTC-6)',
+  'Havana, Cuba': 'CDT (UTC-4)', 'Nassau, Bahamas': 'EDT (UTC-4)',
+  'Kingston, Jamaica': 'EST (UTC-5)', 'San Juan, Puerto Rico': 'AST (UTC-4)',
+  'Bridgetown, Barbados': 'AST (UTC-4)', 'Port of Spain, Trinidad': 'AST (UTC-4)',
+  'Punta Cana, Dominican Republic': 'AST (UTC-4)', 'Santo Domingo, Dominican Republic': 'AST (UTC-4)',
+  'Georgetown, Cayman Islands': 'EST (UTC-5)', 'Philipsburg, St Maarten': 'AST (UTC-4)',
+  // Africa
+  'Cape Town, South Africa': 'SAST (UTC+2)', 'Johannesburg, South Africa': 'SAST (UTC+2)',
+  'Nairobi, Kenya': 'EAT (UTC+3)', 'Lagos, Nigeria': 'WAT (UTC+1)',
+  'Accra, Ghana': 'GMT (UTC+0)', 'Casablanca, Morocco': 'WET (UTC+1)',
+  'Marrakech, Morocco': 'WET (UTC+1)', 'Tunis, Tunisia': 'CET (UTC+1)',
+  'Algiers, Algeria': 'CET (UTC+1)', 'Addis Ababa, Ethiopia': 'EAT (UTC+3)',
+  'Dar es Salaam, Tanzania': 'EAT (UTC+3)', 'Kampala, Uganda': 'EAT (UTC+3)',
+  'Kigali, Rwanda': 'CAT (UTC+2)', 'Maputo, Mozambique': 'CAT (UTC+2)', 'Mauritius': 'MUT (UTC+4)',
+  // Oceania
+  'Sydney, Australia': 'AEST (UTC+10)', 'Melbourne, Australia': 'AEST (UTC+10)',
+  'Brisbane, Australia': 'AEST (UTC+10)', 'Perth, Australia': 'AWST (UTC+8)',
+  'Gold Coast, Australia': 'AEST (UTC+10)', 'Adelaide, Australia': 'ACST (UTC+9:30)',
+  'Cairns, Australia': 'AEST (UTC+10)', 'Auckland, New Zealand': 'NZST (UTC+12)',
+  'Queenstown, New Zealand': 'NZST (UTC+12)', 'Wellington, New Zealand': 'NZST (UTC+12)',
+  'Fiji': 'FJT (UTC+12)', 'Bora Bora, French Polynesia': 'TAHT (UTC-10)',
+  'Noumea, New Caledonia': 'NCT (UTC+11)',
+  // South America
+  'Buenos Aires, Argentina': 'ART (UTC-3)', 'Mendoza, Argentina': 'ART (UTC-3)',
+  'São Paulo, Brazil': 'BRT (UTC-3)', 'Rio de Janeiro, Brazil': 'BRT (UTC-3)',
+  'Brasília, Brazil': 'BRT (UTC-3)', 'Santiago, Chile': 'CLT (UTC-4)',
+  'Lima, Peru': 'PET (UTC-5)', 'Cusco, Peru': 'PET (UTC-5)',
+  'Bogotá, Colombia': 'COT (UTC-5)', 'Medellín, Colombia': 'COT (UTC-5)',
+  'Cartagena, Colombia': 'COT (UTC-5)', 'Quito, Ecuador': 'ECT (UTC-5)',
+  'Caracas, Venezuela': 'VET (UTC-4)', 'Montevideo, Uruguay': 'UYT (UTC-3)',
+  'Asunción, Paraguay': 'PYT (UTC-4)', 'La Paz, Bolivia': 'BOT (UTC-4)',
+  // Canada
+  'Toronto, Canada': 'EDT (UTC-4)', 'Vancouver, Canada': 'PDT (UTC-7)',
+  'Montreal, Canada': 'EDT (UTC-4)', 'Calgary, Canada': 'MDT (UTC-6)',
+  'Ottawa, Canada': 'EDT (UTC-4)', 'Edmonton, Canada': 'MDT (UTC-6)',
+  'Quebec City, Canada': 'EDT (UTC-4)', 'Winnipeg, Canada': 'CDT (UTC-5)',
+  'Halifax, Canada': 'ADT (UTC-3)',
 };
 
 const BENCHMARK_PROFILES: Record<string, { waste: number; water: number; energy: number; foodCost: number; laborCost: number }> = {
@@ -362,7 +486,15 @@ const ADMIN_SENTIMENT_MOCK_DATA = [
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateUser }) => {
   const routerNavigate = useRouterNavigate();
-  const [activeView, setActiveView] = useState<PortalView>(PortalView.DASHBOARD);
+  const [activeView, setActiveView] = useState<PortalView>(() => {
+    const saved = localStorage.getItem('eco_dashboard_tab');
+    return (Object.values(PortalView).includes(saved as PortalView) ? saved : PortalView.DASHBOARD) as PortalView;
+  });
+
+  // Persist active tab on every change
+  useEffect(() => {
+    localStorage.setItem('eco_dashboard_tab', activeView);
+  }, [activeView]);
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>(DashboardTab.SUMMARIZED);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isHydrating, setIsHydrating] = useState(true);
@@ -457,8 +589,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         if (companyRes.data) {
           setCompany(prev => ({ 
             ...prev, 
-            name: companyRes.data.admin_name, 
-            company_name: companyRes.data.company_name || companyRes.data.admin_name,
+            name: companyRes.data.company_name || '',
+            company_name: companyRes.data.company_name || '',
             city: companyRes.data.city_country || prev.city,
             region: companyRes.data.region || prev.region
           }));
@@ -478,13 +610,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         }
 
         // Hybrid Outlet Merging
-        const dbOutlets: Outlet[] = (outletsRes.data || []).map((o: any) => ({
-          id: o.id,
-          name: o.name,
-          code: o.code,
-          location: o.location || '',
-          color_hex: o.color_hex
-        }));
+        const dbOutlets: Outlet[] = (outletsRes.data || [])
+          .map((o: any) => ({
+            id: o.id,
+            name: o.name,
+            code: o.code,
+            location: o.location || '',
+            color_hex: o.color_hex
+          }))
+          // Filter out any rows with missing name or code (guard against corrupt data)
+          .filter((o: Outlet) => o.name && o.code);
 
         setOutlets(prev => {
           // 🛡️ De-Duplication Fix: prefer DB results, only use defaults if DB is empty
@@ -982,7 +1117,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const handleAddOutlet = async () => {
     if (!company.currentOutletName) return;
     const cleanName = company.currentOutletName.trim();
-    const existing = outlets.find(o => o.name.toLowerCase() === cleanName.toLowerCase());
+    // Guard: only compare outlets that have valid names to avoid crashes on empty rows
+    const existing = outlets.filter(o => o.name).find(o => o.name.toLowerCase() === cleanName.toLowerCase());
 
     if (existing) {
       alert("Outlet already registered in core session.");
@@ -1017,8 +1153,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     setOutlets(prev => [...prev, newOutlet]);
     setSequenceCounter(prev => prev + 1);
-    setCompany(prev => ({ ...prev, currentOutletName: '', currentOutletCode: 'XXXX00' }));
-    alert("Outlet Registered Successfully.");
+    setCompany(prev => ({ ...prev, currentOutletName: '', currentOutletCode: 'XXX01' }));
   };
 
   const handleRemoveOutlet = async (code: string) => {
@@ -1220,7 +1355,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     return (
       <button
         onClick={() => setActiveView(view)}
-        className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all duration-200 whitespace-nowrap group ${
+        className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors duration-150 whitespace-nowrap group ${
           active
             ? 'text-white'
             : 'text-white/40 hover:text-white/80'
@@ -1228,14 +1363,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       >
         <Icon
           size={15}
-          className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/25 group-hover:text-white/50'}`}
+          className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/25 group-hover:text-white/50'}`}
         />
-        <span className={`text-[12px] font-semibold tracking-tight transition-colors ${active ? 'text-white' : ''}`}>
+        <span className={`text-[12px] font-semibold tracking-tight ${active ? 'text-white' : ''}`}>
           {label}
         </span>
-        {active && (
-          <span className="absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80" />
-        )}
+        {/* Underline indicator — absolute so it never affects tab width/height */}
+        <span className={`absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80 transition-opacity duration-150 ${active ? 'opacity-100' : 'opacity-0'}`} />
       </button>
     );
   };
@@ -1368,7 +1502,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-white/6"
         style={{ background: 'linear-gradient(180deg, #0e1f1c 0%, rgba(14,31,28,0.97) 100%)', backdropFilter: 'blur(20px)' }}>
 
-        <div className="max-w-[1920px] mx-auto h-14 px-4 sm:px-6 flex items-center justify-between gap-4">
+        <div className="max-w-[1920px] mx-auto h-20 px-4 sm:px-6 flex items-center justify-between gap-4">
 
           {/* ── Left: Logo ── */}
           <button
@@ -1376,7 +1510,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             className="hover:opacity-80 transition-opacity shrink-0"
             aria-label="Go to home page"
           >
-            <Logo size="sm" withLabel />
+            <Logo size="md" withLabel />
           </button>
 
           {/* ── Right: user + logout ── */}
@@ -1387,13 +1521,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               <span className="text-brand-gold text-sm font-black leading-none">{user.fullName?.[0] ?? 'A'}</span>
             </div>
 
-            {/* Name + role */}
-            <div className="hidden sm:block text-left leading-tight">
-              <p className="text-[13px] font-semibold text-white">{user.fullName}</p>
-              <p className="text-[10px] text-brand-gold/60 font-medium tracking-wide mt-0.5">
-                {user.position}
-              </p>
-            </div>
+            {/* Role only — full name is already in the greeting below */}
+            <p className="hidden sm:block text-[11px] text-brand-gold/70 font-semibold tracking-widest uppercase">
+              {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+            </p>
 
             {/* Divider */}
             <div className="hidden sm:block w-px h-7 bg-white/8" />
@@ -1430,6 +1561,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 </h2>
                 <p className="text-[11px] font-medium text-white/35 mt-2 tracking-wide flex items-center gap-2">
                   <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                  <span className="w-1 h-1 rounded-full bg-white/15" />
+                  <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   <span className="w-1 h-1 rounded-full bg-white/15" />
                   <span>{company.currentOutletName || 'All Outlets'}</span>
                 </p>
@@ -1931,9 +2064,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   setCompany({ ...company, region: newRegion, city: REGION_DATA[newRegion][0] });
                                 }}
                                 disabled={!isEditingIdentity}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                                className={`w-full bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-colors appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
+                                style={{ colorScheme: 'dark' }}
                               >
-                                {Object.keys(REGION_DATA).map(r => <option key={r} value={r} className="bg-brand-dark text-white">{r}</option>)}
+                                {Object.keys(REGION_DATA).map(r => <option key={r} value={r} style={{ background: '#152E2A', color: '#fff' }}>{r}</option>)}
                               </select>
                               <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
                             </div>
@@ -1943,9 +2077,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 value={company.city}
                                 onChange={e => setCompany({ ...company, city: e.target.value })}
                                 disabled={!isEditingIdentity}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                                className={`w-full bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-colors appearance-none cursor-pointer ${!isEditingIdentity ? 'opacity-40 border-white/8' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
+                                style={{ colorScheme: 'dark' }}
                               >
-                                {REGION_DATA[company.region]?.map(c => <option key={c} value={c} className="bg-brand-dark text-white">{c}</option>)}
+                                {REGION_DATA[company.region]?.map(c => <option key={c} value={c} style={{ background: '#152E2A', color: '#fff' }}>{c}</option>)}
                               </select>
                               <ChevronDown className="absolute right-3.5 bottom-3.5 text-brand-gold/60 pointer-events-none" size={14} />
                             </div>
@@ -1984,7 +2119,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <input
                                 type="text"
                                 value={company.currentOutletName}
-                                onChange={e => setCompany({ ...company, currentOutletName: e.target.value })}
+                                onChange={e => {
+                                  const name = e.target.value;
+                                  const prefix = name.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'XXX';
+                                  const seq = String(outlets.filter(o => o.name).length + 1).padStart(2, '0');
+                                  setCompany({ ...company, currentOutletName: name, currentOutletCode: prefix + seq });
+                                }}
                                 className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-gray-700 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
                                 placeholder="e.g. Skyline Lounge"
                                 readOnly={!isEditingIdentity}
@@ -2006,9 +2146,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
 
                           {/* Active outlets */}
-                          {outlets.length > 0 && (
+                          {outlets.filter(o => o.name && o.code).length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                              {outlets.map((o) => (
+                              {outlets.filter(o => o.name && o.code).map((o) => (
                                 <div key={o.code} className="flex items-center justify-between px-4 py-3 bg-brand-gold/5 border border-brand-gold/15 rounded-xl group hover:border-brand-gold/35 transition-all">
                                   <div className="flex items-center gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-brand-eco" />
