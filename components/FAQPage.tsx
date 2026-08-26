@@ -119,7 +119,7 @@ const FAQPage: React.FC = () => {
             <button
               key={i}
               onClick={() => setActiveIndex(i)}
-              className="w-full text-left flex items-center justify-between gap-4 px-6 py-5 rounded-xl border border-white/6 bg-white/2 hover:bg-white/4 hover:border-brand-gold/30 transition-all duration-200 group"
+              className="w-full text-left flex items-center justify-between gap-4 px-6 py-5 rounded-xl border border-brand-gold/12 bg-white/2 hover:bg-white/4 hover:border-brand-gold/35 transition-all duration-200 group"
             >
               <div className="flex items-center gap-4">
                 <span className="text-[10px] font-black text-brand-gold/40 font-mono tabular-nums shrink-0">{String(i + 1).padStart(2, '0')}</span>
@@ -140,11 +140,11 @@ const FAQPage: React.FC = () => {
           onClick={() => setActiveIndex(null)}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-sm" />
 
           {/* Modal */}
           <div
-            className="relative w-full max-w-xl bg-[#0e1f1c] border border-brand-gold/30 rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.6)] p-7 sm:p-9 animate-in fade-in zoom-in-95 duration-200"
+            className="relative w-full max-w-xl bg-[#1c3933] border border-brand-gold/30 rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.6)] p-7 sm:p-9 animate-in fade-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
             {/* Top accent */}

@@ -247,7 +247,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
           </p>
 
           {/* Disclaimer */}
-          <div className="mt-6 flex gap-3 rounded-2xl bg-white/5 border border-white/10 p-4">
+          <div className="mt-6 flex gap-3 rounded-2xl bg-brand-dark border border-brand-gold/15 p-4">
             <ShieldCheck className="text-brand-eco shrink-0 mt-0.5" size={18} />
             <p className="text-xs text-white/60 leading-relaxed">
               "All information provided in this survey is strictly confidential. The data shared will be used solely for analytical purposes related to the diagnostic study and opportunities with artificial intelligence. Your responses will not be disclosed, transferred, or used for any purpose other than those stated. We are committed to ensuring the privacy and security of all information collected."
@@ -269,8 +269,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
                     value={value}
                     placeholder={field.placeholder}
                     onChange={e => setProfile(prev => ({ ...prev, [field.id]: e.target.value }))}
-                    className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-all focus:bg-white/10 focus:border-brand-gold ${
-                      showError ? 'border-brand-alert/70' : 'border-white/10'
+                    className={`w-full bg-brand-dark border rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-all focus:bg-brand-dark/80 focus:border-brand-gold ${
+                      showError ? 'border-brand-alert/70' : 'border-brand-gold/25'
                     }`}
                   />
                   {showError && <p className="mt-1.5 text-xs text-brand-alert">This field is required.</p>}
@@ -283,8 +283,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
         {/* Sections */}
         <div className="mt-8 space-y-8">
           {sections.map(section => (
-            <div key={section.id} className="bg-brand-dark/60 border border-white/10 rounded-3xl px-6 sm:px-10 py-8 sm:py-10 shadow-xl">
-              <h2 className="text-lg sm:text-xl font-geometric font-black text-brand-gold tracking-wide uppercase mb-6 pb-4 border-b border-white/10">
+            <div key={section.id} className="bg-brand-dark/60 border border-brand-gold/15 rounded-3xl px-6 sm:px-10 py-8 sm:py-10 shadow-xl">
+              <h2 className="text-lg sm:text-xl font-geometric font-black text-brand-gold tracking-wide uppercase mb-6 pb-4 border-b border-brand-gold/15">
                 {section.title}
               </h2>
               <div className="space-y-8">
@@ -353,8 +353,8 @@ const QuestionField: React.FC<{
           value={(value as string) || ''}
           placeholder={(q as TextQuestion).placeholder}
           onChange={e => onSingle(e.target.value)}
-          className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-all focus:bg-white/10 focus:border-brand-gold ${
-            showError ? 'border-brand-alert/70' : 'border-white/10'
+          className={`w-full bg-brand-dark border rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-all focus:bg-brand-dark/80 focus:border-brand-gold ${
+            showError ? 'border-brand-alert/70' : 'border-brand-gold/25'
           }`}
         />
       )}
@@ -366,7 +366,7 @@ const QuestionField: React.FC<{
             onChange={e => onSingle(e.target.value)}
             className={`w-full appearance-none bg-white/5 border rounded-xl px-4 py-3 pr-10 text-sm text-white outline-none transition-all focus:bg-white/10 focus:border-brand-gold ${
               (value as string) ? 'text-white' : 'text-white/40'
-            } ${showError ? 'border-brand-alert/70' : 'border-white/10'}`}
+            } ${showError ? 'border-brand-alert/70' : 'border-brand-gold/25'}`}
           >
             <option value="" disabled className="bg-brand-dark text-white/40">{(q as SelectQuestion).placeholder || 'Select'}</option>
             {(q as SelectQuestion).options.map(opt => (
@@ -393,11 +393,11 @@ const QuestionField: React.FC<{
                 className={`flex items-center gap-3 text-left px-4 py-3 rounded-xl border transition-all text-sm ${
                   isSelected
                     ? 'bg-brand-gold/15 border-brand-gold text-white'
-                    : 'bg-white/5 border-white/10 text-white/80 hover:border-brand-gold/40 hover:bg-white/10'
+                    : 'bg-brand-dark border-brand-gold/20 text-white/80 hover:border-brand-gold/40 hover:bg-brand-dark/80'
                 } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <span className={`shrink-0 w-6 h-6 flex items-center justify-center text-[11px] font-bold border rounded-md ${
-                  isSelected ? 'bg-brand-eco text-brand-dark border-brand-eco' : 'border-white/20 text-white/50'
+                  isSelected ? 'bg-brand-eco text-brand-dark border-brand-eco' : 'border-brand-gold/25 text-white/50'
                 }`}>
                   {isSelected ? <Check size={14} strokeWidth={3} /> : letterLabel(i)}
                 </span>

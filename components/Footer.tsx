@@ -28,7 +28,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
   ];
 
   return (
-    <footer className="bg-[#0e1f1c] border-t border-brand-gold/15 relative overflow-hidden">
+    <footer className="bg-[#1c3933] border-t border-brand-gold/15 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(200,164,19,0.04), transparent 55%)' }} />
 
       {/* Main footer */}
@@ -37,7 +37,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
 
           {/* Brand */}
           <div className="space-y-5">
-            <Logo size="md" />
+            <Logo size="md" withLabel />
             <p className="text-xs text-gray-500 leading-relaxed max-w-[220px]">
               {t('footer.brandTagline')}
             </p>

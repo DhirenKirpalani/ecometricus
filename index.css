@@ -3,8 +3,8 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px #0e1f1c inset !important;
-  box-shadow:         0 0 0 1000px #0e1f1c inset !important;
+  -webkit-box-shadow: 0 0 0 1000px #152E2A inset !important;
+  box-shadow:         0 0 0 1000px #152E2A inset !important;
   -webkit-text-fill-color: #ffffff !important;
   caret-color: #ffffff;
   border-color: rgba(200, 164, 19, 0.3) !important;

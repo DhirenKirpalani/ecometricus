@@ -62,7 +62,7 @@ const AboutPage: React.FC = () => {
       </section>
 
       {/* ─── 800-Pound Gorilla ─────────────────────────────── */}
-      <section className="py-20 sm:py-28 bg-[#0e1f1c] border-b border-white/5 relative overflow-hidden">
+      <section className="py-20 sm:py-28 bg-[#1c3933] border-b border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 80% 50%, rgba(119,177,57,0.05), transparent 50%)' }} />
         <div className="relative max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
@@ -80,7 +80,7 @@ const AboutPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {gorillaMetrics.map((m, i) => (
-                <div key={i} className="relative group border border-white/5 hover:border-brand-eco/40 rounded-2xl p-5 bg-brand-dark/60 transition-all duration-300 overflow-hidden">
+                <div key={i} className="relative group border border-brand-gold/10 hover:border-brand-eco/40 rounded-2xl p-5 bg-brand-dark/60 transition-all duration-300 overflow-hidden">
                   <div className="absolute top-0 right-0 w-20 h-20 rounded-full bg-brand-eco/5 -translate-y-8 translate-x-8 group-hover:bg-brand-eco/10 transition-all duration-500" />
                   <div className="w-10 h-10 rounded-xl bg-brand-eco flex items-center justify-center mb-4 shrink-0">
                     {m.icon}
@@ -106,7 +106,7 @@ const AboutPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {pillars.map((p, i) => (
-              <div key={i} className="group relative border border-white/5 hover:border-brand-gold/35 rounded-2xl p-8 bg-[#0e1f1c] transition-all duration-400 flex flex-col gap-5 overflow-hidden">
+              <div key={i} className="group relative border border-brand-gold/10 hover:border-brand-gold/35 rounded-2xl p-8 bg-[#1c3933] transition-all duration-400 flex flex-col gap-5 overflow-hidden">
                 <div className="absolute inset-0 bg-brand-gold/0 group-hover:bg-brand-gold/3 transition-all duration-500 rounded-2xl pointer-events-none" />
                 <div className="w-12 h-12 rounded-xl bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center group-hover:scale-110 group-hover:border-brand-gold/40 transition-all duration-300">
                   {p.icon}
@@ -122,17 +122,17 @@ const AboutPage: React.FC = () => {
       </section>
 
       {/* ─── ESG Scope 3 Differentiator ────────────────────── */}
-      <section className="py-20 sm:py-28 bg-[#0e1f1c] border-b border-white/5 relative overflow-hidden">
+      <section className="py-20 sm:py-28 bg-[#1c3933] border-b border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 30% 50%, rgba(200,164,19,0.05), transparent 50%)' }} />
         <div className="relative max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
             {/* Scope visual */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-8 rounded-2xl border border-white/5 bg-brand-dark/60 flex flex-col items-center justify-center text-center gap-2 hover:border-brand-gold/20 transition-colors">
+              <div className="p-8 rounded-2xl border border-brand-gold/10 bg-brand-dark/60 flex flex-col items-center justify-center text-center gap-2 hover:border-brand-gold/25 transition-colors">
                 <div className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold">{t('about.scope1')}</div>
                 <div className="text-[9px] text-gray-600 uppercase tracking-widest">{t('about.directEmissions')}</div>
               </div>
-              <div className="p-8 rounded-2xl border border-white/5 bg-brand-dark/60 flex flex-col items-center justify-center text-center gap-2 hover:border-brand-gold/20 transition-colors">
+              <div className="p-8 rounded-2xl border border-brand-gold/10 bg-brand-dark/60 flex flex-col items-center justify-center text-center gap-2 hover:border-brand-gold/25 transition-colors">
                 <div className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold">{t('about.scope2')}</div>
                 <div className="text-[9px] text-gray-600 uppercase tracking-widest">{t('about.purchasedEnergy')}</div>
               </div>
@@ -187,8 +187,8 @@ const AboutPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {insights.map((item, i) => (
-              <div key={i} className="group border border-white/5 hover:border-brand-gold/30 rounded-2xl p-6 bg-[#0e1f1c] flex flex-col gap-4 transition-all duration-300">
-                <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center group-hover:scale-110 group-hover:border-brand-gold/30 transition-all duration-300">
+              <div key={i} className="group border border-brand-gold/10 hover:border-brand-gold/30 rounded-2xl p-6 bg-[#1c3933] flex flex-col gap-4 transition-all duration-300">
+                <div className="w-11 h-11 rounded-xl bg-white/5 border border-brand-gold/15 flex items-center justify-center group-hover:scale-110 group-hover:border-brand-gold/30 transition-all duration-300">
                   {item.icon}
                 </div>
                 <div>

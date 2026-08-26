@@ -85,12 +85,42 @@ const App: React.FC = () => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Clear user on sign-out
+        if (event === 'SIGNED_OUT') {
+          setCurrentUser(null);
+          return;
+        }
+
         if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
           const authUser = session.user;
           const meta = authUser.user_metadata || {};
           const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
           const role = meta.role || 'admin';
           const position = role === 'admin' ? 'GM' : role === 'manager' ? 'Outlet Manager' : role === 'chef' ? 'Head Chef' : 'Supervisor';
+
+          const hasAuthHash = window.location.hash.includes('access_token');
+          const isSignupConfirmation = window.location.hash.includes('type=signup');
+
+          // ── Unconfirmed user guard ──────────────────────────────────────────
+          // Supabase JS v2 fires SIGNED_IN during signUp() even when email
+          // confirmation is required and no real session exists yet.
+          // Never treat an unconfirmed user as logged in.
+          if (!authUser.email_confirmed_at) {
+            await supabase.auth.signOut();
+            return;
+          }
+
+          // ── Email signup confirmation link ──────────────────────────────────
+          // Supabase auto-signs the user in after they click the confirm link.
+          // We don't want that — sign them out and redirect to login with a
+          // success banner so they explicitly sign in themselves.
+          if (event === 'SIGNED_IN' && hasAuthHash && isSignupConfirmation) {
+            await supabase.auth.signOut();
+            navigate('/login?confirmed=true');
+            setCurrentPageState(Page.SIGN_IN);
+            window.history.replaceState(null, '', '/login?confirmed=true');
+            return;
+          }
 
           const profile: UserProfile = {
             id: authUser.id,
@@ -106,11 +136,9 @@ const App: React.FC = () => {
           // like /translations and /dashboard work on reload)
           setCurrentUser(profile);
 
-          // Only auto-redirect on email confirmation links — these have
-          // auth tokens in the URL hash (e.g. #access_token=...&type=signup).
+          // Only auto-redirect for other auth hash types (e.g. password reset).
           // Normal session restore (SIGNED_IN without hash, or TOKEN_REFRESHED)
           // should NEVER redirect — respect whatever URL the user is on.
-          const hasAuthHash = window.location.hash.includes('access_token');
           if (event === 'SIGNED_IN' && hasAuthHash) {
             const targetPage =
               role === 'admin' || role === 'manager' ? Page.DASHBOARD :
