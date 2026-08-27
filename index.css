@@ -6,6 +6,10 @@
 /* Firefox */
 .scrollbar-gold { scrollbar-width: thin; scrollbar-color: rgba(200,164,19,0.5) #152E2A; }
 
+/* ── Hide scrollbar entirely (nav panels, tab strips) ── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* ── Autofill override: keep dark theme on browser-filled inputs ── */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,

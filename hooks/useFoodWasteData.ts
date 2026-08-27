@@ -15,12 +15,6 @@ interface FoodWasteData {
   isLoading: boolean;
 }
 
-const MOCK_DATA = {
-  total_mass: 578.0,
-  carbon_impact: 484.5,
-  financial_loss: 1487.50
-};
-
 const LBS_CONVERSION = 2.20462;
 
 export const useFoodWasteData = (
@@ -63,39 +57,24 @@ export const useFoodWasteData = (
   }, [outletId]);
 
   const foodWasteStats = useMemo((): FoodWasteData => {
-    // If no data in table, use mock static values
     const hasData = Array.isArray(data) && data.length > 0;
     
-    let totalMass = hasData ? data.reduce((acc, curr) => acc + (Number(curr.mass_kg) || 0), 0) : MOCK_DATA.total_mass;
+    let totalMass = hasData ? data.reduce((acc, curr) => acc + (Number(curr.mass_kg) || 0), 0) : 0;
     
     // Aggregation Logic: Carbon = Mass * 1.8, Financial = Mass * 6.53 (consistent with benchmarks)
     let carbonImpact = totalMass * 1.8;
-    let financialLoss = hasData ? data.reduce((acc, curr) => acc + ((Number(curr.mass_kg) || 0) * (Number(curr.cost_per_kg) || 6.53)), 0) : MOCK_DATA.financial_loss;
+    let financialLoss = hasData ? data.reduce((acc, curr) => acc + ((Number(curr.mass_kg) || 0) * (Number(curr.cost_per_kg) || 6.53)), 0) : 0;
 
     // Unit Conversion
     if (unitType === 'Lbs') {
       totalMass *= LBS_CONVERSION;
     }
 
-    // Map outlet specific data for the debug table
+    // Map outlet specific data
     const outletDetails = (allOutlets || []).map(outlet => {
       const outletData = data.filter(d => d.outlet_id === (outlet as any).id);
       let mass = outletData.reduce((acc, curr) => acc + (Number(curr.mass_kg) || 0), 0);
       let cost = outletData.reduce((acc, curr) => acc + (Number(curr.cost_usd) || 0), 0);
-
-      // If mock mode (no data for anyone), distribute mock data roughly for preview
-      if (!hasData) {
-        const cleanName = outlet.name.replace(/['’]/g, '').toLowerCase();
-        const mockMassMap: Record<string, number> = { 'royal': 578.0, "fishers": 0, "ralphs": 0, 'gusto': 0 };
-        const mockCostMap: Record<string, number> = { 
-          'royal': 1487.50, 
-          "fishers": 0, 
-          "ralphs": 0, 
-          'gusto': 0 
-        };
-        mass = mockMassMap[cleanName] || 0;
-        cost = mockCostMap[cleanName] || 0;
-      }
 
       if (unitType === 'Lbs') {
         mass *= LBS_CONVERSION;
@@ -107,8 +86,6 @@ export const useFoodWasteData = (
         cost
       };
     });
-
-    console.log('[useFoodWasteData] Calculated Stats:', { totalMass, carbonImpact, financialLoss, hasData });
 
     return {
       totalMass: totalMass || 0,

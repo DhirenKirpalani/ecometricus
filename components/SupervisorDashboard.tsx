@@ -53,6 +53,8 @@ import ReportAlertBox from './ReportAlertBox';
 import ReportAlertBoxKPI from './ReportAlertBoxKPI';
 
 import { supabase } from '../lib/supabase';
+import { useFoodWasteChartData } from '../hooks/useFoodWasteChartData';
+import { useResourceChartData } from '../hooks/useResourceChartData';
 
 interface SupervisorDashboardProps {
   user: UserProfile;
@@ -69,6 +71,24 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
   const [selectedDaySales, setSelectedDaySales] = useState<any | null>(null);
   const [selectedFoodCostDay, setSelectedFoodCostDay] = useState<any | null>(null);
   const [selectedLaborCostDay, setSelectedLaborCostDay] = useState<any | null>(null);
+
+  // Real chart data from hooks
+  const { chartData: wasteChartData, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData();
+  const { waterData, energyData, waterDailyBenchmark, energyDailyBenchmark } = useResourceChartData();
+
+  // Transform hook data for template charts (aggregate all outlets per day)
+  const foodWasteTemplateData = wasteChartData.map(d => ({
+    day: d.date.charAt(0) + d.date.slice(1).toLowerCase(),
+    waste: (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0)
+  }));
+  const waterTemplateData = waterData.map(d => ({
+    day: d.day.charAt(0) + d.day.slice(1).toLowerCase(),
+    usage: (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0)
+  }));
+  const energyTemplateData = energyData.map(d => ({
+    day: d.day.charAt(0) + d.day.slice(1).toLowerCase(),
+    usage: (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0)
+  }));
 
   // Dynamic Data Linkage - Same session persistence
   const [sessionOutlets, setSessionOutlets] = useState<Outlet[]>([]);
@@ -498,15 +518,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
             </div>
             <div className="h-[440px] sm:h-[480px] w-full">
               <AvgCheckTemplateChart
-                data={[
-                  { day: 'Sun', restaurant: 45, bar: 32, banquets: 60, rollingAverage: 45.6 },
-                  { day: 'Mon', restaurant: 42, bar: 35, banquets: 0, rollingAverage: 44.2 },
-                  { day: 'Tue', restaurant: 48, bar: 30, banquets: 55, rollingAverage: 46.5 },
-                  { day: 'Wed', restaurant: 50, bar: 38, banquets: 0, rollingAverage: 48.0 },
-                  { day: 'Thu', restaurant: 52, bar: 40, banquets: 65, rollingAverage: 49.5 },
-                  { day: 'Fri', restaurant: 55, bar: 45, banquets: 70, rollingAverage: 51.0 },
-                  { day: 'Sat', restaurant: 60, bar: 50, banquets: 80, rollingAverage: 53.5 }
-                ]}
+                data={[]}
                 benchmark={47}
               />
             </div>
@@ -535,59 +547,27 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="h-[440px] sm:h-[480px] w-full">
               <FoodWasteTemplateChart
-                data={[
-                  { day: 'Sun', waste: 22 },
-                  { day: 'Mon', waste: 9 },
-                  { day: 'Tue', waste: 13 },
-                  { day: 'Wed', waste: 11 },
-                  { day: 'Thu', waste: 18 },
-                  { day: 'Fri', waste: 12 },
-                  { day: 'Sat', waste: 17 }
-                ]}
-                benchmark={13}
+                data={foodWasteTemplateData}
+                benchmark={wasteDailyBenchmark}
               />
             </div>
             <div className="h-[440px] sm:h-[480px] w-full">
               <WaterUsageTemplateChart
-                data={[
-                  { day: 'Sun', usage: 28000 },
-                  { day: 'Mon', usage: 20000 },
-                  { day: 'Tue', usage: 22000 },
-                  { day: 'Wed', usage: 24000 },
-                  { day: 'Thu', usage: 21000 },
-                  { day: 'Fri', usage: 25000 },
-                  { day: 'Sat', usage: 31000 }
-                ]}
-                benchmark={22000}
+                data={waterTemplateData}
+                benchmark={waterDailyBenchmark}
               />
             </div>
             <div className="h-[440px] sm:h-[480px] w-full">
               <EnergyUsageTemplateChart
-                data={[
-                  { day: 'Sun', usage: 3500 },
-                  { day: 'Mon', usage: 2600 },
-                  { day: 'Tue', usage: 3700 },
-                  { day: 'Wed', usage: 3000 },
-                  { day: 'Thu', usage: 3200 },
-                  { day: 'Fri', usage: 3400 },
-                  { day: 'Sat', usage: 4100 }
-                ]}
-                benchmark={3400}
+                data={energyTemplateData}
+                benchmark={energyDailyBenchmark}
               />
             </div>
             <div className="h-[440px] sm:h-[480px] w-full">
               <Co2EmissionsTemplateChart
-                data={[
-                  { date: 'Sun', ROYAL: 125, "FISHER'S": 100, "RALPH'S": 150, GUSTO: 125 },
-                  { date: 'Mon', ROYAL: 94, "FISHER'S": 94, "RALPH'S": 94, GUSTO: 94 },
-                  { date: 'Tue', ROYAL: 100, "FISHER'S": 100, "RALPH'S": 100, GUSTO: 100 },
-                  { date: 'Wed', ROYAL: 106, "FISHER'S": 106, "RALPH'S": 106, GUSTO: 106 },
-                  { date: 'Thu', ROYAL: 113, "FISHER'S": 113, "RALPH'S": 113, GUSTO: 113 },
-                  { date: 'Fri', ROYAL: 138, "FISHER'S": 138, "RALPH'S": 138, GUSTO: 138 },
-                  { date: 'Sat', ROYAL: 150, "FISHER'S": 150, "RALPH'S": 150, GUSTO: 150 }
-                ]}
-                benchmark={1500}
-                weeklyTotal={0}
+                data={wasteChartData}
+                benchmark={wasteDailyBenchmark}
+                weeklyTotal={wasteWeeklyTotal}
               />
             </div>
           </div>

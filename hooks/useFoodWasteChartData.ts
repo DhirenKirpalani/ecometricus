@@ -52,25 +52,16 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
 
         if (royalError) throw royalError;
 
-        // 3. Hybrid Data Mapping (Exact design parity with Image 2)
+        // 3. Data Mapping — only use real data from Supabase
         const dayMap: Record<string, any> = {};
         
-        // Use a base of ~65% of the target to ensure the chart is "Alive" across outlets
-        // Scaled by the active outlet count
-        const MOCK_BASELINES = {
-          'SUN': 1.1, 'MON': 0.8, 'TUE': 0.85, 'WED': 0.9, 'THU': 0.95, 'FRI': 1.2, 'SAT': 1.3
-        } as Record<string, number>;
-
         DAYS.forEach(day => {
-          const factor = MOCK_BASELINES[day];
-          const basePerOutlet = dailyMassTarget * factor;
-          
           dayMap[day] = {
             "date": day,
-            "ROYAL": (basePerOutlet * 0.25) * 2.85,
-            "FISHER'S": (basePerOutlet * 0.25) * 2.85,
-            "RALPH'S": (basePerOutlet * 0.25) * 2.85,
-            "GUSTO": (basePerOutlet * 0.25) * 2.85
+            "ROYAL": 0,
+            "FISHER'S": 0,
+            "RALPH'S": 0,
+            "GUSTO": 0
           };
         });
  
@@ -81,11 +72,6 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
             const dayLabel = DAYS[date.getDay()];
             // Royal Data: CO2e derived from mass (Factor 2.85)
             if (dayMap[dayLabel]) {
-              // Reset the baseline if logs exist to avoid duplication
-              if (dayMap[dayLabel]["ROYAL_LOGGED"] === undefined) {
-                 dayMap[dayLabel]["ROYAL"] = 0;
-                 dayMap[dayLabel]["ROYAL_LOGGED"] = true;
-              }
               dayMap[dayLabel]["ROYAL"] += (Number(log.mass_kg) || 0) * 2.85;
             }
           });
@@ -99,8 +85,6 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
           return acc + (curr["ROYAL"] || 0) + (curr["FISHER'S"] || 0) + (curr["RALPH'S"] || 0) + (curr["GUSTO"] || 0);
         }, 0);
         setWeeklyTotal(Number(total.toFixed(1)));
-
-        console.log('[Hybrid Integration] ROYAL CO2e Mapping Active');
 
       } catch (err) {
         console.error('Error in useFoodWasteChartData (Hybrid):', err);

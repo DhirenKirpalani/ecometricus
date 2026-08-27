@@ -75,13 +75,22 @@ import {
   Receipt,
   Store,
   User,
-  Briefcase
+  Briefcase,
+  ClipboardList
 } from 'lucide-react';
 import FoodWasteChart from './FoodWasteChart';
 import WaterUsageChart from './WaterUsageChart';
 import KpiChart from './KpiChart';
 import FoodWasteIntelligence from './FoodWasteIntelligence';
 import ResourceIntelligence from './ResourceIntelligence';
+import DailyInputForm from './DailyInputForm';
+import MilaKnowledgeManager from './MilaKnowledgeManager';
+import FoodWasteTemplateChart from './FoodWasteTemplateChart';
+import WaterUsageTemplateChart from './WaterUsageTemplateChart';
+import EnergyUsageTemplateChart from './EnergyUsageTemplateChart';
+import Co2EmissionsTemplateChart from './Co2EmissionsTemplateChart';
+import { useFoodWasteChartData } from '../hooks/useFoodWasteChartData';
+import { useResourceChartData } from '../hooks/useResourceChartData';
 import LegalConsentModal from './LegalConsentModal';
 import { UserProfile, StaffPosition, Outlet } from '../types';
 import Logo from './Logo';
@@ -110,6 +119,7 @@ enum PortalView {
 
 enum DashboardTab {
   SUMMARIZED = 'summarized',
+  DAILY_INPUT = 'daily_input',
   FOOD_WASTE = 'food_waste',
   ENERGY_WATER = 'energy_water',
   MILA_AI = 'mila_ai',
@@ -340,27 +350,6 @@ const POSITION_TO_ROLE: Record<string, string> = {
 };
 
 // Mock Data for KPI Charts (Duplicated from SupervisorDashboard)
-const weeklyTrends = [
-  { day: 'Sun', foodCost: 27.5, laborCost: 26, profitMargin: 14.8, sentiment: 4.8 },
-  { day: 'Mon', foodCost: 29.2, laborCost: 30, profitMargin: 19.5, sentiment: 4.2 },
-  { day: 'Tue', foodCost: 28.1, laborCost: 28, profitMargin: 19.2, sentiment: 4.6 },
-  { day: 'Wed', foodCost: 28.5, laborCost: 36, profitMargin: 24.2, sentiment: 4.9 },
-  { day: 'Thu', foodCost: 27.8, laborCost: 28, profitMargin: 16.9, sentiment: 4.4 },
-  { day: 'Fri', foodCost: 30.5, laborCost: 37, profitMargin: 24.0, sentiment: 4.7 },
-  { day: 'Sat', foodCost: 29.8, laborCost: 33, profitMargin: 21.0, sentiment: 4.8 },
-];
-
-// Specific Data for Sales Stacked Bar Chart (Duplicated from SupervisorDashboard)
-const salesChartData = [
-  { day: 'Sun', total: 16000, food: 6400, bev: 9600 },
-  { day: 'Mon', total: 13000, food: 5200, bev: 7800 },
-  { day: 'Tue', total: 14500, food: 5800, bev: 8700 },
-  { day: 'Wed', total: 26000, food: 10400, bev: 15600 },
-  { day: 'Thu', total: 17000, food: 6800, bev: 10200 },
-  { day: 'Fri', total: 25000, food: 10000, bev: 15000 },
-  { day: 'Sat', total: 31000, food: 12400, bev: 18600 },
-];
-
 const Sparkline: React.FC<{ color: string, data: number[] }> = ({ color, data }) => (
   <div className="w-full h-12 sm:h-16 mt-4 sm:mt-6">
     <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -378,116 +367,6 @@ const Sparkline: React.FC<{ color: string, data: number[] }> = ({ color, data })
     </svg>
   </div>
 );
-
-// Default Outlets Fallback
-// Default Outlets Fallback
-const DEFAULT_OUTLETS: Outlet[] = [
-  { name: 'Royal', code: 'ROY02', color_hex: '#FF914D' },     // Orange (brandEnergy)
-  { name: 'Fisher’s', code: 'FISH01', color_hex: '#C8A413' }, // Gold (brandGold)
-  { name: 'Ralph’s', code: 'RAL03', color_hex: '#77B139' },   // Green (brandEco)
-  { name: 'Gusto', code: 'GUS04', color_hex: '#718096' }      // Grey
-];
-
-// Mock Data for Admin Multi-Outlet View (Fallback)
-const ADMIN_MOCK_DATA = [
-  // Royal (Gold) - High Cost (Adjusted to 27.5% - 31.5%)
-  { day: 'Sun', foodCost: 28.5, outlet_code: 'ROY02' }, { day: 'Mon', foodCost: 29.2, outlet_code: 'ROY02' },
-  { day: 'Tue', foodCost: 31.0, outlet_code: 'ROY02' }, { day: 'Wed', foodCost: 27.8, outlet_code: 'ROY02' },
-  { day: 'Thu', foodCost: 30.5, outlet_code: 'ROY02' }, { day: 'Fri', foodCost: 29.5, outlet_code: 'ROY02' },
-  { day: 'Sat', foodCost: 31.2, outlet_code: 'ROY02' },
-
-  // Fisher's (Blue) - Stable
-  { day: 'Sun', foodCost: 28.5, outlet_code: 'FISH01' }, { day: 'Mon', foodCost: 29.2, outlet_code: 'FISH01' },
-  { day: 'Tue', foodCost: 27.8, outlet_code: 'FISH01' }, { day: 'Wed', foodCost: 30.1, outlet_code: 'FISH01' },
-  { day: 'Thu', foodCost: 29.5, outlet_code: 'FISH01' }, { day: 'Fri', foodCost: 28.9, outlet_code: 'FISH01' },
-  { day: 'Sat', foodCost: 31.2, outlet_code: 'FISH01' },
-
-  // Ralph's (Lime) - Efficient
-  { day: 'Sun', foodCost: 25.5, outlet_code: 'RAL03' }, { day: 'Mon', foodCost: 26.2, outlet_code: 'RAL03' },
-  { day: 'Tue', foodCost: 25.8, outlet_code: 'RAL03' }, { day: 'Wed', foodCost: 27.1, outlet_code: 'RAL03' },
-  { day: 'Thu', foodCost: 26.5, outlet_code: 'RAL03' }, { day: 'Fri', foodCost: 25.9, outlet_code: 'RAL03' },
-  { day: 'Sat', foodCost: 26.8, outlet_code: 'RAL03' },
-
-  // Gusto (Orange) - Critical (Adjusted to 28.2% - 33%)
-  { day: 'Sun', foodCost: 30.5, outlet_code: 'GUS04' }, { day: 'Mon', foodCost: 32.8, outlet_code: 'GUS04' },
-  { day: 'Tue', foodCost: 29.5, outlet_code: 'GUS04' }, { day: 'Wed', foodCost: 31.2, outlet_code: 'GUS04' },
-  { day: 'Thu', foodCost: 28.9, outlet_code: 'GUS04' }, { day: 'Fri', foodCost: 32.1, outlet_code: 'GUS04' },
-  { day: 'Sat', foodCost: 30.0, outlet_code: 'GUS04' },
-];
-
-// Mock Data for Admin Labor Cost View (Fallback)
-const ADMIN_LABOR_MOCK_DATA = [
-  // Royal (Orange) - Spikes (Banquets/Midweek Event)
-  { day: 'Sun', laborCost: 26.5, outlet_code: 'ROY02' }, { day: 'Mon', laborCost: 27.2, outlet_code: 'ROY02' },
-  { day: 'Tue', laborCost: 26.8, outlet_code: 'ROY02' }, { day: 'Wed', laborCost: 35.0, outlet_code: 'ROY02' }, // Midweek Spike
-  { day: 'Thu', laborCost: 27.5, outlet_code: 'ROY02' }, { day: 'Fri', laborCost: 37.5, outlet_code: 'ROY02' }, // Friday Banquet
-  { day: 'Sat', laborCost: 38.0, outlet_code: 'ROY02' }, // Saturday Banquet
-
-  // Fisher's (Brown) - Stable
-  { day: 'Sun', laborCost: 22.5, outlet_code: 'FISH01' }, { day: 'Mon', laborCost: 23.2, outlet_code: 'FISH01' },
-  { day: 'Tue', laborCost: 24.8, outlet_code: 'FISH01' }, { day: 'Wed', laborCost: 23.1, outlet_code: 'FISH01' },
-  { day: 'Thu', laborCost: 22.5, outlet_code: 'FISH01' }, { day: 'Fri', laborCost: 25.9, outlet_code: 'FISH01' },
-  { day: 'Sat', laborCost: 26.2, outlet_code: 'FISH01' },
-
-  // Ralph's (Green) - Efficient
-  { day: 'Sun', laborCost: 20.5, outlet_code: 'RAL03' }, { day: 'Mon', laborCost: 21.2, outlet_code: 'RAL03' },
-  { day: 'Tue', laborCost: 20.8, outlet_code: 'RAL03' }, { day: 'Wed', laborCost: 21.5, outlet_code: 'RAL03' },
-  { day: 'Thu', laborCost: 20.5, outlet_code: 'RAL03' }, { day: 'Fri', laborCost: 22.9, outlet_code: 'RAL03' },
-  { day: 'Sat', laborCost: 23.8, outlet_code: 'RAL03' },
-
-  { day: 'Sun', laborCost: 28.5, outlet_code: 'GUS04' }, { day: 'Mon', laborCost: 29.2, outlet_code: 'GUS04' },
-  { day: 'Tue', laborCost: 28.8, outlet_code: 'GUS04' }, { day: 'Wed', laborCost: 29.1, outlet_code: 'GUS04' },
-  { day: 'Thu', laborCost: 28.5, outlet_code: 'GUS04' }, { day: 'Fri', laborCost: 30.9, outlet_code: 'GUS04' },
-  { day: 'Sat', laborCost: 31.8, outlet_code: 'GUS04' },
-];
-
-// Mock Data for Admin Profit Margin View (Fallback)
-const ADMIN_PROFIT_MOCK_DATA = [
-  // Royal (Orange)
-  { day: 'Sun', profitMargin: 22.5, outlet_code: 'ROY02' }, { day: 'Mon', profitMargin: 24.2, outlet_code: 'ROY02' },
-  { day: 'Tue', profitMargin: 23.8, outlet_code: 'ROY02' }, { day: 'Wed', profitMargin: 25.1, outlet_code: 'ROY02' },
-  { day: 'Thu', profitMargin: 26.5, outlet_code: 'ROY02' }, { day: 'Fri', profitMargin: 24.9, outlet_code: 'ROY02' },
-  { day: 'Sat', profitMargin: 25.8, outlet_code: 'ROY02' },
-  // Fisher's (Gold)
-  { day: 'Sun', profitMargin: 20.5, outlet_code: 'FISH01' }, { day: 'Mon', profitMargin: 21.2, outlet_code: 'FISH01' },
-  { day: 'Tue', profitMargin: 22.8, outlet_code: 'FISH01' }, { day: 'Wed', profitMargin: 20.1, outlet_code: 'FISH01' },
-  { day: 'Thu', profitMargin: 23.5, outlet_code: 'FISH01' }, { day: 'Fri', profitMargin: 21.9, outlet_code: 'FISH01' },
-  { day: 'Sat', profitMargin: 22.2, outlet_code: 'FISH01' },
-  // Ralph's (Green)
-  { day: 'Sun', profitMargin: 24.5, outlet_code: 'RAL03' }, { day: 'Mon', profitMargin: 25.2, outlet_code: 'RAL03' },
-  { day: 'Tue', profitMargin: 26.8, outlet_code: 'RAL03' }, { day: 'Wed', profitMargin: 24.1, outlet_code: 'RAL03' },
-  { day: 'Thu', profitMargin: 27.5, outlet_code: 'RAL03' }, { day: 'Fri', profitMargin: 26.9, outlet_code: 'RAL03' },
-  { day: 'Sat', profitMargin: 28.2, outlet_code: 'RAL03' },
-  // Gusto (Grey)
-  { day: 'Sun', profitMargin: 18.5, outlet_code: 'GUS04' }, { day: 'Mon', profitMargin: 19.2, outlet_code: 'GUS04' },
-  { day: 'Tue', profitMargin: 20.8, outlet_code: 'GUS04' }, { day: 'Wed', profitMargin: 19.1, outlet_code: 'GUS04' },
-  { day: 'Thu', profitMargin: 18.5, outlet_code: 'GUS04' }, { day: 'Fri', profitMargin: 21.9, outlet_code: 'GUS04' },
-  { day: 'Sat', profitMargin: 20.2, outlet_code: 'GUS04' },
-];
-
-// Mock Data for Admin Sentiment View (Fallback)
-const ADMIN_SENTIMENT_MOCK_DATA = [
-  // Royal (Orange)
-  { day: 'Sun', rating_value: 4.8, outlet_code: 'ROY02' }, { day: 'Mon', rating_value: 4.2, outlet_code: 'ROY02' },
-  { day: 'Tue', rating_value: 4.6, outlet_code: 'ROY02' }, { day: 'Wed', rating_value: 4.9, outlet_code: 'ROY02' },
-  { day: 'Thu', rating_value: 4.4, outlet_code: 'ROY02' }, { day: 'Fri', rating_value: 4.7, outlet_code: 'ROY02' },
-  { day: 'Sat', rating_value: 4.8, outlet_code: 'ROY02' },
-  // Fisher's (Gold)
-  { day: 'Sun', rating_value: 4.5, outlet_code: 'FISH01' }, { day: 'Mon', rating_value: 4.6, outlet_code: 'FISH01' },
-  { day: 'Tue', rating_value: 4.4, outlet_code: 'FISH01' }, { day: 'Wed', rating_value: 4.7, outlet_code: 'FISH01' },
-  { day: 'Thu', rating_value: 4.5, outlet_code: 'FISH01' }, { day: 'Fri', rating_value: 4.8, outlet_code: 'FISH01' },
-  { day: 'Sat', rating_value: 4.6, outlet_code: 'FISH01' },
-  // Ralph's (Green)
-  { day: 'Sun', rating_value: 4.9, outlet_code: 'RAL03' }, { day: 'Mon', rating_value: 4.8, outlet_code: 'RAL03' },
-  { day: 'Tue', rating_value: 4.9, outlet_code: 'RAL03' }, { day: 'Wed', rating_value: 5.0, outlet_code: 'RAL03' },
-  { day: 'Thu', rating_value: 4.7, outlet_code: 'RAL03' }, { day: 'Fri', rating_value: 4.9, outlet_code: 'RAL03' },
-  { day: 'Sat', rating_value: 5.0, outlet_code: 'RAL03' },
-  // Gusto (Grey)
-  { day: 'Sun', rating_value: 3.8, outlet_code: 'GUS04' }, { day: 'Mon', rating_value: 4.1, outlet_code: 'GUS04' },
-  { day: 'Tue', rating_value: 3.9, outlet_code: 'GUS04' }, { day: 'Wed', rating_value: 4.0, outlet_code: 'GUS04' },
-  { day: 'Thu', rating_value: 4.2, outlet_code: 'GUS04' }, { day: 'Fri', rating_value: 3.7, outlet_code: 'GUS04' },
-  { day: 'Sat', rating_value: 4.1, outlet_code: 'GUS04' },
-];
 
 // ── Fully-themed custom select (native <select> can't be styled on macOS) ──
 interface CustomSelectProps {
@@ -787,7 +666,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [enrollId, setEnrollId] = useState<string | null>(null);
   const [enrollName, setEnrollName] = useState('');
   const [enrollEmail, setEnrollEmail] = useState('');
+  const [enrollEmailError, setEnrollEmailError] = useState('');
   const [enrollPosition, setEnrollPosition] = useState('');
+
+  // Email validation — company domain only (blocks personal providers)
+  const BLOCKED_EMAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'yahoo.co', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'aol.com', 'icloud.com', 'me.com', 'mac.com', 'protonmail.com', 'proton.me', 'zoho.com', 'mail.com', 'gmx.com', 'yandex.com'];
+  const validateCorporateEmail = (email: string): string => {
+    if (!email) return '';
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) return 'Please enter a valid email address.';
+    const domain = email.split('@')[1]?.toLowerCase() || '';
+    if (BLOCKED_EMAIL_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
+      return 'Please use a company email address (personal email providers are not accepted).';
+    }
+    return '';
+  };
   const [enrollOutlet, setEnrollOutlet] = useState('');
   const [enrollRole, setEnrollRole] = useState('');
   const [enrollPermissions, setEnrollPermissions] = useState<string[]>([]);
@@ -795,7 +688,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [genLink, setGenLink] = useState('');
 
   // Shared Administrative Core State
-  const [outlets, setOutlets] = useState<Outlet[]>(DEFAULT_OUTLETS); // Default to hardcoded if DB empty
+  const [outlets, setOutlets] = useState<Outlet[]>([]);
 
   const [sequenceCounter, setSequenceCounter] = useState(0);
 
@@ -1096,16 +989,37 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         if (mappedProfitLogs.length > 0) {
           setProfitMarginLogs(mappedProfitLogs);
         } else {
-          setProfitMarginLogs(user.role === 'admin' ? ADMIN_PROFIT_MOCK_DATA : weeklyTrends.map(t => ({ day: t.day, profitMargin: t.profitMargin, outlet_code: user.outletCode || 'ROY02' })));
+          setProfitMarginLogs([]);
         }
       } else {
-        // DB Empty or failed -> Use comprehensive mock stack
-        setProfitMarginLogs(user.role === 'admin' ? ADMIN_PROFIT_MOCK_DATA : weeklyTrends.map(t => ({ day: t.day, profitMargin: t.profitMargin, outlet_code: user.outletCode || 'ROY02' })));
+        setProfitMarginLogs([]);
       }
 
       // 5. Fetch Customer Sentiment Logs based on Role
-      // Forced Mock Data application for Customer Sentiment to bypass complex mapping issues
-      setSentimentLogs(user.role === 'admin' ? ADMIN_SENTIMENT_MOCK_DATA : weeklyTrends.map(t => ({ day: t.day, rating_value: t.sentiment, outlet_code: user.outletCode || 'ROY02' })));
+      let sentimentQuery = supabase.from('sentiment_logs').select('*');
+      if (user.role !== 'admin' && user.outletCode) {
+        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
+        if (userOutlet && (userOutlet as any).id) {
+          sentimentQuery = sentimentQuery.eq('outlet_id', (userOutlet as any).id);
+        }
+      }
+      const { data: sentimentData } = await sentimentQuery;
+      if (sentimentData && sentimentData.length > 0) {
+        const mappedSentiment = sentimentData.map(log => {
+          const mappedCode = outletMap.get(log.outlet_id) || log.outlet_id;
+          return {
+            day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
+            rating_value: parseFloat(log.value || log.rating_value) || 0,
+            outlet_code: mappedCode,
+            created_at: log.created_at
+          };
+        })
+          .filter(log => isValidOutlet(log.outlet_code))
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setSentimentLogs(mappedSentiment);
+      } else {
+        setSentimentLogs([]);
+      }
 
       // 6. Fetch Raw Waste Logs for Mila KPI Sync
       let wasteQuery = supabase.from('food_waste_logs').select('*');
@@ -1167,6 +1081,27 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   });
 
   const [paramsUpdatedAt, setParamsUpdatedAt] = useState<string | null>(null);
+
+  // Real chart data from hooks
+  const { chartData: wasteChartData, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData(
+    params.wasteTarget,
+    outlets.length || 1
+  );
+  const { waterData, energyData, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData();
+
+  // Transform hook data for template charts (aggregate all outlets per day)
+  const foodWasteTemplateData = wasteChartData.map(d => ({
+    day: d.date.charAt(0) + d.date.slice(1).toLowerCase(),
+    waste: (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0)
+  }));
+  const waterTemplateData = waterData.map(d => ({
+    day: d.day.charAt(0) + d.day.slice(1).toLowerCase(),
+    usage: (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0)
+  }));
+  const energyTemplateData = energyData.map(d => ({
+    day: d.day.charAt(0) + d.day.slice(1).toLowerCase(),
+    usage: (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0)
+  }));
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
@@ -1324,6 +1259,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       return;
     }
 
+    // Email validation — block submission if invalid
+    const emailError = validateCorporateEmail(enrollEmail);
+    if (emailError) {
+      setEnrollEmailError(emailError);
+      showToast(emailError, 'error');
+      return;
+    }
+    setEnrollEmailError('');
+
     const genPin = () => {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       const special = '!@#$%';
@@ -1421,6 +1365,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     setEnrollId(null);
     setEnrollName('');
     setEnrollEmail('');
+    setEnrollEmailError('');
     setEnrollPosition('');
     setEnrollOutlet('');
     setEnrollRole('');
@@ -2053,7 +1998,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   // Aggregate Context for Admin Intelligence
   const adminContext = {
-    user: { name: 'Admin', role: 'administrator' },
+    user: { name: user.fullName || 'Admin', role: 'administrator', firstName: user.fullName?.split(' ')[0] ?? 'Admin' },
+    company: {
+      name: company.name || 'Your Hotel',
+      outlet: company.currentOutletName || 'All Outlets',
+      region: company.region || '',
+      city: company.city || '',
+      totalOutlets: outlets.length,
+    },
     page: 'Admin Overview',
     benchmarks: {
       waste: 100,
@@ -2288,6 +2240,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     <div className="flex overflow-x-auto gap-1 w-full sm:w-fit shrink-0 scrollbar-hide">
                       {[
                         { id: DashboardTab.SUMMARIZED, label: 'Overview', icon: TrendingUp },
+                        { id: DashboardTab.DAILY_INPUT, label: 'Daily Input', icon: ClipboardList },
                         { id: DashboardTab.FOOD_WASTE, label: 'Food Waste', icon: Leaf },
                         { id: DashboardTab.ENERGY_WATER, label: 'Energy & Water', icon: Zap },
                         { id: DashboardTab.MILA_AI, label: 'Mila AI', icon: Cpu },
@@ -2499,6 +2452,43 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
 
 
+                          {/* Sustainability Report section */}
+                          <div className="w-full max-w-full mt-8 mb-4">
+                            <div className="flex items-center gap-2.5">
+                              <Leaf size={16} className="text-brand-eco/60" />
+                              <h2 className="text-base font-geometric font-black text-white">Sustainability Report</h2>
+                              <div className="flex-grow h-px bg-white/5 ml-2" />
+                            </div>
+                          </div>
+
+                          <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                            <div className="w-full h-[280px]">
+                              <FoodWasteTemplateChart
+                                data={foodWasteTemplateData}
+                                benchmark={wasteDailyBenchmark}
+                              />
+                            </div>
+                            <div className="w-full h-[280px]">
+                              <WaterUsageTemplateChart
+                                data={waterTemplateData}
+                                benchmark={resourceWaterBenchmark}
+                              />
+                            </div>
+                            <div className="w-full h-[280px]">
+                              <EnergyUsageTemplateChart
+                                data={energyTemplateData}
+                                benchmark={resourceEnergyBenchmark}
+                              />
+                            </div>
+                            <div className="w-full h-[280px]">
+                              <Co2EmissionsTemplateChart
+                                data={wasteChartData}
+                                benchmark={wasteDailyBenchmark}
+                                weeklyTotal={wasteWeeklyTotal}
+                              />
+                            </div>
+                          </div>
+
                           {/* KPI Report section */}
                           <div className="w-full max-w-full mt-8 mb-4">
                             <div className="flex items-center gap-2.5">
@@ -2516,11 +2506,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 subtitle="Variance vs regional benchmark"
                                 icon={Utensils}
                                 iconColor="text-brand-gold"
-                                data={user.role === 'admin' ? (foodCostLogs.length > 0 ? foodCostLogs : ADMIN_MOCK_DATA) : weeklyTrends}
+                                data={foodCostLogs}
                                 dataKey="foodCost"
                                 multiSeries={user.role === 'admin'}
                                 seriesKey="outlet_code"
-                                outlets={(user.role === 'admin' && foodCostLogs.length === 0) ? DEFAULT_OUTLETS : (outlets.length > 0 ? outlets : DEFAULT_OUTLETS)}
+                                outlets={outlets}
                                 benchmark={effectiveParams.foodCostTarget}
                                 unit="%"
                                 yDomain={[20, 40]}
@@ -2534,11 +2524,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 subtitle="Variance vs regional benchmark"
                                 icon={Users}
                                 iconColor="text-brand-gold"
-                                data={laborCostLogs.length > 0 ? laborCostLogs : (user.role === 'admin' ? ADMIN_LABOR_MOCK_DATA : weeklyTrends)}
+                                data={laborCostLogs}
                                 dataKey="laborCost"
                                 multiSeries={user.role === 'admin'}
                                 seriesKey="outlet_code"
-                                outlets={(user.role === 'admin' && laborCostLogs.length === 0) ? DEFAULT_OUTLETS : (outlets.length > 0 ? outlets : DEFAULT_OUTLETS)}
+                                outlets={outlets}
                                 benchmark={28}
                                 unit="%"
                                 yDomain={[15, 45]}
@@ -2560,7 +2550,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 dataKey="profitMargin"
                                 multiSeries={user.role === 'admin'}
                                 seriesKey="outlet_code"
-                                outlets={outlets.length > 0 ? outlets : DEFAULT_OUTLETS}
+                                outlets={outlets}
                                 benchmark={25}
                                 unit="%"
                                 yDomain={[0, 40]}
@@ -2575,7 +2565,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 subtitle="Weekly stacked breakdown"
                                 icon={DollarSign}
                                 iconColor="text-brand-gold"
-                                data={salesChartData}
+                                data={[]}
                                 dataKey="total"
                                 benchmark={16500}
                                 unitPrefix="$"
@@ -2604,7 +2594,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 dataKey="rating_value"
                                 multiSeries={user.role === 'admin'}
                                 seriesKey="outlet_code"
-                                outlets={outlets.length > 0 ? outlets : DEFAULT_OUTLETS}
+                                outlets={outlets}
                                 benchmark={4.5}
                                 yDomain={[3, 5]}
                                 yTicks={[3, 3.5, 4, 4.5, 5]}
@@ -2618,15 +2608,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 subtitle="Rolling monthly average"
                                 icon={Receipt}
                                 iconColor="text-brand-gold"
-                                data={[
-                                  { day: 'Sun', restaurant: 45, bar: 32, banquets: 60, rollingAverage: 45.6 },
-                                  { day: 'Mon', restaurant: 42, bar: 35, banquets: 0, rollingAverage: 44.2 },
-                                  { day: 'Tue', restaurant: 48, bar: 30, banquets: 55, rollingAverage: 46.5 },
-                                  { day: 'Wed', restaurant: 50, bar: 38, banquets: 0, rollingAverage: 48.0 },
-                                  { day: 'Thu', restaurant: 52, bar: 40, banquets: 65, rollingAverage: 49.5 },
-                                  { day: 'Fri', restaurant: 55, bar: 45, banquets: 70, rollingAverage: 51.0 },
-                                  { day: 'Sat', restaurant: 60, bar: 50, banquets: 80, rollingAverage: 53.5 }
-                                ]}
+                                data={[]}
                                 dataKey="rollingAverage"
                                 benchmark={47}
                                 unitPrefix="$"
@@ -2649,6 +2631,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </>
                       )}
 
+                      {dashboardTab === DashboardTab.DAILY_INPUT && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                          <DailyInputForm user={user} />
+                        </div>
+                      )}
+
                       {dashboardTab === DashboardTab.FOOD_WASTE && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                           <FoodWasteIntelligence 
@@ -2667,6 +2655,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                           <ResourceIntelligence allOutlets={outlets} />
                         </div>
+                      )}
+
+                      {dashboardTab === DashboardTab.MILA_AI && (
+                        <MilaKnowledgeManager />
                       )}
 
                       {dashboardTab === DashboardTab.GAMIFICATION && (
@@ -3228,7 +3220,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <button
                             onClick={() => {
                               isEditingUserRef.current = false;
-                              setEnrollId(null); setEnrollName(''); setEnrollEmail('');
+                              setEnrollId(null); setEnrollName(''); setEnrollEmail(''); setEnrollEmailError('');
                               setEnrollPosition(''); setEnrollOutlet(''); setEnrollRole('');
                               setEnrollPermissions([]); setGenPassword(''); setGenLink('');
                             }}
@@ -3260,8 +3252,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Corporate Email</label>
-                              <input type="email" value={enrollEmail} onChange={e => setEnrollEmail(e.target.value)} placeholder="staff@hotel.com"
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
+                              <input type="email" value={enrollEmail} onChange={e => { const val = e.target.value; setEnrollEmail(val); setEnrollEmailError(validateCorporateEmail(val)); }} placeholder="staff@hotel.com"
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all ${enrollEmailError ? 'border-brand-alert' : enrollEmail && !enrollEmailError ? 'border-brand-eco/40' : 'border-white/15'}`} />
+                              {enrollEmailError ? (
+                                <p className="text-[10px] font-bold text-brand-alert ml-1">{enrollEmailError}</p>
+                              ) : enrollEmail && !enrollEmailError ? (
+                                <p className="text-[10px] font-bold text-brand-eco ml-1">Valid company email</p>
+                              ) : null}
                             </div>
                           </div>
                         </div>

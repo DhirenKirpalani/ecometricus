@@ -1,7 +1,6 @@
 import React from 'react';
-import { AlertCircle, AlertTriangle, DollarSign, Scale, Cpu, Cloud, CheckCircle2, TrendingDown } from 'lucide-react';
+import { AlertCircle, AlertTriangle, TrendingDown, Scale, Cloud, DollarSign } from 'lucide-react';
 import { useFoodWasteData } from '../hooks/useFoodWasteData';
-import { useCo2ChartData } from '../hooks/useCo2ChartData';
 import { useFoodWasteChartData } from '../hooks/useFoodWasteChartData';
 import Co2EmissionsTemplateChart from './Co2EmissionsTemplateChart';
 import { Outlet } from '../types';
@@ -27,22 +26,20 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
     unitType,
     allOutlets
   );
-  const { co2Data, isLoading: isLoadingCo2 } = useCo2ChartData();
   const activeOutletsCount = outletId ? 1 : allOutlets.length;
   const { chartData: cumulativeData, dailyBenchmark, weeklyTotal, isLoading: isLoadingCumulative } = useFoodWasteChartData(
     benchmarks.food_waste_target_kg,
     activeOutletsCount
   );
 
-  // Benchmarks & Targets (Aligned with user request)
-  const massTarget = 80;
-  const carbonTarget = 144;
-  const financialCap = 650;
+  // Targets
+  const massTarget = benchmarks.food_waste_target_kg || 100;
+  const carbonTarget = 180;
+  const financialTarget = benchmarks.financial_cap || 650;
 
-  // Attention Logic
-  const showAlertMass = totalMass > (unitType === 'Lbs' ? massTarget * 2.20462 : massTarget);
+  const showAlertMass = totalMass > massTarget;
   const showAlertCarbon = carbonImpact > carbonTarget;
-  const showAlertFinance = financialLoss > financialCap;
+  const showAlertFinance = financialLoss > financialTarget;
 
   if (isLoading) {
     return (
@@ -54,195 +51,156 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      {/* Mila Actionable Intelligence Header */}
-      <div className="flex items-center gap-6 mb-10">
-        <div className="p-4 bg-brand-gold rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.4)]">
-          <Cpu className="text-[#0B221E]" size={32} />
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+          <Scale className="text-brand-gold" size={24} />
         </div>
-        <div className="space-y-1">
-          <h2 className="text-2xl font-black text-white tracking-tight uppercase leading-tight">
-            Mila Actionable Intelligence
+        <div>
+          <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+            Food Waste Intelligence
           </h2>
-          <div className="flex items-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold">
-              Sustainability Performance Proportional Scaling
-            </p>
-          </div>
+          <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+            Conversion of raw prep and spoilage data into financial impact.
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* Card 1: Carbon Lifecycle */}
-        <div className="bg-[#0B221E] border border-white/10 rounded-[32px] p-8 relative overflow-hidden transition-all duration-500 hover:border-brand-gold/20 flex flex-col justify-between h-[230px]">
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <Cloud size={16} className="text-brand-gold" />
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold">Carbon Lifecycle</h4>
-            </div>
-
-            <div className="mb-4">
-              <p className="text-4xl font-black text-white tracking-tighter leading-none">
-                {parseFloat(carbonImpact.toFixed(1)).toLocaleString()} <span className="text-xs font-medium text-white/30 uppercase ml-1">KG CO2E</span>
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {showAlertCarbon ? (
-              <>
-                <AlertTriangle size={14} className="text-[#FF4D4D]" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">Operational Deviation Impact.</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 size={14} className="text-[#77B139]" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">Averted Loss Footprint.</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Card 2: Resource Footprint */}
-        <div className="bg-[#0B221E] border border-white/10 rounded-[32px] p-8 relative overflow-hidden transition-all duration-500 hover:border-brand-gold/20 flex flex-col justify-between h-[230px]">
-          <div>
-            <div className="flex items-center gap-3 mb-6">
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        {/* Total Volume */}
+        <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${showAlertMass ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
               <Scale size={16} className="text-brand-gold" />
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold">Water Resource</h4>
+              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Total Volume</h4>
             </div>
-
-            <div className="mb-4">
-              <p className="text-4xl font-black text-white tracking-tighter leading-none">
-                {totalMass.toLocaleString(undefined, { maximumFractionDigits: 1 })} <span className="text-xs font-medium text-white/30 uppercase ml-1">M³ LOSS</span>
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {showAlertMass ? (
-              <>
-                <AlertTriangle size={14} className="text-[#FF4D4D]" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">Operational Deviation Impact.</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 size={14} className="text-[#77B139]" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">Averted Loss Footprint.</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Card 3: Financial Impact */}
-        <div className={`bg-[#0B221E] border ${showAlertFinance ? 'border-[#FF0000] border-2 shadow-[0_0_40px_rgba(255,0,0,0.3)]' : 'border-white/10'} rounded-[32px] p-8 relative overflow-hidden transition-all duration-500 flex flex-col justify-between h-[230px]`}>
-          <div>
-            <div className={`flex items-center gap-3 mb-6 ${showAlertFinance ? 'text-[#FF4D4D]' : 'text-brand-gold'}`}>
-              <DollarSign size={16} />
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] leading-none">Financial Impact</h4>
-            </div>
-
-            <div className="mb-2">
-              <p className={`text-5xl font-black ${showAlertFinance ? 'text-[#FF4D4D]' : 'text-white'} tracking-tighter leading-none`}>
-                ${parseFloat(financialLoss.toFixed(2)).toLocaleString()}
-              </p>
-            </div>
-            
-            {showAlertFinance && (
-              <div className="space-y-1 py-3 border-t border-white/10">
-                <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-widest text-white/40">
-                  <span>Item Loss:</span>
-                  <span className="text-white ml-2">$ {(financialLoss * 0.85714).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-widest text-white/40">
-                  <span>Logistics:</span>
-                  <span className="text-white ml-2">$ {(financialLoss * 0.14286).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
+            {showAlertMass && (
+              <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                <AlertTriangle size={9} /> Attention
               </div>
             )}
           </div>
-          
-          {showAlertFinance ? (
-            <div className="bg-[#B33B3B] rounded-xl py-3 px-4 flex items-center gap-3">
-              <AlertTriangle size={14} className="text-white fill-white/20" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-white leading-tight">
-                Escalation Triggered Supervisor Report
-              </span>
-            </div>
-          ) : (
+          <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+            {totalMass.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+            <span className="text-xs font-medium text-white/50 uppercase ml-1.5">{unitType}</span>
+          </p>
+          <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+            Target: &lt; {massTarget} {unitType}
+          </p>
+        </div>
+
+        {/* Carbon Impact */}
+        <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${showAlertCarbon ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+          <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={14} className="text-[#77B139]" />
-              <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">Averted Loss Footprint.</span>
+              <Cloud size={16} className="text-brand-gold" />
+              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Carbon Impact</h4>
             </div>
-          )}
+            {showAlertCarbon && (
+              <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                <AlertTriangle size={9} /> Attention
+              </div>
+            )}
+          </div>
+          <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+            {carbonImpact.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+            <span className="text-xs font-medium text-white/50 uppercase ml-1.5">kg CO₂e</span>
+          </p>
+          <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+            Target: &lt; {carbonTarget} kg CO₂e
+          </p>
+        </div>
+
+        {/* Net Financial Loss */}
+        <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${showAlertFinance ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <DollarSign size={16} className="text-brand-gold" />
+              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Net Financial Loss</h4>
+            </div>
+            {showAlertFinance && (
+              <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                <AlertTriangle size={9} /> Attention
+              </div>
+            )}
+          </div>
+          <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+            ${financialLoss.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </p>
+          <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+            Target: &lt; ${financialTarget}
+          </p>
         </div>
       </div>
 
-      {/* 4. CO2 EMISSIONS - Definitive Performance View */}
-      <div className="pt-16 pb-12 border-t border-white/5">
-        <div className="h-[480px] w-full">
-          {isLoadingCo2 ? (
-            <div className="flex items-center justify-center h-full bg-[#0B221E] border border-white/10 rounded-[32px]">
+      {/* CO2 Emissions Chart */}
+      <div className="pt-4 border-t border-white/5">
+        <div className="h-[440px] sm:h-[480px] w-full">
+          {isLoadingCumulative ? (
+            <div className="flex items-center justify-center h-full bg-[#1c3933] border border-white/10 rounded-2xl">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold"></div>
             </div>
           ) : (
-            <Co2EmissionsTemplateChart 
-              data={cumulativeData} 
-              benchmark={dailyBenchmark} 
+            <Co2EmissionsTemplateChart
+              data={cumulativeData}
+              benchmark={dailyBenchmark}
               weeklyTotal={weeklyTotal}
             />
           )}
         </div>
       </div>
 
-
-      {/* Outlet Performance Breakdown Table */}
-      <div className="bg-[#0B221E] border border-brand-gold/10 rounded-[32px] overflow-hidden shadow-2xl">
-        <div className="p-10 border-b border-brand-gold/10 bg-black/10 flex items-center gap-6">
-          <div className="p-3 border border-[#77B139]/50 rounded-full bg-[#77B139]/5">
-            <TrendingDown size={20} className="text-[#77B139]" />
+      {/* Outlet Performance Breakdown — Card Grid */}
+      <div>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-10 h-10 border border-brand-eco/50 rounded-xl bg-brand-eco/5 flex items-center justify-center shrink-0">
+            <TrendingDown size={18} className="text-brand-eco" />
           </div>
-          <div className="space-y-1">
-            <h4 className="text-xl font-black text-white tracking-tight uppercase leading-tight">
+          <div>
+            <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
               Outlet Performance
             </h4>
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold">
-              Breakdown Analytics Hub
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
+              Breakdown Analytics
             </p>
           </div>
         </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-brand-gold/5 bg-black/5">
-                <th className="py-4 px-8 text-[9px] font-black uppercase tracking-widest text-brand-gold/60">Outlet Name</th>
-                <th className="py-4 px-8 text-[9px] font-black uppercase tracking-widest text-brand-gold/60">Current Mass ({unitType})</th>
-                <th className="py-4 px-8 text-[9px] font-black uppercase tracking-widest text-brand-gold/60">Current Cost (USD)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {outletDetails.map((outlet, id) => (
-                <tr key={id} className="border-b border-brand-gold/5 hover:bg-white/5 transition-colors group">
-                  <td className="py-5 px-8">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-black text-white uppercase tracking-wider group-hover:text-brand-gold transition-colors">{outlet.name}</span>
-                      {outlet.name.toLowerCase().includes('royal') && outlet.mass > (unitType === 'Lbs' ? 40 * 2.20462 : 40) && (
-                        <div className="flex items-center gap-1.5 bg-[#FF4D4D]/20 text-[#FF4D4D] border border-[#FF4D4D]/30 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest">
-                          <AlertCircle size={8} /> Attention
-                        </div>
-                      )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {outletDetails.filter(o => o.mass > 0).map((outlet, id) => {
+            const isAttention = outlet.mass > massTarget / Math.max(outletDetails.filter(o => o.mass > 0).length, 1);
+            return (
+              <div key={id} className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${isAttention ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+                {/* Outlet name + status badge */}
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <span className="text-sm font-black text-white uppercase tracking-wider truncate">{outlet.name}</span>
+                  {isAttention && (
+                    <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                      <AlertCircle size={9} /> Attention
                     </div>
-                  </td>
-                  <td className="py-5 px-8">
-                    <span className="text-sm font-geometric text-white/80">{outlet.mass.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
-                  </td>
-                  <td className="py-5 px-8 text-brand-gold font-bold">
+                  )}
+                </div>
+
+                {/* Mass metric */}
+                <div className="mb-3">
+                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">Mass</p>
+                  <p className="text-2xl font-geometric font-black text-white leading-none">
+                    {outlet.mass.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                    <span className="text-xs font-medium text-white/40 uppercase ml-1.5">{unitType}</span>
+                  </p>
+                </div>
+
+                {/* Cost metric */}
+                <div className="pt-3 border-t border-white/8">
+                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">Cost</p>
+                  <p className="text-lg font-geometric font-bold text-brand-gold leading-none">
                     $ {outlet.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

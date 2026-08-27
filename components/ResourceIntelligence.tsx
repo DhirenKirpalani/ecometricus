@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, Droplets, Zap, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Cpu, Droplets, Zap, AlertTriangle, CheckCircle2, Info, TrendingDown, Store } from 'lucide-react';
 import { useResourceChartData } from '../hooks/useResourceChartData';
 import ResourceTemplateChart from './ResourceTemplateChart';
 import { Outlet } from '../types';
@@ -9,20 +9,28 @@ interface ResourceIntelligenceProps {
 }
 
 const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets }) => {
-  const { 
-    waterData, 
-    energyData, 
-    waterTarget, 
-    energyTarget, 
-    waterDailyBenchmark, 
+  const {
+    waterData,
+    energyData,
+    waterTarget,
+    energyTarget,
+    waterDailyBenchmark,
     energyDailyBenchmark,
     waterWeeklyTotal,
     energyWeeklyTotal,
-    isLoading 
+    isLoading
   } = useResourceChartData();
 
   const showAlertWater = waterWeeklyTotal > waterTarget;
   const showAlertEnergy = energyWeeklyTotal > energyTarget;
+
+  // Compute per-outlet totals from chart data
+  const OUTLET_KEYS = ['ROYAL', "FISHER'S", "RALPH'S", 'GUSTO'] as const;
+  const outletBreakdown = OUTLET_KEYS.map(key => {
+    const water = waterData.reduce((acc, d) => acc + (d[key] || 0), 0);
+    const energy = energyData.reduce((acc, d) => acc + (d[key] || 0), 0);
+    return { name: key.charAt(0) + key.slice(1).toLowerCase(), water, energy };
+  });
 
   if (isLoading) {
     return (
@@ -146,6 +154,65 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
           icon={<Zap size={18} className="text-brand-gold" />} 
           allOutlets={allOutlets}
         />
+      </div>
+
+      {/* Outlet Performance Breakdown — Card Grid */}
+      <div>
+        <div className="flex items-center gap-6 mb-6">
+          <div className="p-3 border border-brand-gold/50 rounded-full bg-brand-gold/5">
+            <TrendingDown size={20} className="text-brand-gold" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xl font-black text-white tracking-tight uppercase leading-tight">
+              Outlet Performance
+            </h4>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold">
+              Resource Breakdown Analytics
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {outletBreakdown.map((outlet, id) => {
+            const isWaterAttention = outlet.water > waterTarget / OUTLET_KEYS.length;
+            const isEnergyAttention = outlet.energy > energyTarget / OUTLET_KEYS.length;
+            const isAttention = isWaterAttention || isEnergyAttention;
+            return (
+              <div key={id} className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${isAttention ? 'border-[#FF4D4D]/40 bg-[#FF4D4D]/5' : 'border-white/10 bg-[#0B221E] hover:border-brand-gold/20'}`}>
+                {/* Outlet name + status badge */}
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Store size={14} className="text-brand-gold/50" />
+                    <span className="text-sm font-black text-white uppercase tracking-wider truncate">{outlet.name}</span>
+                  </div>
+                  {isAttention && (
+                    <div className="flex items-center gap-1.5 bg-[#FF4D4D]/20 text-[#FF4D4D] border border-[#FF4D4D]/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                      <AlertTriangle size={9} /> Attention
+                    </div>
+                  )}
+                </div>
+
+                {/* Water metric */}
+                <div className="mb-3">
+                  <p className="text-[10px] font-bold text-[#3b82f6]/60 uppercase tracking-widest mb-1">Water Usage</p>
+                  <p className="text-xl font-geometric font-black text-white leading-none">
+                    {outlet.water.toLocaleString()}
+                    <span className="text-xs font-medium text-white/40 uppercase ml-1.5">L</span>
+                  </p>
+                </div>
+
+                {/* Energy metric */}
+                <div className="pt-3 border-t border-white/8">
+                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">Energy Load</p>
+                  <p className="text-xl font-geometric font-bold text-brand-gold leading-none">
+                    {outlet.energy.toLocaleString()}
+                    <span className="text-xs font-medium text-white/40 uppercase ml-1.5">kWh</span>
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
