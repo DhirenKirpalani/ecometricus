@@ -330,11 +330,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
   };
 
   return (
-    <div className="min-h-screen bg-[#0a1a17] flex flex-col font-body selection:bg-brand-gold/20 selection:text-brand-gold antialiased overflow-x-hidden" onClick={() => { setShowTooltip(null); setSelectedFoodCostDay(null); setSelectedLaborCostDay(null); }}>
+    <div className="min-h-screen bg-brand-dark flex flex-col font-body selection:bg-brand-gold/20 selection:text-brand-gold antialiased overflow-x-hidden" onClick={() => { setShowTooltip(null); setSelectedFoodCostDay(null); setSelectedLaborCostDay(null); }}>
 
       {/* ── Navbar ── */}
-      <header className="sticky top-0 z-50 shrink-0 border-b border-white/6"
-        style={{ background: 'linear-gradient(180deg, #0e1f1c 0%, rgba(14,31,28,0.97) 100%)', backdropFilter: 'blur(20px)' }}>
+      <header className="sticky top-0 z-50 shrink-0 border-b border-white/8 bg-brand-dark/95 backdrop-blur-xl">
 
         <div className="max-w-[1920px] mx-auto h-14 px-4 sm:px-6 flex items-center justify-between gap-3">
 
@@ -362,7 +361,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
             <button
               onClick={onLogout}
               title="Log out"
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-white/30 hover:text-brand-alert hover:bg-brand-alert/8 transition-all"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-white/50 hover:text-brand-alert hover:bg-brand-alert/8 transition-all"
             >
               <LogOut size={14} />
               <span className="hidden lg:inline text-[11px] font-medium">Log out</span>
@@ -383,7 +382,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
               <h2 className="text-2xl sm:text-4xl font-geometric font-black text-white leading-none tracking-tight">
                 {greeting}, <span className="text-brand-gold">{firstName}</span>
               </h2>
-              <p className="text-[10px] sm:text-[11px] font-medium text-white/30 mt-2 tracking-wide">
+              <p className="text-[10px] sm:text-[11px] font-medium text-white/50 mt-2 tracking-wide">
                 {currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} · {currentOutletName}
               </p>
             </div>
@@ -391,7 +390,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
         })()}
 
         {/* Mila Intelligence — ESG Snapshot */}
-        <div className="bg-[#0e1f1c] border border-brand-gold/25 rounded-2xl p-4 sm:p-8 relative overflow-hidden shadow-xl">
+        <div className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-4 sm:p-8 relative overflow-hidden shadow-xl">
           <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'radial-gradient(ellipse at 80% 0%, rgba(200,164,19,0.05), transparent 55%)'}} />
 
           <div className="flex items-center gap-4 mb-6">
@@ -411,7 +410,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
                 <Cloud size={13} /> Carbon Lifecycle
               </span>
               <div className="text-2xl font-geometric font-black text-white">
-                {impacts.carbonImpact > 0 ? `${impacts.carbonImpact.toFixed(1)}` : '—'}<span className="text-xs font-normal text-white/30 ml-1">kg CO₂e</span>
+                {impacts.carbonImpact > 0 ? `${impacts.carbonImpact.toFixed(1)}` : '—'}<span className="text-xs font-normal text-white/50 ml-1">kg CO₂e</span>
               </div>
               <div className="flex items-center gap-1.5 mt-auto">
                 {impacts.isDeviating ? (
@@ -434,7 +433,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
                 <Droplets size={13} /> Water Resource
               </span>
               <div className="text-2xl font-geometric font-black text-white">
-                {impacts.waterFootprint > 0 ? `${impacts.waterFootprint.toFixed(1)}` : '—'}<span className="text-xs font-normal text-white/30 ml-1">L</span>
+                {impacts.waterFootprint > 0 ? `${impacts.waterFootprint.toFixed(1)}` : '—'}<span className="text-xs font-normal text-white/50 ml-1">L</span>
               </div>
               <div className="flex items-center gap-1.5 mt-auto">
                 <ShieldCheck className="text-brand-eco" size={12} />
@@ -470,7 +469,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
           <AlertTriangle className="text-brand-alert shrink-0" size={18} />
           <div>
             <p className="text-[11px] font-bold text-brand-alert uppercase tracking-wide">Missing Data Alert</p>
-            <p className="text-[10px] text-white/40 mt-0.5">Breakfast shift log incomplete.</p>
+            <p className="text-[10px] text-white/60 mt-0.5">Breakfast shift log incomplete.</p>
           </div>
         </div>
 
@@ -614,12 +613,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
 
 
         {/* Weekly Performance Cycle — compact action bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#0e1f1c] border border-white/8 rounded-2xl p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#1c3933] border border-white/8 rounded-2xl p-4 sm:p-6">
           <div className="flex items-center gap-3">
             <Calendar className="text-brand-gold/60 shrink-0" size={18} />
             <div>
               <p className="text-sm font-bold text-white">Weekly Performance Cycle</p>
-              <p className="text-[10px] text-white/30 mt-0.5">Cut period: Sun 12:00 AM — Sat 11:59 PM</p>
+              <p className="text-[10px] text-white/50 mt-0.5">Cut period: Sun 12:00 AM — Sat 11:59 PM</p>
             </div>
           </div>
           <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
@@ -642,7 +641,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
       {/* Audit Modal */}
       {showAuditModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-brand-dark/95 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="max-w-4xl w-full bg-[#0e1f1c] border border-brand-gold/30 rounded-2xl p-4 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto scrollbar-gold">
+          <div className="max-w-4xl w-full bg-[#1c3933] border border-brand-gold/30 rounded-2xl p-4 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto scrollbar-gold">
             <button onClick={() => setShowAuditModal(false)} className="absolute top-4 right-4 sm:top-6 sm:right-6 text-gray-500 hover:text-white transition-colors z-10">
               <XIcon size={20} />
             </button>
@@ -662,16 +661,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
                 <tbody className="divide-y divide-white/5">
                   {sessionWasteEntries.length > 0 ? sessionWasteEntries.map((entry, i) => (
                     <tr key={i} className="hover:bg-white/[0.03] transition-colors">
-                      <td className="py-3 text-[11px] text-white/40">{entry.timestamp}</td>
+                      <td className="py-3 text-[11px] text-white/60">{entry.timestamp}</td>
                       <td className="py-3 text-[11px] font-bold text-white">{entry.staffName || 'Anonymous'}</td>
-                      <td className="py-3 text-[11px] text-white/40">{entry.product}</td>
+                      <td className="py-3 text-[11px] text-white/60">{entry.product}</td>
                       <td className="py-3 text-[10px] uppercase text-right">
                         <span className="text-brand-eco font-bold">Verified</span>
                       </td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={4} className="py-16 text-center text-white/20 text-sm">
+                      <td colSpan={4} className="py-16 text-center text-white/40 text-sm">
                         No session data found.
                       </td>
                     </tr>

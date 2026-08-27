@@ -341,7 +341,7 @@ const QuestionField: React.FC<{
         <span className="text-brand-gold mr-2">{q.number}.</span>
         {q.label} {q.required && <span className="text-brand-alert">*</span>}
         {q.type === 'multi-limit' && q.max && (
-          <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
+          <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-white/60">
             ({selectedArr.length}/{q.max} selected)
           </span>
         )}
@@ -365,15 +365,15 @@ const QuestionField: React.FC<{
             value={(value as string) || ''}
             onChange={e => onSingle(e.target.value)}
             className={`w-full appearance-none bg-white/5 border rounded-xl px-4 py-3 pr-10 text-sm text-white outline-none transition-all focus:bg-white/10 focus:border-brand-gold ${
-              (value as string) ? 'text-white' : 'text-white/40'
+              (value as string) ? 'text-white' : 'text-white/60'
             } ${showError ? 'border-brand-alert/70' : 'border-brand-gold/25'}`}
           >
-            <option value="" disabled className="bg-brand-dark text-white/40">{(q as SelectQuestion).placeholder || 'Select'}</option>
+            <option value="" disabled className="bg-brand-dark text-white/60">{(q as SelectQuestion).placeholder || 'Select'}</option>
             {(q as SelectQuestion).options.map(opt => (
               <option key={opt} value={opt} className="bg-brand-dark text-white">{opt}</option>
             ))}
           </select>
-          <svg className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/40" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+          <svg className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/60" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
         </div>
       )}
 
