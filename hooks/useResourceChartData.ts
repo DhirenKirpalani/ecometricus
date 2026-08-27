@@ -36,13 +36,13 @@ export const useResourceChartData = () => {
           .select('amount, resource_type, created_at, outlets(name)')
           .filter('outlets.name', 'ilike', 'Royal');
 
-        // 2. Initialize Day Maps
+        // 2. Initialize Day Maps — empty until real data arrives
         const waterMap: Record<string, any> = {};
         const energyMap: Record<string, any> = {};
         
         DAYS.forEach(day => {
-          waterMap[day] = { day, "ROYAL": 0, "FISHER'S": 800, "RALPH'S": 600, "GUSTO": 1000 };
-          energyMap[day] = { day, "ROYAL": 0, "FISHER'S": 35, "RALPH'S": 25, "GUSTO": 40 };
+          waterMap[day] = { day, "ROYAL": 0, "FISHER'S": 0, "RALPH'S": 0, "GUSTO": 0 };
+          energyMap[day] = { day, "ROYAL": 0, "FISHER'S": 0, "RALPH'S": 0, "GUSTO": 0 };
         });
 
         // 3. Map Royal Live Data
@@ -56,9 +56,6 @@ export const useResourceChartData = () => {
               energyMap[dayLabel]["ROYAL"] += Number(log.amount);
             }
           });
-        } else {
-          // Royal stays 0 to allow test runs
-          console.log('[Resource Sync] Royal Data Empty. Zero-reset active.');
         }
 
         const wTransformed = DAYS.map(d => waterMap[d]);

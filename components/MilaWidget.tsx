@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, Sparkles, User, Loader2, Minimize2, Maximize2, Lightbulb } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-// @ts-ignore
-import KNOWLEDGE_BASE from '../mila.knowledge.txt?raw';
+import { retrieveContext, getKnowledgeBaseIndex } from '../lib/mila-rag';
 
 interface MilaWidgetProps {
     context: any;
@@ -18,10 +17,15 @@ interface Message {
 const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
-    const [userName, setUserName] = useState('');
-    const [step, setStep] = useState<'name_capture' | 'chat'>('name_capture');
 
-    // Dynamic Greeting Logic (Hard-Coded Gate)
+    // Extract user name and hotel info from context — no need to ask
+    const userFirstName = context?.user?.firstName || context?.user?.name?.split(' ')[0] || 'there';
+    const hotelName = context?.company?.name || 'your hotel';
+    const outletName = context?.company?.outlet || 'All Outlets';
+    const region = context?.company?.region || '';
+    const city = context?.company?.city || '';
+
+    // Dynamic Greeting Logic
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) return "Good morning";
@@ -31,11 +35,10 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
 
     const [messages, setMessages] = useState<Message[]>([]);
 
-    // Initialize Greeting on Mount
+    // Initialize Greeting on Mount — use real name from context
     useEffect(() => {
         const greeting = getGreeting();
-        // Force the specific initial message requesting name
-        const initialText = `${greeting}. Welcome to Ecometricus. My name is Mila; I am your KPI and ESG strategist. May I have your name?`;
+        const initialText = `${greeting}, ${userFirstName}. I'm Mila, your ESG strategist at ${hotelName}. I can see you're viewing ${outletName}${region ? ` in ${region}` : ''}. What would you like to analyze today?`;
 
         setMessages([
             {
@@ -45,7 +48,7 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
                 timestamp: new Date()
             }
         ]);
-    }, []);
+    }, [userFirstName, hotelName, outletName, region]);
 
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -80,12 +83,7 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
             console.error("Gamification sync error", e);
         }
 
-        let currentUserName = userName;
-        if (step === 'name_capture') {
-            currentUserName = userMsg.text; // Simple capture
-            setUserName(currentUserName);
-            setStep('chat');
-        }
+        let currentUserName = userFirstName;
 
         try {
             // @ts-ignore
@@ -95,57 +93,74 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
                 throw new Error("Configuration Error: VITE_DEEPSEEK_API_KEY is missing from .env");
             }
 
+            // RAG: Retrieve relevant documents from Supabase based on user query
+            const ragContext = await retrieveContext(userMsg.text, 5);
+            console.log('[Mila RAG] Retrieved context:', ragContext ? `${ragContext.length} chars` : 'empty');
+
+            // KB Index: Get list of all available documents for meta-questions
+            const kbIndex = await getKnowledgeBaseIndex();
+            const kbIndexStr = kbIndex
+              ? `${kbIndex.total} documents (${kbIndex.totalWords.toLocaleString()} words total):\n${kbIndex.titles.map(t => `  - ${t}`).join('\n')}`
+              : 'Knowledge base is empty. No documents uploaded yet.';
+            console.log('[Mila RAG] KB index:', kbIndex ? `${kbIndex.total} docs` : 'empty');
+
             // INSTRUCTIONS UPDATED FOR MARKDOWN & STRUCTURE
             const systemPrompt = `
-            IDENTITY: You are Mila, the Ecometricus Strategist for all regions.
-            
-            === LONG-TERM MEMORY (FACTUAL SOURCE OF TRUTH) ===
-            ${KNOWLEDGE_BASE}
+            IDENTITY: You are Mila, the Ecometricus ESG Strategist.
+
+            === USER INFO ===
+            Name: ${currentUserName}
+            Hotel: ${hotelName}
+            Outlet: ${outletName}
+            ${region ? `Region: ${region}` : ''}
+            ${city ? `City: ${city}` : ''}
+            ==================
+
+            === KNOWLEDGE BASE INDEX (AVAILABLE DOCUMENTS) ===
+            ${kbIndexStr}
+            ==================================================
+
+            === RAG RETRIEVED CONTEXT (RELEVANT EXCERPTS FOR THIS QUERY) ===
+            ${ragContext || 'No specific excerpts retrieved for this query — but the knowledge base index above shows what documents are available.'}
             ==================================================
 
             === SESSION CONTEXT (LIVE DASHBOARD VITALS) ===
-            ${JSON.stringify({ ...context, userName: currentUserName }, null, 2)}
+            ${JSON.stringify(context, null, 2)}
             ===============================================
 
             INSTRUCTIONS:
-            1. PERSONA & NAME EXTRACTION:
-               - The 'userName' context provided refers to the user's raw input (e.g., "Hi I am Jane").
-               - YOU must extract the actual name (e.g., "Jane") and use it.
-               - DO NOT echo the full phrase like "It's a pleasure, Hi I am Jane".
-               - FIRST RESPONSE RULE: If this is the greeting, your only job is to acknowledge the person by name and ask a proactive question.
-                 "It's a pleasure, [Name]. Which alert would you like to deep-dive into first?"
+            1. PERSONALIZATION:
+               - The user's name is ${currentUserName}. Always address them by name.
+               - The user works at ${hotelName}, currently viewing ${outletName}.
+               - Use this context to give personalized, specific answers.
 
-            2. STRATEGIC CONSULTANT MODE:
+            2. KNOWLEDGE BASE USAGE:
+               - The KNOWLEDGE BASE INDEX above lists ALL documents available to you. When asked "what is your knowledge base?" or "what do you know?", list the document titles from the index.
+               - The RAG RETRIEVED CONTEXT contains relevant excerpts that match the user's question. Use these to answer specific questions.
+               - If RAG context has relevant info, cite specific numbers and facts from it.
+               - If RAG context is empty but the KB index shows documents, tell the user what documents exist and suggest they ask a more specific question.
+               - NEVER say "I don't have access to a knowledge base" — the KB index above shows exactly what's available.
+
+            3. STRATEGIC CONSULTANT MODE:
                - YOU ARE THE AUDITOR. Do not just list data the user can see.
-               - IF asked about "Food Cost" or High-Alerts:
-                 * Provide ONE regional competitive insight (e.g., ASEAN benchmark context).
-                 * Provide ONE actionable human step (e.g., "Re-calibrate scales", "Check buffet waste").
-               - THE KNOWLEDGE BASE IS YOUR SECRET REFERENCE: NEVER copy-paste sections from it. Use it only to calculate and inform.
+               - Provide actionable insights with specific numbers from the RAG context and session data.
+               - Reference the hotel name and outlet when giving recommendations.
 
-            3. RESPONSE FORMAT (STRICT MARKDOWN STRUCTURE):
+            4. RESPONSE FORMAT (STRICT MARKDOWN STRUCTURE):
                - LIMIT: 3-4 concise bullet points MAX per response.
-               - WORD COUNT: < 50 words total.
+               - WORD COUNT: < 80 words total.
                - LAYOUT RULES:
-                 * **Acknowledgement**: Start with 1 sentence.
+                 * **Acknowledgement**: Start with 1 sentence addressing the user by name.
                  * **Bullets**: Each insight MUST be a new line with a bullet (*).
                  * **Spacing**: Add a DOUBLE LINE BREAK between every bullet for readability.
                  * **Bolding**: BOLD the header of each bullet (e.g., **Root Cause:**, **Action:**).
-               
-               EXAMPLE OUTPUT:
-               "I've analyzed your Food Cost spike against regional data.
 
-               * **Root Cause:** Protein variance exceeds the 2% safety threshold.
-
-               * **Regional Insight:** ASEAN peers average 28% food cost; we are at 32%.
-
-               * **Action:** Re-calibrate kitchen scales immediately to check portioning."
-
-            4. CORE INTELLIGENCE:
-               - ACTIVE ALERTS: 
+            5. CORE INTELLIGENCE:
+               - ACTIVE ALERTS:
                  * KPI Alert: ${context.activeAlerts?.kpi ? "CRITICAL: Food Cost Spike detected." : "None."}
                  * Sustainability Alert: ${context.activeAlerts?.sustainability ? "CRITICAL: Excessive Waste detected." : "None."}
-            
-            Refuse generic advice. Cite specific numbers from Memory and Context.
+
+            Refuse generic advice. Cite specific numbers from RAG Context and Session Context.
             `;
 
             // DEEPSEEK API CALL (Standard OpenAI-compatible fetch)
@@ -282,7 +297,7 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                                placeholder={step === 'name_capture' ? "Type your name..." : "Ask about waste, costs, or targets..."}
+                                placeholder="Ask about waste, costs, ESG, or water..."
                                 className="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors"
                             />
                             <button
