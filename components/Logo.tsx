@@ -28,7 +28,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', withLabel = false }) => {
                 <img src="/logo.png" alt="Ecometricus Logo" className="w-full h-full object-contain" />
             </div>
             {withLabel && (
-                <span className={`font-geometric font-black tracking-widest text-brand-gold uppercase leading-none ${textSize}`}>
+                <span className={`font-geometric font-bold tracking-widest text-brand-gold uppercase leading-none ${textSize}`}>
                     ECOMETRICUS
                 </span>
             )}

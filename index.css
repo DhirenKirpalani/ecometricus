@@ -1,10 +1,10 @@
 /* ── Gold scrollbar for custom dropdowns ── */
 .scrollbar-gold::-webkit-scrollbar        { width: 4px; }
-.scrollbar-gold::-webkit-scrollbar-track  { background: #0e1f1c; border-radius: 9999px; }
+.scrollbar-gold::-webkit-scrollbar-track  { background: #152E2A; border-radius: 9999px; }
 .scrollbar-gold::-webkit-scrollbar-thumb  { background: rgba(200, 164, 19, 0.5); border-radius: 9999px; }
 .scrollbar-gold::-webkit-scrollbar-thumb:hover { background: rgba(200, 164, 19, 0.85); }
 /* Firefox */
-.scrollbar-gold { scrollbar-width: thin; scrollbar-color: rgba(200,164,19,0.5) #0e1f1c; }
+.scrollbar-gold { scrollbar-width: thin; scrollbar-color: rgba(200,164,19,0.5) #152E2A; }
 
 /* ── Autofill override: keep dark theme on browser-filled inputs ── */
 input:-webkit-autofill,

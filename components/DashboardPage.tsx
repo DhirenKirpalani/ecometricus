@@ -150,7 +150,10 @@ const REGION_DATA: Record<string, string[]> = {
     'Denver, CO', 'Phoenix, AZ', 'San Diego, CA', 'Portland, OR', 'Honolulu, HI',
     'Orlando, FL', 'Tampa, FL', 'Charlotte, NC', 'Minneapolis, MN', 'Detroit, MI',
   ],
-  'Caribbean': [
+  'North America': [
+    'Toronto, Canada', 'Vancouver, Canada', 'Montreal, Canada', 'Calgary, Canada',
+    'Ottawa, Canada', 'Edmonton, Canada', 'Quebec City, Canada', 'Winnipeg, Canada',
+    'Halifax, Canada',
     'Cancun, Mexico', 'Mexico City, Mexico', 'Guadalajara, Mexico', 'Monterrey, Mexico',
     'Havana, Cuba', 'Nassau, Bahamas', 'Kingston, Jamaica', 'San Juan, Puerto Rico',
     'Bridgetown, Barbados', 'Port of Spain, Trinidad', 'Punta Cana, Dominican Republic',
@@ -173,11 +176,6 @@ const REGION_DATA: Record<string, string[]> = {
     'Brasília, Brazil', 'Santiago, Chile', 'Lima, Peru', 'Cusco, Peru', 'Bogotá, Colombia',
     'Medellín, Colombia', 'Cartagena, Colombia', 'Quito, Ecuador', 'Caracas, Venezuela',
     'Montevideo, Uruguay', 'Asunción, Paraguay', 'La Paz, Bolivia',
-  ],
-  'Canada': [
-    'Toronto, Canada', 'Vancouver, Canada', 'Montreal, Canada', 'Calgary, Canada',
-    'Ottawa, Canada', 'Edmonton, Canada', 'Quebec City, Canada', 'Winnipeg, Canada',
-    'Halifax, Canada',
   ],
 };
 
@@ -690,7 +688,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
                 !cell.current                            ? 'text-white/15 hover:text-white/30'             : '',
                 cell.current && !isSelected && !isToday  ? 'text-white/70 hover:bg-white/10 hover:text-white' : '',
                 isToday && !isSelected                   ? 'text-brand-gold border border-brand-gold/40'   : '',
-                isSelected                               ? 'bg-brand-gold text-[#0e1f1c] font-black'       : '',
+                isSelected                               ? 'bg-brand-gold text-brand-dark font-black'       : '',
               ].join(' ')}
             >
               {cell.date.getDate()}
@@ -1958,12 +1956,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors duration-150 whitespace-nowrap group ${
           active
             ? 'text-white'
-            : 'text-white/40 hover:text-white/80'
+            : 'text-white/60 hover:text-white/90'
         }`}
       >
         <Icon
           size={15}
-          className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/25 group-hover:text-white/50'}`}
+          className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/40 group-hover:text-white/70'}`}
         />
         <span className={`text-[12px] font-semibold tracking-tight ${active ? 'text-white' : ''}`}>
           {label}
@@ -2093,7 +2091,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-dark text-white flex-col gap-6">
         <div className="w-12 h-12 rounded-full border-2 border-brand-gold/20 border-t-brand-gold animate-spin" />
-        <p className="text-sm font-medium text-white/40">Loading your dashboard…</p>
+        <p className="text-sm font-medium text-white/60">Loading your dashboard…</p>
       </div>
     );
   }
@@ -2117,14 +2115,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       {/* ── Confirm modal ── */}
       {confirmModal && (
-        <div className="fixed inset-0 z-[99998] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[99998] flex items-center justify-center bg-brand-dark/80 backdrop-blur-sm">
           <div className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-6 shadow-[0_16px_64px_rgba(0,0,0,0.7)] max-w-sm w-full mx-4">
-            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60 mb-2">Confirm Action</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold/80 mb-2">Confirm Action</p>
             <p className="text-sm text-white/80 leading-relaxed mb-6">{confirmModal.message}</p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setConfirmModal(null)}
-                className="px-4 py-2 rounded-lg border border-white/15 text-white/50 hover:text-white hover:border-white/30 text-[11px] font-semibold transition-colors"
+                className="px-4 py-2 rounded-lg border border-white/15 text-white/70 hover:text-white hover:border-white/30 text-[11px] font-semibold transition-colors"
               >Cancel</button>
               <button
                 onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
@@ -2136,8 +2134,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       )}
 
       {/* ── Navbar ── */}
-      <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-white/6"
-        style={{ background: 'linear-gradient(180deg, #0e1f1c 0%, rgba(14,31,28,0.97) 100%)', backdropFilter: 'blur(20px)' }}>
+      <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-white/8 bg-brand-dark/95 backdrop-blur-xl">
 
         <div className="max-w-[1920px] mx-auto h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-3">
 
@@ -2161,7 +2158,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             </div>
 
             {/* Role only — full name is already in the greeting below */}
-            <p className="hidden md:block text-[11px] text-brand-gold/70 font-semibold tracking-widest uppercase">
+            <p className="hidden md:block text-[12px] text-brand-gold/70 font-semibold tracking-widest uppercase">
               {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
             </p>
 
@@ -2172,7 +2169,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <button
               onClick={onLogout}
               title="Log out"
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg border border-white/15 text-white/60 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg border border-white/15 text-white/70 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
             >
               <LogOut size={14} />
               <span className="hidden sm:inline text-[11px] font-semibold">Log out</span>
@@ -2183,7 +2180,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       {/* Background Dashboard Container with Blur Toggle */}
       <div className={`transition-all duration-1000 flex flex-col min-h-screen ${isPendingConsent ? 'blur-2xl grayscale pointer-events-none' : ''}`}>
-        <div className="flex-grow flex flex-col bg-[#0a1a17] text-gray-100 font-sans selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
+        <div className="flex-grow flex flex-col bg-brand-dark text-gray-100 font-body selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
 
       <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-8 flex-grow overflow-hidden">
 
@@ -2196,9 +2193,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <div className="flex items-end justify-between gap-4 shrink-0">
               <div className="min-w-0">
                 <h2 className="text-xl sm:text-3xl font-geometric font-bold text-white leading-none tracking-tight">
-                  {greeting}, <span className="text-brand-gold font-black">{firstName}</span>
+                  {greeting}, <span className="text-brand-gold font-bold">{firstName}</span>
                 </h2>
-                <p className="text-[10px] sm:text-[11px] font-medium text-white/35 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
+                <p className="text-[11px] sm:text-[12px] font-medium text-white/50 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
                   <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                   <span className="w-1 h-1 rounded-full bg-white/15" />
                   <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -2226,14 +2223,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           <div className="flex items-center gap-2 shrink-0 pb-1 self-end sm:self-auto">
             {/* Benchmarks tab: auto-save indicator */}
             {activeView === PortalView.PARAMETERS && (
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/20'}`}>
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
                 {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
                 {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : 'Auto-save on'}
               </div>
             )}
             {/* Company tab: auto-save indicator */}
             {activeView === PortalView.IDENTITY && (
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/20'}`}>
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
                 {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
                 {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
               </div>
@@ -2268,14 +2265,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               {/* Main View Header */}
               <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-5 shrink-0">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-brand-gold/40 mb-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
                     {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
                     {activeView === PortalView.AUDIT_LOG && "System Activity & Change Tracking"}
                   </p>
-                  <h3 className="text-lg sm:text-xl font-geometric font-bold text-white/90 leading-tight">
+                  <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
                     {activeView === PortalView.IDENTITY && "Company Identity"}
                     {activeView === PortalView.TEAM && "Staff Registry"}
@@ -2302,7 +2299,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             key={tab.id}
                             onClick={() => setDashboardTab(tab.id)}
                             className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all whitespace-nowrap ${
-                              active ? 'text-white' : 'text-white/40 hover:text-white/80'
+                              active ? 'text-white' : 'text-white/60 hover:text-white'
                             }`}
                           >
                             <tab.icon size={14} className={active ? 'text-brand-gold' : 'text-white/25'} />
@@ -2322,7 +2319,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {/* MILA ACTIONABLE INTELLIGENCE - ADMIN CUMULATIVE VIEW */}
                           {/* "Mount this duplicate at the absolute top of the Overview tab content... directly above the Earth Keeper Engagement % chart" */}
                           <div className="w-full max-w-full mb-8">
-                            <div className="bg-[#0e1f1c] border border-brand-gold/25 rounded-2xl p-4 sm:p-8 relative overflow-hidden group shadow-xl">
+                            <div className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-4 sm:p-8 relative overflow-hidden group shadow-xl">
                               {/* Subtle glow */}
                               <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'radial-gradient(ellipse at 80% 0%, rgba(200,164,19,0.05), transparent 55%)'}} />
 
@@ -2331,7 +2328,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <Cpu className="text-brand-gold" size={20} />
                                 </div>
                                 <div>
-                                  <p className="text-[9px] font-black text-brand-gold/60 uppercase tracking-[0.35em]">Mila Intelligence</p>
+                                  <p className="text-[11px] font-black text-brand-gold/80 uppercase tracking-[0.35em]">Mila Intelligence</p>
                                   <h3 className="text-base font-geometric font-black text-white leading-tight">ESG Performance Snapshot</h3>
                                 </div>
                               </div>
@@ -2339,35 +2336,35 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10">
                                 {/* Carbon */}
                                 <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-brand-gold/25 transition-all group/card">
-                                  <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest flex items-center gap-2">
+                                  <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
                                     <Cloud size={13} /> Carbon Lifecycle
                                   </span>
                                   <div className="text-2xl font-geometric font-black text-white group-hover/card:text-brand-gold transition-colors">
-                                    {impacts.carbonImpact.toFixed(1)}<span className="text-xs font-normal text-white/30 ml-1">kg CO₂e</span>
+                                    {impacts.carbonImpact.toFixed(1)}<span className="text-xs font-normal text-white/50 ml-1">kg CO₂e</span>
                                   </div>
                                   <div className="flex items-center gap-1.5 mt-auto">
                                     <AlertTriangle className="text-brand-alert" size={12} />
-                                    <p className="text-[9px] text-brand-alert/80 uppercase font-bold tracking-wide">Deviation impact</p>
+                                    <p className="text-[11px] text-brand-alert/80 uppercase font-bold tracking-wide">Deviation impact</p>
                                   </div>
                                 </div>
 
                                 {/* Water */}
                                 <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-blue-500/30 transition-all group/card">
-                                  <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest flex items-center gap-2">
+                                  <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
                                     <Droplets size={13} /> Water Resource
                                   </span>
                                   <div className="text-2xl font-geometric font-black text-white group-hover/card:text-blue-400 transition-colors">
-                                    {impacts.waterFootprint.toFixed(1)}<span className="text-xs font-normal text-white/30 ml-1">L</span>
+                                    {impacts.waterFootprint.toFixed(1)}<span className="text-xs font-normal text-white/50 ml-1">L</span>
                                   </div>
                                   <div className="flex items-center gap-1.5 mt-auto">
                                     <ShieldCheck className="text-brand-eco" size={12} />
-                                    <p className="text-[9px] text-brand-eco/80 uppercase font-bold tracking-wide">Averted loss</p>
+                                    <p className="text-[11px] text-brand-eco/80 uppercase font-bold tracking-wide">Averted loss</p>
                                   </div>
                                 </div>
 
                                 {/* Financial */}
                                 <div className={`flex flex-col gap-2 p-5 rounded-xl border transition-all ${impacts.isDeviating ? 'bg-brand-alert/8 border-brand-alert/40' : 'bg-brand-eco/8 border-brand-eco/30'}`}>
-                                  <span className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${impacts.isDeviating ? 'text-brand-alert/70' : 'text-brand-eco/70'}`}>
+                                  <span className={`text-[11px] font-black uppercase tracking-widest flex items-center gap-2 ${impacts.isDeviating ? 'text-brand-alert/90' : 'text-brand-eco/90'}`}>
                                     <DollarSign size={13} /> Financial Impact
                                   </span>
                                   <div className={`text-2xl font-geometric font-black ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
@@ -2376,12 +2373,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   {impacts.isDeviating ? (
                                     <div className="mt-auto flex items-center gap-1.5">
                                       <AlertTriangle size={11} className="text-brand-alert" />
-                                      <p className="text-[9px] text-brand-alert/80 uppercase font-bold tracking-wide">Supervisor notified</p>
+                                      <p className="text-[11px] text-brand-alert/80 uppercase font-bold tracking-wide">Supervisor notified</p>
                                     </div>
                                   ) : (
                                     <div className="mt-auto flex items-center gap-1.5">
                                       <ShieldCheck size={11} className="text-brand-eco" />
-                                      <p className="text-[9px] text-brand-eco/80 uppercase font-bold tracking-wide">On target</p>
+                                      <p className="text-[11px] text-brand-eco/80 uppercase font-bold tracking-wide">On target</p>
                                     </div>
                                   )}
                                 </div>
@@ -2424,7 +2421,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             } else if (engagementPct >= 65) {
                               chartColor = '#eab308';
                               statusLabel = 'REVIEW';
-                              statusBg = 'bg-[#1a1c09] border border-brand-gold/40 shadow-inner';
+                              statusBg = 'bg-brand-dark/60 border border-brand-gold/40 shadow-inner';
                               statusText = 'text-brand-gold font-black';
                             }
 
@@ -2435,7 +2432,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                             return (
                               <div className="w-full max-w-full mb-8">
-                                <div className="bg-[#0e1f1c] border border-white/8 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
+                                <div className="bg-[#1c3933] border border-white/8 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
 
                                   {/* HEADER SECTION */}
                                   <div className="flex justify-between items-start mb-6">
@@ -2444,7 +2441,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         <ShieldCheck size={16} className="text-brand-eco" />
                                       </div>
                                       <div>
-                                        <p className="text-[9px] font-black text-brand-gold/50 uppercase tracking-[0.3em]">Earth Keeper</p>
+                                        <p className="text-[11px] font-black text-brand-gold/80 uppercase tracking-[0.3em]">Earth Keeper</p>
                                         <h3 className="text-sm font-geometric font-black text-white leading-tight">Cumulative Engagement</h3>
                                       </div>
                                     </div>
@@ -2461,9 +2458,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <div className="flex flex-col justify-center">
                                       <div className="text-4xl font-geometric font-black text-white leading-none">
                                         {engagementPct}%
-                                        <span className="text-sm text-white/30 font-medium uppercase tracking-wide block mt-2">Participation</span>
+                                        <span className="text-sm text-white/50 font-medium uppercase tracking-wide block mt-2">Participation</span>
                                       </div>
-                                      <p className="text-xs text-white/30 mt-3 font-medium leading-relaxed max-w-sm">
+                                      <p className="text-xs text-white/50 mt-3 font-medium leading-relaxed max-w-sm">
                                         Cumulative tracking of sustainability reporting across all active outlets.
                                       </p>
                                     </div>
@@ -2700,8 +2697,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <Trophy size={15} className="text-brand-gold" />
                               </div>
                               <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Profile Completion</p>
-                                <p className="text-[9px] text-white/30">{completed} of {steps.length} steps complete</p>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-brand-gold/80">Profile Completion</p>
+                                <p className="text-[10px] text-white/50">{completed} of {steps.length} steps complete</p>
                               </div>
                             </div>
                             <span className="text-2xl font-geometric font-black text-brand-gold tabular-nums">{pct}%</span>
@@ -2736,7 +2733,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <button
                           onClick={() => setIsEditingIdentity(!isEditingIdentity)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
                         >
                           {isEditingIdentity ? <Unlock size={12} /> : <Edit2 size={12} />}
                           {isEditingIdentity ? 'Lock' : 'Edit'}
@@ -2752,13 +2749,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="flex items-center gap-2 flex-1">
                               <MapPin size={13} className="text-brand-gold/50" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Location</p>
+                              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Location</p>
                             </div>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Region</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Region</label>
                               <CustomSelect
                                 value={company.region}
                                 options={Object.keys(REGION_DATA)}
@@ -2768,7 +2765,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">City / Country</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">City / Country</label>
                               <CustomSelect
                                 value={company.city}
                                 options={REGION_DATA[company.region] ?? []}
@@ -2789,12 +2786,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="flex items-center gap-2 flex-1">
                               <Building2 size={13} className="text-brand-gold/50" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Property</p>
+                              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Property</p>
                             </div>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="space-y-1.5 pl-2 sm:pl-10">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Hotel / Company Name</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Hotel / Company Name</label>
                             <input
                               type="text"
                               value={company.name}
@@ -2813,7 +2810,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="flex items-center gap-2 flex-1">
                               <Store size={13} className="text-brand-gold/50" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Outlets</p>
+                              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Outlets</p>
                               {outlets.filter(o => o.name && o.code).length > 0 && (
                                 <span className="text-[9px] font-bold text-brand-eco bg-brand-eco/10 px-2 py-0.5 rounded-full border border-brand-eco/20">{outlets.filter(o => o.name && o.code).length} Active</span>
                               )}
@@ -2823,7 +2820,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Add Outlet Name</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Add Outlet Name</label>
                               <input
                                 type="text"
                                 value={company.currentOutletName}
@@ -2839,7 +2836,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Generated Code</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Generated Code</label>
                               <div className="flex items-center gap-2">
                                 <input type="text" value={company.currentOutletCode} className="flex-grow bg-brand-dark/80 border border-brand-gold/20 rounded-xl py-3 px-4 text-sm text-brand-gold font-bold font-mono outline-none" readOnly />
                                 <button
@@ -2867,10 +2864,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <div className="text-[11px] font-bold text-white uppercase tracking-tight truncate">{o.name}</div>
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                       <span className="text-[9px] font-mono font-bold text-brand-gold bg-brand-gold/10 px-1.5 py-0.5 rounded">{o.code}</span>
-                                      <span className="text-[8px] text-white/20 uppercase tracking-widest">Outlet #{String(idx + 1).padStart(2, '0')}</span>
+                                      <span className="text-[10px] text-white/40 uppercase tracking-widest">Outlet #{String(idx + 1).padStart(2, '0')}</span>
                                     </div>
                                   </div>
-                                  <button onClick={() => handleRemoveOutlet(o.code)} className="relative w-8 h-8 rounded-lg flex items-center justify-center text-white/20 hover:text-brand-alert hover:bg-brand-alert/10 transition-all shrink-0">
+                                  <button onClick={() => handleRemoveOutlet(o.code)} className="relative w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-brand-alert hover:bg-brand-alert/10 transition-all shrink-0">
                                     <Trash2 size={13} />
                                   </button>
                                 </div>
@@ -2896,14 +2893,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setIsEditingAudit(!isEditingAudit)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-white/5 border border-white/10 text-white/50 hover:border-white/25 hover:text-white/80'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-white/5 border border-white/10 text-white/60 hover:border-white/25 hover:text-white'}`}
                           >
                             {isEditingAudit ? <Unlock size={12} /> : <Edit2 size={12} />}
                             {isEditingAudit ? 'Lock' : 'Edit'}
                           </button>
                           <button
                             onClick={handleGetReport}
-                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-eco text-brand-dark text-[9px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-[0_4px_15px_rgba(119,177,57,0.25)]"
+                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-eco text-brand-dark text-[11px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-[0_4px_15px_rgba(119,177,57,0.25)]"
                           >
                             <Zap size={12} />
                             Get Report
@@ -2918,12 +2915,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.cycle ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
                               {auditReport.cycle ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Report Configuration</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Report Configuration</p>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Report Cycle</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Report Cycle</label>
                               <CustomSelect
                                 value={auditReport.cycle}
                                 options={['Daily', 'Weekly', 'Monthly', 'Quarterly']}
@@ -2932,7 +2929,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Outlet Selection</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Outlet Selection</label>
                               <CustomSelect
                                 value={auditReport.outletSelection}
                                 options={['All outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
@@ -2949,12 +2946,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.fromDate && auditReport.toDate ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
                               {auditReport.fromDate && auditReport.toDate ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Date Range</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Date Range</p>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">From Date</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">From Date</label>
                               <CustomDatePicker
                                 value={auditReport.fromDate}
                                 onChange={v => setAuditReport({ ...auditReport, fromDate: v })}
@@ -2962,7 +2959,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">To Date</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">To Date</label>
                               <CustomDatePicker
                                 value={auditReport.toDate}
                                 onChange={v => setAuditReport({ ...auditReport, toDate: v })}
@@ -2978,7 +2975,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.comments ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
                               {auditReport.comments ? <CheckCircle2 size={14} /> : <FileText size={13} />}
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Audit Comments</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/80">Audit Comments</p>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="space-y-1.5 pl-2 sm:pl-10">
@@ -3040,10 +3037,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         const categories = [...new Set(actionTypes.map((a: string) => labelMap[a as string] || 'Other'))];
                         return (
                           <div className="px-4 sm:px-8 py-3 border-b border-white/5 flex items-center gap-2 flex-wrap bg-brand-dark/20">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 mr-1">Filter</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/50 mr-1">Filter</span>
                             <button
                               onClick={() => setAuditFilter(null)}
-                              className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
+                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
                             >
                               All
                             </button>
@@ -3051,7 +3048,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <button
                                 key={cat}
                                 onClick={() => setAuditFilter(cat)}
-                                className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
+                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
                               >
                                 {cat}
                               </button>
@@ -3173,7 +3170,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                             <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-white/5 group-hover:border-white/10 group-hover:bg-white/5 transition-colors px-4 py-3">
                                               <div className="flex items-center justify-between gap-3 mb-1.5">
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                  <span className={`text-[9px] font-black uppercase tracking-widest ${color.split(' ')[0]} shrink-0`}>{label}</span>
+                                                  <span className={`text-[11px] font-black uppercase tracking-widest ${color.split(' ')[0]} shrink-0`}>{label}</span>
                                                   {log.entity_name && (
                                                     <span className="text-[8px] font-bold uppercase tracking-widest text-brand-gold/50 bg-brand-gold/8 px-2 py-0.5 rounded border border-brand-gold/10 truncate">
                                                       {log.entity_type} · {log.entity_name}
@@ -3235,7 +3232,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               setEnrollPosition(''); setEnrollOutlet(''); setEnrollRole('');
                               setEnrollPermissions([]); setGenPassword(''); setGenLink('');
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white/70 hover:border-white/20 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/20 transition-colors"
                           >
                             <X size={10} /> Cancel
                           </button>
@@ -3257,12 +3254,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Full Name</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Full Name</label>
                               <input type="text" value={enrollName} onChange={e => setEnrollName(e.target.value)} placeholder="Hotel Staff Name"
                                 className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Corporate Email</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Corporate Email</label>
                               <input type="email" value={enrollEmail} onChange={e => setEnrollEmail(e.target.value)} placeholder="staff@hotel.com"
                                 className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
                             </div>
@@ -3283,7 +3280,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Position</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Position</label>
                               <CustomSelect
                                 value={enrollPosition}
                                 options={['Admin', 'Exec Chef', 'Outlet Manager', 'Chef Prep', 'GM']}
@@ -3292,7 +3289,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Primary Outlet</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Primary Outlet</label>
                               <CustomSelect
                                 value={enrollOutlet}
                                 options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
@@ -3354,7 +3351,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         {/* Custom themed checkbox */}
                                         <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-colors
                                           ${checked ? 'bg-brand-gold border-brand-gold' : 'border-white/20 bg-transparent'}`}>
-                                          {checked && <Check size={10} className="text-[#0e1f1c]" strokeWidth={3} />}
+                                          {checked && <Check size={10} className="text-brand-dark" strokeWidth={3} />}
                                         </span>
                                         <span className="text-[9px] font-bold uppercase tracking-tight leading-tight">{p}</span>
                                       </button>
@@ -3391,19 +3388,33 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Password / PIN</label>
-                              <div className="relative">
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Password / PIN</label>
+                              <div className="relative flex items-center">
                                 <input type="text" readOnly value={genPassword} placeholder="Generated upon save…"
-                                  className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3 px-4 pl-9 text-brand-gold font-mono font-bold text-sm outline-none placeholder:text-white/20" />
-                                <Key size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/40" />
+                                  className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3 px-4 pl-9 pr-12 text-brand-gold font-mono font-bold text-sm outline-none placeholder:text-white/20" />
+                                <Key size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/40 pointer-events-none" />
+                                {genPassword && (
+                                  <button type="button" onClick={() => { navigator.clipboard?.writeText(genPassword); showToast('PIN copied to clipboard.', 'success'); }}
+                                    title="Copy PIN"
+                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center bg-brand-gold/10 border border-brand-gold/20 text-brand-gold hover:bg-brand-gold/20 transition-all">
+                                    <Copy size={14} />
+                                  </button>
+                                )}
                               </div>
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Login Link</label>
-                              <div className="relative">
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Login Link</label>
+                              <div className="relative flex items-center">
                                 <input type="text" readOnly value={genLink} placeholder="Generated upon save…"
-                                  className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3 px-4 pl-9 text-brand-gold font-mono font-bold text-[10px] outline-none truncate placeholder:text-white/20" />
-                                <Link2 size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/40" />
+                                  className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3 px-4 pl-9 pr-12 text-brand-gold font-mono font-bold text-[10px] outline-none truncate placeholder:text-white/20" />
+                                <Link2 size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/40 pointer-events-none" />
+                                {genLink && (
+                                  <button type="button" onClick={() => { navigator.clipboard?.writeText(genLink); showToast('Login link copied to clipboard.', 'success'); }}
+                                    title="Copy link"
+                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center bg-brand-gold/10 border border-brand-gold/20 text-brand-gold hover:bg-brand-gold/20 transition-all">
+                                    <Copy size={14} />
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -3441,7 +3452,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
                                   <div className="flex flex-wrap items-center gap-2 mt-1">
                                     <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-white/5">{u.position}</span>
-                                    <span className="text-[9px] text-brand-gold font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-gold/10 border border-brand-gold/20">{u.role.toUpperCase()}</span>
+                                    <span className="text-[11px] text-brand-gold font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-gold/10 border border-brand-gold/20">{u.role.toUpperCase()}</span>
                                   </div>
                                 </div>
                               </div>
@@ -3458,6 +3469,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold ml-auto shrink-0 transition-colors">
                                     {visiblePasswords.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
                                   </button>
+                                  {u.password && (
+                                    <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast('PIN copied.', 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold shrink-0 transition-colors">
+                                      <Copy size={13} />
+                                    </button>
+                                  )}
                                 </div>
 
                                 {/* Login link */}
@@ -3473,15 +3489,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
                                       {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
                                     </button>
-                                    {visibleLinks.has(u.id) && (
-                                      <button
-                                        onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
-                                        className="text-brand-eco/50 hover:text-brand-eco transition-colors"
-                                        title="Copy link"
-                                      >
-                                        <Copy size={12} />
-                                      </button>
-                                    )}
+                                    <button
+                                      onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
+                                      className="text-brand-eco/50 hover:text-brand-eco transition-colors"
+                                      title="Copy link"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
                                   </div>
                                 </div>
 
@@ -3508,7 +3522,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <div key={outlet.code} className="space-y-4">
                             <div className="flex items-center gap-4 px-6">
                               <MapPin size={14} className="text-brand-gold" />
-                              <span className="text-[10px] font-black uppercase tracking-widest text-white/40">{outlet.name} Outlet — Registry</span>
+                              <span className="text-[11px] font-black uppercase tracking-widest text-white/60">{outlet.name} Outlet — Registry</span>
                             </div>
                             <div className="space-y-3">
                               {members.map((u) => {
@@ -3524,7 +3538,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
                                       <div className="flex flex-wrap items-center gap-2 mt-1">
                                         <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-white/5">{u.position}</span>
-                                        <span className="text-[9px] text-brand-eco font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-eco/10 border border-brand-eco/20">{u.role.toUpperCase()}</span>
+                                        <span className="text-[11px] text-brand-eco font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-eco/10 border border-brand-eco/20">{u.role.toUpperCase()}</span>
                                       </div>
                                     </div>
                                   </div>
@@ -3541,6 +3555,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold ml-auto shrink-0 transition-colors">
                                         {visiblePasswords.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
                                       </button>
+                                      {u.password && (
+                                        <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast('PIN copied.', 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold shrink-0 transition-colors">
+                                          <Copy size={13} />
+                                        </button>
+                                      )}
                                     </div>
 
                                     {/* Login link */}
@@ -3556,15 +3575,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
                                           {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
                                         </button>
-                                        {visibleLinks.has(u.id) && (
-                                          <button
-                                            onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
-                                            className="text-brand-eco/50 hover:text-brand-eco transition-colors"
-                                            title="Copy link"
-                                          >
-                                            <Copy size={12} />
-                                          </button>
-                                        )}
+                                        <button
+                                          onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
+                                          className="text-brand-eco/50 hover:text-brand-eco transition-colors"
+                                          title="Copy link"
+                                        >
+                                          <Copy size={12} />
+                                        </button>
                                       </div>
                                     </div>
 
@@ -3591,7 +3608,69 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 {activeView === PortalView.PARAMETERS && (
                   <div className="space-y-6 sm:space-y-10 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide">
 
-                    {/* ── STEP 1: Sustainability Metrics ── */}
+                    {/* ── STEP 1: Industry Benchmarking ── */}
+                    <div className="rounded-2xl border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-gold/15 flex-wrap">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <Globe size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 01</p>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Industry Benchmarking</h4>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setIsEditingBenchmarks(!isEditingBenchmarks)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingBenchmarks ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                        >
+                          {isEditingBenchmarks ? <Unlock size={12} /> : <Edit2 size={12} />}
+                          {isEditingBenchmarks ? 'Lock' : 'Edit'}
+                        </button>
+                      </div>
+
+                      <div className="p-4 sm:p-6 bg-brand-dark/40 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Profile Category</label>
+                            <CustomSelect
+                              value={params.benchmarkRegion}
+                              options={['ASEAN Luxury Hotels', 'European Michelin Standard', 'North American Premium', 'Middle East Luxury Collection', 'Manual Entry']}
+                              onChange={v => setParams({ ...params, benchmarkRegion: v === 'Manual Entry' ? 'Manual' : v, selectedManualOutlet: '' })}
+                              disabled={!isEditingBenchmarks}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Outlet Selection</label>
+                            <CustomSelect
+                              value={outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : ''}
+                              options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                              onChange={v => {
+                                const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
+                                setParams({ ...params, selectedManualOutlet: code });
+                              }}
+                              placeholder="Select Target Outlet"
+                              emptyMessage="No outlets added yet — go to Company → Outlets"
+                              disabled={!isEditingBenchmarks}
+                            />
+                          </div>
+                        </div>
+
+                        {isManualBenchmark && (
+                          <p className="text-[10px] text-white/50 font-medium leading-tight ml-1">
+                            Each outlet follows its individual parameters under manual entry mode.
+                          </p>
+                        )}
+
+                        {paramsUpdatedAt && (
+                          <p className="text-[8px] font-black text-gray-400/80 uppercase tracking-[0.2em] animate-pulse text-center pt-1">
+                            Last Updated: {paramsUpdatedAt}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ── STEP 2: Sustainability Metrics ── */}
                     <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_30px_rgba(119,177,57,0.04)]">
                       {/* Step header */}
                       <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-eco/15 flex-wrap">
@@ -3600,14 +3679,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <Leaf size={18} />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Step 01</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Step 02</p>
                             <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Sustainability Metrics</h4>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => setIsEditingSustainability(!isEditingSustainability)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isEditingSustainability ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingSustainability ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
                           >
                             {isEditingSustainability ? <Unlock size={12} /> : <Edit2 size={12} />}
                             {isEditingSustainability ? 'Lock' : 'Edit'}
@@ -3631,7 +3710,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
                               <Leaf size={14} className="text-brand-gold" />
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Food Waste</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Food Waste</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-gold leading-none">{effectiveParams.wasteTarget}</span>
@@ -3657,7 +3736,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
                               <Droplets size={14} className="text-blue-400" />
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Water Usage</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Water Usage</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-blue-400 leading-none">{effectiveParams.waterTarget.toLocaleString()}</span>
@@ -3680,7 +3759,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-brand-energy/10 border border-brand-energy/20 flex items-center justify-center shrink-0">
                               <Zap size={14} className="text-brand-energy" />
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Energy Limit</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Energy Limit</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-energy leading-none">{effectiveParams.energyTarget.toLocaleString()}</span>
@@ -3693,7 +3772,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       </div>
                     </div>
 
-                    {/* ── STEP 2: F&B KPIs ── */}
+                    {/* ── STEP 3: F&B KPIs ── */}
                     <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
                       <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-gold/15 flex-wrap">
                         <div className="flex items-center gap-4 min-w-0">
@@ -3701,14 +3780,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <BarChart3 size={18} />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 02</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 03</p>
                             <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">F&B KPIs</h4>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => setIsEditingFnB(!isEditingFnB)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isEditingFnB ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingFnB ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
                           >
                             {isEditingFnB ? <Unlock size={12} /> : <Edit2 size={12} />}
                             {isEditingFnB ? 'Lock' : 'Edit'}
@@ -3729,7 +3808,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
                               <Utensils size={14} className="text-brand-eco" />
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Food Cost Cap</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Food Cost Cap</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.foodCostTarget}</span>
@@ -3751,7 +3830,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
                               <Users size={14} className="text-brand-eco" />
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Labor Cost Cap</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Labor Cost Cap</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.laborCostTarget}</span>
@@ -3760,66 +3839,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-white/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
                           <input type="range" min="5" max="50" step="0.5" disabled={!isFnBEditable} value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
-                      </div>
-                    </div>
-
-                    {/* ── STEP 3: Industry Benchmarking ── */}
-                    <div className="rounded-2xl border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-gold/15 flex-wrap">
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0">
-                            <Globe size={18} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 03</p>
-                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Industry Benchmarking</h4>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setIsEditingBenchmarks(!isEditingBenchmarks)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingBenchmarks ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
-                        >
-                          {isEditingBenchmarks ? <Unlock size={12} /> : <Edit2 size={12} />}
-                          {isEditingBenchmarks ? 'Lock' : 'Edit'}
-                        </button>
-                      </div>
-
-                      <div className="p-4 sm:p-6 bg-brand-dark/40 space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Profile Category</label>
-                          <CustomSelect
-                            value={params.benchmarkRegion}
-                            options={['ASEAN Luxury Hotels', 'European Michelin Standard', 'North American Premium', 'Middle East Luxury Collection', 'Manual Entry']}
-                            onChange={v => setParams({ ...params, benchmarkRegion: v === 'Manual Entry' ? 'Manual' : v, selectedManualOutlet: '' })}
-                            disabled={!isEditingBenchmarks}
-                          />
-                        </div>
-
-                        {isManualBenchmark && (
-                          <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70 ml-1">Outlet Selection</label>
-                            <CustomSelect
-                              value={outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : ''}
-                              options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
-                              onChange={v => {
-                                const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
-                                setParams({ ...params, selectedManualOutlet: code });
-                              }}
-                              placeholder="Select Target Outlet"
-                              emptyMessage="No outlets added yet — go to Company → Outlets"
-                              disabled={!isEditingBenchmarks}
-                            />
-                            <p className="text-[8px] text-gray-500 uppercase font-black tracking-tight leading-tight mt-1 ml-1">
-                              Each outlet follows its individual parameters under manual entry mode.
-                            </p>
-                          </div>
-                        )}
-
-                        {paramsUpdatedAt && (
-                          <p className="text-[8px] font-black text-gray-400/80 uppercase tracking-[0.2em] animate-pulse text-center pt-1">
-                            Last Updated: {paramsUpdatedAt}
-                          </p>
-                        )}
                       </div>
                     </div>
 
@@ -3844,7 +3863,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div>
                               <span className="text-xs font-bold uppercase tracking-tight text-white block">Deviation Alerts</span>
-                              <span className={`text-[8px] font-black uppercase tracking-widest ${params.alertsActive ? 'text-brand-gold' : 'text-white/20'}`}>{params.alertsActive ? 'Active' : 'Disabled'}</span>
+                              <span className={`text-[10px] font-black uppercase tracking-widest ${params.alertsActive ? 'text-brand-gold' : 'text-white/40'}`}>{params.alertsActive ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
                           <button onClick={() => setParams({ ...params, alertsActive: !params.alertsActive })}>
@@ -3860,7 +3879,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div>
                               <span className="text-xs font-bold uppercase tracking-tight text-white block">Suggestion Engine</span>
-                              <span className={`text-[8px] font-black uppercase tracking-widest ${params.milaLogic ? 'text-brand-eco' : 'text-white/20'}`}>{params.milaLogic ? 'Active' : 'Disabled'}</span>
+                              <span className={`text-[10px] font-black uppercase tracking-widest ${params.milaLogic ? 'text-brand-eco' : 'text-white/40'}`}>{params.milaLogic ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
                           <button onClick={() => setParams({ ...params, milaLogic: !params.milaLogic })}>
@@ -3897,7 +3916,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <button
                           onClick={() => setIsEditingApis(!isEditingApis)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingApis ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingApis ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
                         >
                           {isEditingApis ? <Unlock size={12} /> : <Edit2 size={12} />}
                           {isEditingApis ? 'Lock' : 'Edit'}
@@ -3912,7 +3931,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <div className="w-7 h-7 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
                                 <Link2 size={13} className="text-brand-gold" />
                               </div>
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70">POS API Key</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">POS API Key</label>
                             </div>
                             <input type="password" disabled={!isEditingApis} value={params.posApiKey} onChange={e => setParams({ ...params, posApiKey: e.target.value })} placeholder="Connect POS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
                             <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Sales & Covers</p>
@@ -3924,7 +3943,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <div className="w-7 h-7 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
                                 <Users size={13} className="text-brand-gold" />
                               </div>
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70">CRM API Key</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">CRM API Key</label>
                             </div>
                             <input type="password" disabled={!isEditingApis} value={params.crmApiKey} onChange={e => setParams({ ...params, crmApiKey: e.target.value })} placeholder="Connect CRM..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
                             <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Guest Loyalty Data</p>
@@ -3936,7 +3955,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <div className="w-7 h-7 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
                                 <Building2 size={13} className="text-brand-gold" />
                               </div>
-                              <label className="text-[9px] font-black uppercase tracking-widest text-brand-gold/70">PMS API Key</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">PMS API Key</label>
                             </div>
                             <input type="password" disabled={!isEditingApis} value={params.pmsApiKey} onChange={e => setParams({ ...params, pmsApiKey: e.target.value })} placeholder="Connect PMS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
                             <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Occupancy & Forecast</p>
