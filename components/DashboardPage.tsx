@@ -50,6 +50,10 @@ import {
   Plus,
   FileText,
   ScrollText,
+  LifeBuoy,
+  Mail,
+  Send,
+  ImageIcon,
   Calendar,
   FileDigit,
   ChevronDown,
@@ -115,6 +119,7 @@ enum PortalView {
   TEAM = 'team',
   PARAMETERS = 'parameters',
   AUDIT_LOG = 'audit_log',
+  CONTACT = 'contact',
   SYSTEM = 'system'
 }
 
@@ -126,6 +131,7 @@ const PORTAL_VIEW_PATHS: Record<PortalView, string> = {
   [PortalView.TEAM]: '/dashboard/team',
   [PortalView.PARAMETERS]: '/dashboard/benchmarks',
   [PortalView.AUDIT_LOG]: '/dashboard/audit-log',
+  [PortalView.CONTACT]: '/dashboard/contact',
   [PortalView.SYSTEM]: '/dashboard/system',
 };
 
@@ -685,6 +691,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   // ── Toast + Confirm modal ──────────────────────────────────────────────────
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Contact form state
+  const [contactName, setContactName] = useState(user.fullName || '');
+  const [contactEmail, setContactEmail] = useState(user.email || '');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactScreenshots, setContactScreenshots] = useState<File[]>([]);
+  const [contactSending, setContactSending] = useState(false);
+  const [contactSent, setContactSent] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -1960,18 +1974,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       <button
         onClick={() => setActiveView(view)}
         title={label}
-        className={`relative flex items-center gap-3 px-3 lg:px-3.5 py-3 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
+        className={`relative flex items-center gap-3 px-3 lg:px-4 py-3.5 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
           active
             ? 'bg-brand-gold/10 text-white border border-brand-gold/30'
             : 'text-white/60 hover:text-white/90 hover:bg-white/3 border border-transparent'
         }`}
       >
         <Icon
-          size={18}
+          size={20}
           className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/40 group-hover/item:text-white/70'}`}
         />
         {/* Label — hidden on desktop collapsed, shown on sidebar hover via group-hover */}
-        <span className={`text-[12px] font-semibold tracking-tight ${active ? 'text-white' : ''} hidden lg:block opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] transition-all duration-300`}>
+        <span className={`text-[14px] font-semibold tracking-tight ${active ? 'text-white' : ''} hidden lg:block opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] transition-all duration-300`}>
           {label}
         </span>
         {/* Left bar indicator for active item */}
@@ -2217,6 +2231,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
                 </>
               )}
+
+              {/* Spacer to push Contact to bottom */}
+              <div className="hidden lg:block flex-grow" />
+
+              {/* Contact — pinned to bottom */}
+              <SidebarItem view={PortalView.CONTACT} icon={LifeBuoy} label="Contact" />
             </div>
           </aside>
 
@@ -2258,6 +2278,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
                     {activeView === PortalView.AUDIT_LOG && "System Activity & Change Tracking"}
+                    {activeView === PortalView.CONTACT && "Get Help & Share Feedback"}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
@@ -2266,6 +2287,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.TEAM && "Staff Registry"}
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
                     {activeView === PortalView.AUDIT_LOG && "Audit Log"}
+                    {activeView === PortalView.CONTACT && "Contact Support"}
                   </h3>
                 </div>
 
@@ -3058,6 +3080,145 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 )}
 
 
+
+                {activeView === PortalView.CONTACT && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto scrollbar-hide pb-20">
+                    <div className="max-w-2xl mx-auto">
+                      {/* Intro */}
+                      <div className="mb-8">
+                        <h4 className="text-lg font-geometric font-bold text-white mb-3">Need help?</h4>
+                        <p className="text-sm text-white/60 leading-relaxed">
+                          To help us enhance Ecometricus and deliver an even better experience, we'd greatly appreciate your feedback. Please share any comments or suggestions that could improve its performance. Thank you for your support!
+                        </p>
+                      </div>
+
+                      {/* Support email */}
+                      <div className="flex items-center gap-3 mb-8 p-4 rounded-xl bg-brand-gold/8 border border-brand-gold/20">
+                        <Mail size={18} className="text-brand-gold shrink-0" />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Support Email</p>
+                          <a href="mailto:support@ecometricus.com" className="text-sm text-white font-semibold hover:text-brand-gold transition-colors">support@ecometricus.com</a>
+                        </div>
+                      </div>
+
+                      {/* Form */}
+                      {contactSent ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                          <div className="w-16 h-16 rounded-full bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center mb-5">
+                            <CheckCircle2 size={32} className="text-brand-eco" />
+                          </div>
+                          <h4 className="text-lg font-geometric font-bold text-white mb-2">Message Sent!</h4>
+                          <p className="text-sm text-white/50 max-w-sm">Thank you for reaching out. Our support team will get back to you within 24 hours.</p>
+                          <button
+                            onClick={() => { setContactSent(false); setContactMessage(''); }}
+                            className="mt-6 px-5 py-2.5 rounded-xl bg-brand-gold/15 border border-brand-gold/30 text-brand-gold text-[12px] font-bold hover:bg-brand-gold/25 transition-all"
+                          >
+                            Send Another Message
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-5">
+                          {/* Name */}
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Your name</label>
+                            <input
+                              type="text"
+                              value={contactName}
+                              onChange={e => setContactName(e.target.value)}
+                              className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all hover:border-brand-gold/30"
+                              placeholder="Your name"
+                            />
+                          </div>
+
+                          {/* Email */}
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Your email</label>
+                            <input
+                              type="email"
+                              value={contactEmail}
+                              onChange={e => setContactEmail(e.target.value)}
+                              className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all hover:border-brand-gold/30"
+                              placeholder="your@email.com"
+                            />
+                          </div>
+
+                          {/* Message */}
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">What happened?</label>
+                            <textarea
+                              value={contactMessage}
+                              onChange={e => setContactMessage(e.target.value)}
+                              className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all hover:border-brand-gold/30 min-h-[120px] resize-none"
+                              placeholder="Describe your issue in simple words..."
+                            />
+                          </div>
+
+                          {/* Screenshots */}
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Screenshots (optional)</label>
+                            <label className="flex flex-col items-center justify-center gap-2 w-full py-8 rounded-xl border-2 border-dashed border-brand-gold/15 hover:border-brand-gold/40 cursor-pointer transition-all bg-brand-dark/40 hover:bg-brand-gold/5">
+                              <ImageIcon size={24} className="text-brand-gold/50" />
+                              <span className="text-xs text-white/50 font-semibold">
+                                {contactScreenshots.length > 0
+                                  ? `${contactScreenshots.length} file${contactScreenshots.length > 1 ? 's' : ''} selected`
+                                  : 'Click to add images'}
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={e => {
+                                  const files = Array.from(e.target.files || []);
+                                  setContactScreenshots(prev => [...prev, ...files]);
+                                }}
+                              />
+                            </label>
+                            {contactScreenshots.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {contactScreenshots.map((file, i) => (
+                                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-gold/8 border border-brand-gold/20 text-xs text-white/70">
+                                    <ImageIcon size={12} className="text-brand-gold/60" />
+                                    <span className="truncate max-w-[120px]">{file.name}</span>
+                                    <button
+                                      onClick={() => setContactScreenshots(prev => prev.filter((_, idx) => idx !== i))}
+                                      className="text-white/30 hover:text-brand-alert transition-colors"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Send button */}
+                          <button
+                            onClick={async () => {
+                              if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) {
+                                setToast({ id: Date.now(), message: 'Please fill in all fields.', type: 'error' });
+                                return;
+                              }
+                              setContactSending(true);
+                              // Simulate sending — in production this would call an API
+                              await new Promise(r => setTimeout(r, 1200));
+                              setContactSending(false);
+                              setContactSent(true);
+                            }}
+                            disabled={contactSending || !contactName.trim() || !contactEmail.trim() || !contactMessage.trim()}
+                            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-gold/15 border border-brand-gold/40 text-brand-gold text-sm font-bold hover:bg-brand-gold/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {contactSending ? (
+                              <><RefreshCcw size={16} className="animate-spin" /> Sending…</>
+                            ) : (
+                              <><Send size={16} /> Send to support</>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {activeView === PortalView.AUDIT_LOG && (
                   <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
