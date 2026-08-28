@@ -156,10 +156,10 @@ const App: React.FC = () => {
             const targetPath =
               rl === 'super_admin' ? PAGE_TO_PATH[Page.DASHBOARD] :
               rl === 'admin' ? PAGE_TO_PATH[Page.DASHBOARD] :
-              rl === 'supervisor' ? PAGE_TO_PATH[Page.SUPERVISOR_DASHBOARD] :
+              rl === 'supervisor' ? PAGE_TO_PATH[Page.DASHBOARD] :
               '/dashboard/daily-input';
             navigate(targetPath);
-            setCurrentPageState(rl === 'supervisor' ? Page.SUPERVISOR_DASHBOARD : Page.DASHBOARD);
+            setCurrentPageState(Page.DASHBOARD);
             // Clean the hash so it doesn't trigger again on refresh
             window.history.replaceState(null, '', window.location.pathname);
           }
@@ -191,7 +191,7 @@ const App: React.FC = () => {
     } else if (role === 'admin') {
       handleNavigate(Page.DASHBOARD);
     } else if (role === 'supervisor') {
-      handleNavigate(Page.SUPERVISOR_DASHBOARD);
+      handleNavigate(Page.DASHBOARD);
     } else {
       // Basic/view roles go to Daily Input on the dashboard
       navigate('/dashboard/daily-input');

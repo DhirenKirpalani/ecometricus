@@ -2228,7 +2228,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
               <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
               <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label="Daily Input" />
-              {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin') && (
+              {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin' || user.role.toLowerCase() === 'supervisor') && (
                 <>
                   <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
                   <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
