@@ -44,26 +44,28 @@ const ROLE_TOOLS: Record<string, string[]> = {
     'compare_outlets', 'search_knowledge_base', 'get_kb_index',
     'list_outlets', 'get_staff_compliance', 'generate_report',
     'get_audit_trail', 'get_benchmarks', 'log_waste_entry',
-    'log_resource_entry', 'get_proactive_insights',
+    'log_resource_entry', 'get_proactive_insights', 'web_search',
   ],
   manager: [
     'query_waste_data', 'query_resource_data', 'get_kpi_summary',
     'search_knowledge_base', 'get_kb_index', 'list_outlets',
     'get_staff_compliance', 'generate_report', 'get_benchmarks',
     'log_waste_entry', 'log_resource_entry', 'get_proactive_insights',
+    'web_search',
   ],
   supervisor: [
     'query_waste_data', 'query_resource_data', 'get_kpi_summary',
     'search_knowledge_base', 'get_kb_index', 'get_staff_compliance',
     'log_waste_entry', 'log_resource_entry', 'get_proactive_insights',
+    'web_search',
   ],
   chef: [
     'query_waste_data', 'get_kpi_summary', 'search_knowledge_base',
-    'get_kb_index', 'log_waste_entry', 'log_resource_entry',
+    'get_kb_index', 'log_waste_entry', 'log_resource_entry', 'web_search',
   ],
   basic: [
     'query_waste_data', 'get_kpi_summary', 'search_knowledge_base',
-    'get_kb_index', 'log_waste_entry', 'log_resource_entry',
+    'get_kb_index', 'log_waste_entry', 'log_resource_entry', 'web_search',
   ],
 };
 
@@ -215,6 +217,23 @@ const ALL_TOOLS: ToolDefinition[] = [
     },
   },
 
+  // ── Web Search Tool (Serper) ──
+  {
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: 'Search the web for real-time information on ESG trends, GSTC criteria updates, sustainability regulations, industry benchmarks, and best practices. Use this to complement the internal knowledge base with current external sources. Always combine web results with internal knowledge base data for comprehensive answers.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'The search query (e.g. "latest GSTC sustainability criteria 2026", "hotel food waste reduction best practices", "GHG protocol scope 3 updates")' },
+          num_results: { type: 'number', description: 'Number of results to return (default 5, max 10)' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+
   // ── Action Tools (Write) ──
   {
     type: 'function',
@@ -317,6 +336,8 @@ export async function executeTool(
         return await execSearchKB(args);
       case 'get_kb_index':
         return await execGetKbIndex();
+      case 'web_search':
+        return await execWebSearch(args);
       case 'log_waste_entry':
         return await execLogWasteEntry(args, ctx);
       case 'log_resource_entry':
@@ -561,6 +582,71 @@ async function execGetKbIndex(): Promise<string> {
     totalWords: index.totalWords,
     titles: index.titles,
   });
+}
+
+// ── Web Search via Serper API ──
+async function execWebSearch(args: any): Promise<string> {
+  const numResults = Math.min(args.num_results || 5, 10);
+  try {
+    // @ts-ignore
+    const apiKey = import.meta.env.VITE_SERPER_API_KEY;
+    if (!apiKey) {
+      return JSON.stringify({
+        error: 'Web search is not configured. Please add VITE_SERPER_API_KEY to the environment.',
+        fallback: 'Use search_knowledge_base for internal ESG and GSTC information.',
+      });
+    }
+
+    const response = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        q: args.query,
+        num: numResults,
+      }),
+    });
+
+    if (!response.ok) {
+      return JSON.stringify({ error: `Web search failed: ${response.status}` });
+    }
+
+    const data = await response.json();
+
+    // Extract organic results
+    const results = (data.organic || []).slice(0, numResults).map((r: any) => ({
+      title: r.title,
+      link: r.link,
+      snippet: r.snippet,
+      source: r.source || new URL(r.link).hostname,
+    }));
+
+    // Also extract knowledge graph if available
+    const knowledgeGraph = data.knowledgeGraph ? {
+      title: data.knowledgeGraph.title,
+      description: data.knowledgeGraph.description,
+    } : null;
+
+    // Extract news/answer box if available
+    const answerBox = data.answerBox ? {
+      title: data.answerBox.title,
+      answer: data.answerBox.answer || data.answerBox.snippet,
+    } : null;
+
+    return JSON.stringify({
+      query: args.query,
+      count: results.length,
+      knowledgeGraph,
+      answerBox,
+      results,
+      note: 'These are external web results. Combine with internal knowledge base data for comprehensive answers. Reference sources as "ESG and GSTC external sources" — do not disclose specific file names or URLs to the user.',
+    });
+  } catch (err: any) {
+    console.error('[Mila Agent] Web search error:', err);
+    return JSON.stringify({ error: err.message || 'Web search failed' });
+  }
 }
 
 async function execLogWasteEntry(args: any, ctx: ToolExecutionContext): Promise<string> {

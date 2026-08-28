@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, Sparkles, User, Loader2, Minimize2, Maximize2, Lightbulb, Wrench, CheckCircle2, AlertCircle, Bell, TrendingDown, AlertTriangle, Info } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { retrieveContext, getKnowledgeBaseIndex } from '../lib/mila-rag';
+import { retrieveContext } from '../lib/mila-rag';
 import { getToolsForRole, executeTool, type ToolCall, type ToolResult, type ToolExecutionContext } from '../lib/mila-tools';
 import { supabase } from '../lib/supabase';
 import type { UserProfile } from '../types';
@@ -139,12 +139,8 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
             const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || "sk-0a92323227144880af7b3a250fbfbe42";
             if (!apiKey) throw new Error("Configuration Error: VITE_DEEPSEEK_API_KEY is missing from .env");
 
-            // RAG: Retrieve relevant documents
+            // RAG: Retrieve relevant documents from internal knowledge base
             const ragContext = await retrieveContext(userText, 5);
-            const kbIndex = await getKnowledgeBaseIndex();
-            const kbIndexStr = kbIndex
-                ? `${kbIndex.total} documents (${kbIndex.totalWords.toLocaleString()} words total):\n${kbIndex.titles.map(t => `  - ${t}`).join('\n')}`
-                : 'Knowledge base is empty. No documents uploaded yet.';
 
             // Get role-based tools
             const tools = getToolsForRole(userProfile.role);
@@ -161,13 +157,9 @@ ${region ? `Region: ${region}` : ''}
 ${city ? `City: ${city}` : ''}
 ==================
 
-=== KNOWLEDGE BASE INDEX ===
-${kbIndexStr}
-==========================
-
-=== RAG CONTEXT (RELEVANT EXCERPTS) ===
-${ragContext || 'No specific excerpts retrieved for this query.'}
-=======================================
+=== INTERNAL KNOWLEDGE BASE CONTEXT ===
+${ragContext || 'No specific excerpts retrieved from the Ecometricus knowledge base for this query. The knowledge base contains ESG criteria, GHG protocol references, GSTC standards, and sustainability best practices.'}
+=========================================
 
 === SESSION CONTEXT (LIVE DASHBOARD) ===
 ${JSON.stringify(context, null, 2)}
@@ -183,7 +175,8 @@ INSTRUCTIONS:
 
 2. TOOL USAGE — YOU ARE AN AGENT:
    - When the user asks you to DO something (log data, generate a report, query data), USE THE APPROPRIATE TOOL.
-   - When the user asks a question about ESG/GHG/GSTC, use search_knowledge_base.
+   - When the user asks about ESG/GHG/GSTC criteria, use search_knowledge_base FIRST, then web_search to find the latest updates and trends.
+   - When the user asks about industry trends, benchmarks, or "what are other hotels doing", use web_search to find current information.
    - When the user asks "what do you know?", use get_kb_index.
    - When the user asks about KPIs or performance, use get_kpi_summary.
    - When the user says "log X kg of Y" or "I threw out X", use log_waste_entry.
@@ -193,7 +186,22 @@ INSTRUCTIONS:
    - Do NOT just describe what you would do — actually CALL the tools.
    - After receiving tool results, synthesize them into a clear, actionable response.
 
-3. RESPONSE FORMAT:
+3. DUAL SOURCE STRATEGY (INTERNAL + EXTERNAL):
+   - You have TWO knowledge sources: the Ecometricus knowledge base (internal) and web search (external).
+   - For ESG/GHG/GSTC questions: search the internal knowledge base first, then use web_search to verify, update, or find newer information.
+   - For industry trends and best practices: use web_search to find current data, then cross-reference with internal knowledge.
+   - ALWAYS combine both sources when possible for comprehensive, up-to-date answers.
+
+4. SOURCE ATTRIBUTION (CRITICAL):
+   - NEVER disclose specific file names, document titles, or URLs from your knowledge sources.
+   - When citing information, refer to sources broadly as:
+     * "Based on the Ecometricus knowledge base..." for internal data
+     * "According to ESG and GSTC external sources..." for web search results
+     * "Drawing from both internal ESG frameworks and external sustainability sources..." when combining
+   - Do NOT say "according to document X" or "file Y states" — always use broad references.
+   - Do NOT include URLs or links in your responses.
+
+5. RESPONSE FORMAT:
    - LIMIT: 3-4 concise bullet points MAX.
    - WORD COUNT: < 100 words total (unless generating a report).
    - Start with 1 sentence addressing the user by name.
@@ -201,13 +209,13 @@ INSTRUCTIONS:
    - Double line break between bullets.
    - Cite specific numbers from tool results and session context.
 
-4. ROLE AWARENESS:
+6. ROLE AWARENESS:
    - ${userProfile.role === 'admin' ? 'You are talking to an ADMIN/GM. They have full access. You can use all tools including audit trail and cross-outlet comparison.' : ''}
    - ${userProfile.role === 'manager' ? 'You are talking to a MANAGER. They manage outlets. Focus on outlet-level insights and staff management.' : ''}
    - ${userProfile.role === 'supervisor' ? 'You are talking to a SUPERVISOR. They review data and log entries. Help them validate and triage alerts.' : ''}
    - ${userProfile.role === 'chef' || userProfile.role === 'basic' ? 'You are talking to a CHEF/STAFF member. Help them log entries quickly and give them quick feedback on their performance.' : ''}
 
-5. SAFETY: Never fabricate data. If a tool returns no results, say so honestly.`;
+7. SAFETY: Never fabricate data. If a tool returns no results, say so honestly.`;
 
             // Build conversation messages for the API
             const apiMessages: any[] = [
@@ -342,8 +350,9 @@ INSTRUCTIONS:
         get_staff_compliance: 'Checking staff compliance',
         get_benchmarks: 'Fetching benchmarks',
         get_audit_trail: 'Reviewing audit trail',
-        search_knowledge_base: 'Searching knowledge base',
+        search_knowledge_base: 'Searching ESG knowledge base',
         get_kb_index: 'Indexing knowledge base',
+        web_search: 'Searching external ESG sources',
         log_waste_entry: 'Logging waste entry',
         log_resource_entry: 'Logging resource entry',
         generate_report: 'Generating report',
