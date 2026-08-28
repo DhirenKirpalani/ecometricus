@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate as useRouterNavigate } from 'react-router-dom';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
-import Logo from './Logo';
 import {
   LayoutDashboard, Users, Building2, Database, Activity, ShieldCheck,
   TrendingUp, TrendingDown, Server, Globe, Cpu, AlertTriangle,
   CheckCircle2, DollarSign, Leaf, Zap, Droplets, Cloud,
-  LogOut, RefreshCcw, Search, Eye, EyeOff, Ban, Unlock,
+  RefreshCcw, Search, Eye, EyeOff, Ban, Unlock,
   BarChart3, Settings, Bell, FileText, Mail, Webhook,
   ArrowUpRight, ArrowDownRight, Clock, ChevronRight
 } from 'lucide-react';
 
 interface SuperAdminDashboardProps {
   user: UserProfile;
-  onLogout: () => void;
 }
 
 interface PlatformStats {
@@ -41,8 +38,7 @@ interface CompanyRow {
   created_at: string;
 }
 
-const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user, onLogout }) => {
-  const routerNavigate = useRouterNavigate();
+const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -177,61 +173,31 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user, onLogou
   );
 
   return (
-    <div className="min-h-screen bg-brand-dark text-white font-body">
-      {/* ── Navbar ── */}
-      <header className="sticky top-0 z-[9999] border-b border-brand-gold/30 bg-brand-dark/95 backdrop-blur-xl">
-        <div className="max-w-[1920px] mx-auto h-16 px-4 sm:px-6 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Logo size="nav" />
-            <div className="hidden sm:block">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/70">Ecometricus</p>
-              <p className="text-[11px] text-white/50 font-semibold">Super Admin Control</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-alert/10 border border-brand-alert/30">
-              <ShieldCheck size={14} className="text-brand-alert" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-brand-alert">Super Admin</span>
-            </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
-              <span className="text-xs font-black text-brand-gold">
-                {user.fullName?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('') || 'SA'}
-              </span>
-            </div>
-            <button onClick={onLogout} className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-brand-gold/15 text-white/70 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all">
-              <LogOut size={16} />
-              <span className="hidden sm:inline text-[11px] font-bold">Logout</span>
-            </button>
-          </div>
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Page Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-brand-alert/10 border border-brand-alert/30 rounded-xl flex items-center justify-center shrink-0">
+          <ShieldCheck className="text-brand-alert" size={24} />
         </div>
-      </header>
-
-      {/* ── Main Content ── */}
-      <main className="max-w-[1920px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 bg-brand-alert/10 border border-brand-alert/30 rounded-xl flex items-center justify-center shrink-0">
-            <ShieldCheck className="text-brand-alert" size={24} />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-              Platform Control Center
-            </h1>
-            <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
-              Global oversight of all companies, outlets, users, and data across the Ecometricus platform.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+            Platform Control Center
+          </h1>
+          <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+            Global oversight of all companies, outlets, users, and data across the Ecometricus platform.
+          </p>
         </div>
+      </div>
 
-        {/* Tabs */}
-        <div className="flex overflow-x-auto gap-2 w-full sm:w-fit shrink-0 scrollbar-hide pb-2 mb-6">
-          <TabButton id="overview" label="Overview" icon={LayoutDashboard} />
-          <TabButton id="companies" label="Companies" icon={Building2} />
-          <TabButton id="users" label="Users" icon={Users} />
-          <TabButton id="system" label="System" icon={Server} />
-        </div>
+      {/* Tabs */}
+      <div className="flex overflow-x-auto gap-2 w-full sm:w-fit shrink-0 scrollbar-hide pb-1">
+        <TabButton id="overview" label="Overview" icon={LayoutDashboard} />
+        <TabButton id="companies" label="Companies" icon={Building2} />
+        <TabButton id="users" label="Users" icon={Users} />
+        <TabButton id="system" label="System" icon={Server} />
+      </div>
 
-        {isLoading ? (
+      {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold"></div>
           </div>
@@ -522,7 +488,6 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user, onLogou
             )}
           </>
         )}
-      </main>
     </div>
   );
 };

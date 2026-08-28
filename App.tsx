@@ -154,12 +154,12 @@ const App: React.FC = () => {
           if (event === 'SIGNED_IN' && hasAuthHash) {
             const rl = role.toLowerCase();
             const targetPath =
-              rl === 'super_admin' ? PAGE_TO_PATH[Page.SUPER_ADMIN] :
+              rl === 'super_admin' ? PAGE_TO_PATH[Page.DASHBOARD] :
               rl === 'admin' || rl === 'manager' ? PAGE_TO_PATH[Page.DASHBOARD] :
               rl === 'supervisor' ? PAGE_TO_PATH[Page.SUPERVISOR_DASHBOARD] :
               '/dashboard/daily-input';
             navigate(targetPath);
-            setCurrentPageState(rl === 'super_admin' ? Page.SUPER_ADMIN : rl === 'supervisor' ? Page.SUPERVISOR_DASHBOARD : Page.DASHBOARD);
+            setCurrentPageState(rl === 'supervisor' ? Page.SUPERVISOR_DASHBOARD : Page.DASHBOARD);
             // Clean the hash so it doesn't trigger again on refresh
             window.history.replaceState(null, '', window.location.pathname);
           }
@@ -187,7 +187,7 @@ const App: React.FC = () => {
     setCurrentUser(effectiveUser);
     const role = effectiveUser.role.toLowerCase();
     if (role === 'super_admin') {
-      handleNavigate(Page.SUPER_ADMIN);
+      handleNavigate(Page.DASHBOARD);
     } else if (role === 'admin' || role === 'manager') {
       handleNavigate(Page.DASHBOARD);
     } else if (role === 'supervisor') {
@@ -245,7 +245,7 @@ const App: React.FC = () => {
           : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
       case Page.SUPER_ADMIN:
         return currentUser
-          ? <SuperAdminDashboard user={currentUser} onLogout={handleLogout} />
+          ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
           : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
       case Page.STAFF_PORTAL:
         return currentUser

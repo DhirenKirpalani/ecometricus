@@ -89,6 +89,7 @@ import FoodWasteIntelligence from './FoodWasteIntelligence';
 import ResourceIntelligence from './ResourceIntelligence';
 import DailyInputForm from './DailyInputForm';
 import MilaKnowledgeManager from './MilaKnowledgeManager';
+import SuperAdminDashboard from './SuperAdminDashboard';
 import FoodWasteTemplateChart from './FoodWasteTemplateChart';
 import WaterUsageTemplateChart from './WaterUsageTemplateChart';
 import EnergyUsageTemplateChart from './EnergyUsageTemplateChart';
@@ -120,6 +121,7 @@ enum PortalView {
   PARAMETERS = 'parameters',
   AUDIT_LOG = 'audit_log',
   CONTACT = 'contact',
+  SUPER_ADMIN = 'super_admin',
   SYSTEM = 'system'
 }
 
@@ -132,6 +134,7 @@ const PORTAL_VIEW_PATHS: Record<PortalView, string> = {
   [PortalView.PARAMETERS]: '/dashboard/benchmarks',
   [PortalView.AUDIT_LOG]: '/dashboard/audit-log',
   [PortalView.CONTACT]: '/dashboard/contact',
+  [PortalView.SUPER_ADMIN]: '/dashboard/super-admin',
   [PortalView.SYSTEM]: '/dashboard/system',
 };
 
@@ -2234,12 +2237,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 </>
               )}
               {user.role.toLowerCase() === 'super_admin' && (
-                <a href="/super-admin" className="relative flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300 whitespace-nowrap lg:w-full justify-center lg:justify-start text-brand-alert/80 hover:text-brand-alert hover:bg-brand-alert/10">
-                  <ShieldCheck size={22} className="shrink-0" />
-                  <span className="text-[14px] font-bold tracking-tight hidden lg:block opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] transition-all duration-300">
-                    Super Admin
-                  </span>
-                </a>
+                <SidebarItem view={PortalView.SUPER_ADMIN} icon={ShieldCheck} label="Super Admin" />
               )}
           </div>
 
@@ -2292,6 +2290,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
                     {activeView === PortalView.AUDIT_LOG && "System Activity & Change Tracking"}
                     {activeView === PortalView.CONTACT && "Get Help & Share Feedback"}
+                    {activeView === PortalView.SUPER_ADMIN && "Platform Control Center"}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
@@ -2301,6 +2300,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
                     {activeView === PortalView.AUDIT_LOG && "Audit Log"}
                     {activeView === PortalView.CONTACT && "Contact Support"}
+                    {activeView === PortalView.SUPER_ADMIN && "Super Admin"}
                   </h3>
                 </div>
 
@@ -2328,7 +2328,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     </div>
                   )}
                   {/* Save button — not shown on Dashboard, Daily Input, Audit Log, Team, Benchmarks or Company */}
-                  {activeView !== PortalView.DASHBOARD && activeView !== PortalView.DAILY_INPUT && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && activeView !== PortalView.CONTACT && (
+                  {activeView !== PortalView.DASHBOARD && activeView !== PortalView.DAILY_INPUT && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && activeView !== PortalView.CONTACT && activeView !== PortalView.SUPER_ADMIN && (
                     <button
                       onClick={handleSaveAll}
                       disabled={saveStatus !== 'idle'}
@@ -3115,6 +3115,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 )}
 
 
+
+                {activeView === PortalView.SUPER_ADMIN && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto scrollbar-hide pb-20">
+                    <SuperAdminDashboard user={user} />
+                  </div>
+                )}
 
                 {activeView === PortalView.CONTACT && (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto scrollbar-hide pb-20">
