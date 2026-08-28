@@ -732,37 +732,65 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       </div>
 
       {/* ── WATER & ENERGY TRACKING ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Water */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Droplets size={18} className="text-[#3b82f6]" />
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">Water Usage Tracking</h3>
+        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 bg-[#3b82f6]/10 border border-[#3b82f6]/30 rounded-xl flex items-center justify-center shrink-0">
+              <Droplets size={18} className="text-[#3b82f6]" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-widest">Water Usage Tracking</h3>
+              <p className="text-[10px] text-white/40 font-medium mt-0.5">Log daily water consumption</p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <input type="number" value={form.water} onChange={e => setForm({ ...form, water: e.target.value })}
-              placeholder="Liters (L)" min="0"
-              className="flex-1 bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
-            <button type="button" onClick={() => handleSaveResource('water')}
-              className="px-4 rounded-xl bg-[#3b82f6] text-white font-black text-sm uppercase hover:bg-[#3b82f6]/90 transition-all flex items-center gap-1.5">
-              <Plus size={14} /> Log
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-[#3b82f6]">
+                <span className="w-5 h-5 rounded-full bg-[#3b82f6]/15 border border-[#3b82f6]/30 flex items-center justify-center text-[9px]">1</span>
+                Consumption Volume
+              </label>
+              <div className="relative">
+                <input type="number" value={form.water} onChange={e => setForm({ ...form, water: e.target.value })}
+                  placeholder="Enter volume in liters" min="0"
+                  className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#3b82f6]/60 uppercase tracking-wider">L</span>
+              </div>
+            </div>
+            <button type="button" onClick={() => handleSaveResource('water')} disabled={!form.water}
+              className="w-full px-5 py-3.5 rounded-xl bg-[#3b82f6] text-white font-black text-sm uppercase tracking-wider hover:bg-[#3b82f6]/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
+              <Plus size={16} /> Log Water Reading
             </button>
           </div>
         </div>
 
         {/* Energy */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Zap size={18} className="text-brand-gold" />
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">Energy Reading</h3>
+        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+              <Zap size={18} className="text-brand-gold" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-widest">Energy Reading</h3>
+              <p className="text-[10px] text-white/40 font-medium mt-0.5">Log daily energy consumption</p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <input type="number" value={form.energy} onChange={e => setForm({ ...form, energy: e.target.value })}
-              placeholder="kWh" min="0"
-              className="flex-1 bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
-            <button type="button" onClick={() => handleSaveResource('energy')}
-              className="px-4 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase hover:bg-brand-gold/90 transition-all flex items-center gap-1.5">
-              <Plus size={14} /> Log
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
+                <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">1</span>
+                Consumption Volume
+              </label>
+              <div className="relative">
+                <input type="number" value={form.energy} onChange={e => setForm({ ...form, energy: e.target.value })}
+                  placeholder="Enter volume in kilowatt-hours" min="0"
+                  className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-brand-gold/60 uppercase tracking-wider">kWh</span>
+              </div>
+            </div>
+            <button type="button" onClick={() => handleSaveResource('energy')} disabled={!form.energy}
+              className="w-full px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
+              <Plus size={16} /> Log Energy Reading
             </button>
           </div>
         </div>
