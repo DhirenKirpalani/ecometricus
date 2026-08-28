@@ -344,8 +344,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       if (!authUser) throw new Error(t('auth.errAuthFailed'));
 
       const dynamicFullName = fullName || authUser.user_metadata?.full_name || 'Admin User';
-      const finalRole = authUser.user_metadata?.role || inviteData?.role || 'admin';
-      const finalPosition = authUser.user_metadata?.position || inviteData?.position || 'GM';
+      // ── Super Admin override ──
+      const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
+      const isSuperAdmin = (authUser.email || email).toLowerCase() === SUPER_ADMIN_EMAIL;
+      const finalRole = isSuperAdmin ? 'super_admin' : (authUser.user_metadata?.role || inviteData?.role || 'admin');
+      const finalPosition = isSuperAdmin ? 'F&B Director' : (authUser.user_metadata?.position || inviteData?.position || 'GM');
       const finalOutletCode = authUser.user_metadata?.outlet_code || inviteData?.outletCode || 'ROY02';
 
       onLogin({

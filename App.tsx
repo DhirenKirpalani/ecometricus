@@ -14,6 +14,7 @@ import DashboardPage from './components/DashboardPage';
 import { supabase } from './lib/supabase';
 import StaffPortal from './components/StaffPortal';
 import SupervisorDashboard from './components/SupervisorDashboard';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
 import AssessmentForm from './components/AssessmentForm';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
@@ -38,6 +39,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   [Page.TERMS]:                '/terms',
   [Page.CONTACT]:              '/contact',
   [Page.TRANSLATION_MANAGER]:  '/translations',
+  [Page.SUPER_ADMIN]:           '/super-admin',
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -49,6 +51,7 @@ const pathToPage = (pathname: string): Page => {
   if (pathname.startsWith('/access/')) return Page.SIGN_UP;
   // Dashboard sub-routes: /dashboard/company, /dashboard/team, etc. → all map to DASHBOARD
   if (pathname.startsWith('/dashboard')) return Page.DASHBOARD;
+  if (pathname.startsWith('/super-admin')) return Page.SUPER_ADMIN;
   return PATH_TO_PAGE[pathname] ?? Page.HOME;
 };
 
@@ -100,9 +103,12 @@ const App: React.FC = () => {
           const authUser = session.user;
           const meta = authUser.user_metadata || {};
           const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
-          const role = meta.role || 'admin';
+          // ── Super Admin override: hardcode role for specific email ──
+          const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
+          const isSuperAdmin = authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
+          const role = isSuperAdmin ? 'super_admin' : (meta.role || 'admin');
           const rl = role.toLowerCase();
-          const position = rl === 'admin' ? 'GM' : rl === 'manager' ? 'Outlet Manager' : rl === 'chef' ? 'Head Chef' : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'view' ? (meta.position || 'GM') : 'Supervisor';
+          const position = rl === 'super_admin' ? 'F&B Director' : rl === 'admin' ? 'GM' : rl === 'manager' ? 'Outlet Manager' : rl === 'chef' ? 'Head Chef' : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'view' ? (meta.position || 'GM') : 'Supervisor';
 
           const hasAuthHash = window.location.hash.includes('access_token');
           const isSignupConfirmation = window.location.hash.includes('type=signup');
@@ -148,11 +154,12 @@ const App: React.FC = () => {
           if (event === 'SIGNED_IN' && hasAuthHash) {
             const rl = role.toLowerCase();
             const targetPath =
+              rl === 'super_admin' ? PAGE_TO_PATH[Page.SUPER_ADMIN] :
               rl === 'admin' || rl === 'manager' ? PAGE_TO_PATH[Page.DASHBOARD] :
               rl === 'supervisor' ? PAGE_TO_PATH[Page.SUPERVISOR_DASHBOARD] :
               '/dashboard/daily-input';
             navigate(targetPath);
-            setCurrentPageState(rl === 'supervisor' ? Page.SUPERVISOR_DASHBOARD : Page.DASHBOARD);
+            setCurrentPageState(rl === 'super_admin' ? Page.SUPER_ADMIN : rl === 'supervisor' ? Page.SUPERVISOR_DASHBOARD : Page.DASHBOARD);
             // Clean the hash so it doesn't trigger again on refresh
             window.history.replaceState(null, '', window.location.pathname);
           }
@@ -172,9 +179,16 @@ const App: React.FC = () => {
   }, [navigate]);
 
   const handleLogin = useCallback((user: UserProfile) => {
-    setCurrentUser(user);
-    const role = user.role.toLowerCase();
-    if (role === 'admin' || role === 'manager') {
+    // ── Super Admin override ──
+    const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
+    const effectiveUser = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL
+      ? { ...user, role: 'super_admin' as any }
+      : user;
+    setCurrentUser(effectiveUser);
+    const role = effectiveUser.role.toLowerCase();
+    if (role === 'super_admin') {
+      handleNavigate(Page.SUPER_ADMIN);
+    } else if (role === 'admin' || role === 'manager') {
       handleNavigate(Page.DASHBOARD);
     } else if (role === 'supervisor') {
       handleNavigate(Page.SUPERVISOR_DASHBOARD);
@@ -229,6 +243,10 @@ const App: React.FC = () => {
         return currentUser
           ? <SupervisorDashboard user={currentUser} onLogout={handleLogout} />
           : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
+      case Page.SUPER_ADMIN:
+        return currentUser
+          ? <SuperAdminDashboard user={currentUser} onLogout={handleLogout} />
+          : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
       case Page.STAFF_PORTAL:
         return currentUser
           ? <StaffPortal user={currentUser} onLogout={handleLogout} />
@@ -245,6 +263,7 @@ const App: React.FC = () => {
   const hideNavigation =
     currentPage === Page.STAFF_PORTAL ||
     currentPage === Page.SUPERVISOR_DASHBOARD ||
+    currentPage === Page.SUPER_ADMIN ||
     currentPage === Page.DASHBOARD ||
     currentPage === Page.ASSESSMENT ||
     currentPage === Page.EARLY_ACCESS ||

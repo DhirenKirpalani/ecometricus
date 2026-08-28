@@ -1976,8 +1976,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         title={label}
         className={`relative flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
           active
-            ? 'bg-brand-gold/20 text-white border border-brand-gold/150 shadow-[0_0_15px_rgba(200,164,19,0.15)]'
-            : 'text-white/60 hover:text-white/90 hover:bg-brand-dark/60 border border-transparent'
+            ? 'bg-brand-gold/20 text-white shadow-[0_0_15px_rgba(200,164,19,0.15)]'
+            : 'text-white/60 hover:text-white/90 hover:bg-brand-dark/60'
         }`}
       >
         <Icon
@@ -2320,7 +2320,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     </div>
                   )}
                   {/* Save button — not shown on Dashboard, Daily Input, Audit Log, Team, Benchmarks or Company */}
-                  {activeView !== PortalView.DASHBOARD && activeView !== PortalView.DAILY_INPUT && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && (
+                  {activeView !== PortalView.DASHBOARD && activeView !== PortalView.DAILY_INPUT && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && activeView !== PortalView.CONTACT && (
                     <button
                       onClick={handleSaveAll}
                       disabled={saveStatus !== 'idle'}
@@ -3151,9 +3151,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <input
                               type="text"
                               value={contactName}
-                              onChange={e => setContactName(e.target.value)}
-                              className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all hover:border-brand-gold/30"
-                              placeholder="Your name"
+                              readOnly
+                              className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white/70 outline-none cursor-not-allowed"
                             />
                           </div>
 
@@ -3163,8 +3162,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <input
                               type="email"
                               value={contactEmail}
-                              onChange={e => setContactEmail(e.target.value)}
-                              className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all hover:border-brand-gold/30"
+                              readOnly
+                              className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white/70 outline-none cursor-not-allowed"
                               placeholder="your@email.com"
                             />
                           </div>
