@@ -2352,7 +2352,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10">
                                 {/* Carbon */}
-                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/7 hover:border-brand-gold/25 transition-all group/card">
+                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/20 hover:border-brand-gold/40 transition-all group/card">
                                   <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
                                     <Cloud size={13} /> Carbon Lifecycle
                                   </span>
@@ -2366,7 +2366,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 </div>
 
                                 {/* Water */}
-                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/7 hover:border-blue-500/30 transition-all group/card">
+                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/20 hover:border-blue-500/40 transition-all group/card">
                                   <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
                                     <Droplets size={13} /> Water Resource
                                   </span>
