@@ -101,7 +101,7 @@ const App: React.FC = () => {
           const meta = authUser.user_metadata || {};
           const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
           const role = meta.role || 'admin';
-          const position = role === 'admin' ? 'GM' : role === 'manager' ? 'Outlet Manager' : role === 'chef' ? 'Head Chef' : 'Supervisor';
+          const position = role === 'admin' ? 'GM' : role === 'manager' ? 'Outlet Manager' : role === 'chef' ? 'Head Chef' : role === 'basic' ? (meta.position || 'Staff') : 'Supervisor';
 
           const hasAuthHash = window.location.hash.includes('access_token');
           const isSignupConfirmation = window.location.hash.includes('type=signup');
@@ -145,13 +145,12 @@ const App: React.FC = () => {
           // Normal session restore (SIGNED_IN without hash, or TOKEN_REFRESHED)
           // should NEVER redirect — respect whatever URL the user is on.
           if (event === 'SIGNED_IN' && hasAuthHash) {
-            const targetPage =
-              role === 'admin' || role === 'manager' ? Page.DASHBOARD :
-              role === 'supervisor' ? Page.SUPERVISOR_DASHBOARD :
-              Page.STAFF_PORTAL;
-            const path = PAGE_TO_PATH[targetPage];
-            navigate(path);
-            setCurrentPageState(targetPage);
+            const targetPath =
+              role === 'admin' || role === 'manager' ? PAGE_TO_PATH[Page.DASHBOARD] :
+              role === 'supervisor' ? PAGE_TO_PATH[Page.SUPERVISOR_DASHBOARD] :
+              '/dashboard/daily-input';
+            navigate(targetPath);
+            setCurrentPageState(role === 'supervisor' ? Page.SUPERVISOR_DASHBOARD : Page.DASHBOARD);
             // Clean the hash so it doesn't trigger again on refresh
             window.history.replaceState(null, '', window.location.pathname);
           }
@@ -177,9 +176,11 @@ const App: React.FC = () => {
     } else if (user.role === 'supervisor') {
       handleNavigate(Page.SUPERVISOR_DASHBOARD);
     } else {
-      handleNavigate(Page.STAFF_PORTAL);
+      // Basic/chef roles go to Daily Input on the dashboard
+      navigate('/dashboard/daily-input');
+      setCurrentPageState(Page.DASHBOARD);
     }
-  }, [handleNavigate]);
+  }, [handleNavigate, navigate]);
 
   const handleLogout = useCallback(async () => {
     try {

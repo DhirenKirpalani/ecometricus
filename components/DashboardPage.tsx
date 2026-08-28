@@ -2206,13 +2206,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         <aside className="lg:w-16 lg:hover:w-56 shrink-0 flex flex-col transition-all duration-300 ease-out group/sidebar border-r border-brand-gold/30 bg-brand-dark/60 backdrop-blur-sm lg:relative lg:z-20">
           <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto scrollbar-hide p-2 lg:p-3 lg:h-full">
 
-              {/* Nav items */}
+              {/* Nav items — basic/chef roles only see Overview & Daily Input */}
               <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
               <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label="Daily Input" />
-              <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
-              <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
-              <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
-              <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
+              {(user.role === 'admin' || user.role === 'manager') && (
+                <>
+                  <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
+                  <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
+                  <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
+                  <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
+                </>
+              )}
             </div>
           </aside>
 
