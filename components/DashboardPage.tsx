@@ -2153,7 +2153,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       )}
 
       {/* ── Navbar ── */}
-      <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-brand-gold/8 bg-brand-dark/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-brand-gold/30 bg-brand-dark/95 backdrop-blur-xl">
 
         <div className="max-w-[1920px] mx-auto h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-3">
 
@@ -2202,7 +2202,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         <div className="flex-grow flex bg-brand-dark text-gray-100 font-body selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
 
         {/* ── Sidebar — full height, from below navbar to bottom of page ── */}
-        <aside className="lg:w-16 lg:hover:w-56 shrink-0 flex flex-col transition-all duration-300 ease-out group/sidebar border-r border-brand-gold/8 bg-brand-dark/60 backdrop-blur-sm lg:relative lg:z-20">
+        <aside className="lg:w-16 lg:hover:w-56 shrink-0 flex flex-col transition-all duration-300 ease-out group/sidebar border-r border-brand-gold/30 bg-brand-dark/60 backdrop-blur-sm lg:relative lg:z-20">
           <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto scrollbar-hide p-2 lg:p-3 lg:h-full">
 
               {/* Nav items */}
