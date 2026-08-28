@@ -30,7 +30,7 @@ const AboutPage: React.FC = () => {
     <div className="min-h-screen bg-brand-dark">
 
       {/* ─── Hero ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-white/5 min-h-[420px] sm:min-h-[540px] flex items-center">
+      <section className="relative overflow-hidden border-b border-brand-gold/5 min-h-[420px] sm:min-h-[540px] flex items-center">
 
         {/* Right — image covers right half */}
         <div className="absolute inset-y-0 right-0 w-1/2 hidden lg:block">
@@ -72,7 +72,7 @@ const AboutPage: React.FC = () => {
       </section>
 
       {/* ─── 800-Pound Gorilla ─────────────────────────────── */}
-      <section className="py-14 sm:py-28 bg-[#1c3933] border-b border-white/5 relative overflow-hidden">
+      <section className="py-14 sm:py-28 bg-[#1c3933] border-b border-brand-gold/5 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 80% 50%, rgba(119,177,57,0.05), transparent 50%)' }} />
         <div className="relative max-w-7xl mx-auto px-5 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-14 items-center">
@@ -106,7 +106,7 @@ const AboutPage: React.FC = () => {
       </section>
 
       {/* ─── Why F&B Remains a Critical ESG Gap ────────────── */}
-      <section className="py-14 sm:py-28 bg-brand-dark border-b border-white/5">
+      <section className="py-14 sm:py-28 bg-brand-dark border-b border-brand-gold/5">
         <div className="max-w-7xl mx-auto px-5 sm:px-6">
           <div className="text-center mb-10 sm:mb-14">
             <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-brand-gold/70 mb-3">{t('about.ourApproach')}</p>
@@ -132,7 +132,7 @@ const AboutPage: React.FC = () => {
       </section>
 
       {/* ─── ESG Scope 3 Differentiator ────────────────────── */}
-      <section className="py-14 sm:py-28 bg-[#1c3933] border-b border-white/5 relative overflow-hidden">
+      <section className="py-14 sm:py-28 bg-[#1c3933] border-b border-brand-gold/5 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 30% 50%, rgba(200,164,19,0.05), transparent 50%)' }} />
         <div className="relative max-w-7xl mx-auto px-5 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-14 items-center">

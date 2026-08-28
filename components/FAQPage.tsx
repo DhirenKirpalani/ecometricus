@@ -162,7 +162,7 @@ const FAQPage: React.FC = () => {
               </div>
               <button
                 onClick={() => setActiveIndex(null)}
-                className="shrink-0 w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-white/25 transition-all"
+                className="shrink-0 w-7 h-7 rounded-lg bg-white/5 border border-brand-gold/10 flex items-center justify-center text-white/40 hover:text-white hover:border-brand-gold/25 transition-all"
               >
                 <X size={14} />
               </button>
@@ -177,7 +177,7 @@ const FAQPage: React.FC = () => {
             </div>
 
             {/* Prev / Next */}
-            <div className="flex items-center justify-between mt-7 pt-5 border-t border-white/8">
+            <div className="flex items-center justify-between mt-7 pt-5 border-t border-brand-gold/8">
               <button
                 onClick={() => setActiveIndex(i => i !== null && i > 0 ? i - 1 : i)}
                 disabled={activeIndex === 0}

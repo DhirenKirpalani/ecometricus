@@ -153,7 +153,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
     const saved = localStorage.getItem('ecometricus_waste_entries');
     let entries = saved ? JSON.parse(saved) : [];
     // SECURITY FILTER: Basic/Chef roles only see their own outlet's data
-    if (user.role === 'basic' || user.role === 'chef') {
+    if (user.role === 'basic') {
       entries = entries.filter((e: WasteEntry) => e.outletCode === user.outletCode);
     }
     return entries;
@@ -532,7 +532,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                         required
                         value={form.category}
                         onChange={e => setForm({ ...form, category: e.target.value, subCategory: '', product: '', justification: '' })}
-                        className="w-full bg-brand-dark border-2 border-white/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none appearance-none cursor-pointer transition-all"
+                        className="w-full bg-brand-dark border-2 border-brand-gold/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none appearance-none cursor-pointer transition-all"
                       >
                         <option value="">Select Category</option>
                         {Object.keys(INVENTORY_LOGIC).map(c => <option key={c} value={c}>{c}</option>)}
@@ -548,7 +548,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                         required
                         value={form.subCategory}
                         onChange={e => setForm({ ...form, subCategory: e.target.value, product: '', justification: '' })}
-                        className="w-full bg-brand-dark border-2 border-white/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none appearance-none cursor-pointer transition-all"
+                        className="w-full bg-brand-dark border-2 border-brand-gold/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none appearance-none cursor-pointer transition-all"
                       >
                         <option value="">Select Sub-Category</option>
                         {form.category && Object.keys(INVENTORY_LOGIC[form.category]).map(sc => <option key={sc} value={sc}>{sc}</option>)}
@@ -569,7 +569,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                         placeholder="Select or enter product..."
                         value={form.product}
                         onChange={e => setForm({ ...form, product: e.target.value })}
-                        className="w-full bg-brand-dark border-2 border-white/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none transition-all placeholder:text-gray-700"
+                        className="w-full bg-brand-dark border-2 border-brand-gold/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none transition-all placeholder:text-gray-700"
                       />
                       <datalist id="product-suggestions">
                         {form.category && form.subCategory && INVENTORY_LOGIC[form.category][form.subCategory].map(p => <option key={p} value={p} />)}
@@ -589,7 +589,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                           required
                           value={form.justification}
                           onChange={e => setForm({ ...form, justification: e.target.value })}
-                          className="w-full bg-brand-dark border-2 border-white/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none appearance-none cursor-pointer transition-all"
+                          className="w-full bg-brand-dark border-2 border-brand-gold/20 rounded-xl sm:rounded-2xl py-4 sm:py-5 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none appearance-none cursor-pointer transition-all"
                         >
                           <option value="">Select Primary Reason</option>
                           {currentJustifications.map(reason => <option key={reason} value={reason}>{reason}</option>)}
@@ -602,7 +602,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                           placeholder="Please describe the reason..."
                           value={form.customJustification}
                           onChange={e => setForm({ ...form, customJustification: e.target.value })}
-                          className="w-full bg-brand-dark border-2 border-white/20 rounded-xl sm:rounded-2xl py-4 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none transition-all h-24 lg:h-32 resize-none"
+                          className="w-full bg-brand-dark border-2 border-brand-gold/20 rounded-xl sm:rounded-2xl py-4 px-5 sm:px-6 text-xs sm:text-sm text-white focus:border-brand-gold outline-none transition-all h-24 lg:h-32 resize-none"
                         />
                       )}
                     </div>
@@ -616,7 +616,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                       <label className="text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-[0.2em] ml-1">Visual Verification / Library</label>
                       <Tooltip id="mila" text="Mila AI automatically matches captured photos with selected product description." />
                     </div>
-                    <div className="aspect-video bg-brand-dark/40 border-2 border-dashed border-white/10 rounded-[24px] sm:rounded-[30px] lg:rounded-[40px] flex items-center justify-center relative overflow-hidden group cursor-pointer hover:border-brand-gold/50 transition-all shadow-inner">
+                    <div className="aspect-video bg-brand-dark/40 border-2 border-dashed border-brand-gold/10 rounded-[24px] sm:rounded-[30px] lg:rounded-[40px] flex items-center justify-center relative overflow-hidden group cursor-pointer hover:border-brand-gold/50 transition-all shadow-inner">
                       {PRODUCT_LIBRARY[form.product] || PRODUCT_LIBRARY[form.subCategory] ? (
                         <div className="w-full h-full relative">
                           <img src={PRODUCT_LIBRARY[form.product] || PRODUCT_LIBRARY[form.subCategory]} className="w-full h-full object-cover" alt="Verification" />
@@ -626,7 +626,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                         </div>
                       ) : (
                         <div className="text-center group-hover:scale-105 transition-transform duration-500">
-                          <div className="p-4 sm:p-6 bg-brand-dark/60 rounded-full inline-block border border-white/10 mb-3 sm:mb-4">
+                          <div className="p-4 sm:p-6 bg-brand-dark/60 rounded-full inline-block border border-brand-gold/10 mb-3 sm:mb-4">
                             <Camera className="text-brand-gold" size={32} />
                           </div>
                           <span className="block text-[9px] sm:text-[10px] font-black text-white uppercase tracking-widest">TAP FOR SNAPSHOT</span>
@@ -646,9 +646,9 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                         step="0.01"
                         value={form.amount}
                         onChange={e => setForm({ ...form, amount: e.target.value })}
-                        className="w-full bg-brand-dark border-2 border-white/20 rounded-xl sm:rounded-2xl py-6 sm:py-8 px-6 sm:px-10 text-3xl sm:text-4xl lg:text-5xl font-geometric font-bold text-white focus:border-brand-gold outline-none transition-all placeholder:text-white/5"
+                        className="w-full bg-brand-dark border-2 border-brand-gold/20 rounded-xl sm:rounded-2xl py-6 sm:py-8 px-6 sm:px-10 text-3xl sm:text-4xl lg:text-5xl font-geometric font-bold text-white focus:border-brand-gold outline-none transition-all placeholder:text-white/5"
                       />
-                      <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 flex bg-brand-dark/90 p-1 rounded-xl sm:rounded-2xl border-2 border-white/10 scale-90 sm:scale-100">
+                      <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 flex bg-brand-dark/90 p-1 rounded-xl sm:rounded-2xl border-2 border-brand-gold/10 scale-90 sm:scale-100">
                         {['kg', 'lbs', 'L'].map(u => (
                           <button
                             key={u}
@@ -666,7 +666,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
               </div>
 
               {/* Submission Area - Fluid stacking */}
-              <div className="pt-8 sm:pt-12 border-t-2 border-white/10 flex flex-col sm:flex-row gap-4 sm:gap-6">
+              <div className="pt-8 sm:pt-12 border-t-2 border-brand-gold/10 flex flex-col sm:flex-row gap-4 sm:gap-6">
                 <button
                   type="submit"
                   className="flex-[2] py-5 sm:py-6 lg:py-8 bg-brand-eco text-brand-dark rounded-full font-black uppercase tracking-[0.3em] text-[11px] sm:text-xs lg:text-sm hover:brightness-110 active:scale-95 transition-all shadow-[0_15px_40px_rgba(119,177,57,0.4)] flex items-center justify-center gap-4"
@@ -719,7 +719,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                   placeholder={r.unit}
                   value={r.type === 'water' ? form.water : form.energy}
                   onChange={e => setForm({ ...form, [r.type]: e.target.value })}
-                  className="flex-grow bg-brand-dark border-2 border-white/20 rounded-xl sm:rounded-2xl px-5 sm:px-6 py-4 sm:py-5 text-base sm:text-lg lg:text-xl font-bold outline-none focus:border-brand-gold text-white"
+                  className="flex-grow bg-brand-dark border-2 border-brand-gold/20 rounded-xl sm:rounded-2xl px-5 sm:px-6 py-4 sm:py-5 text-base sm:text-lg lg:text-xl font-bold outline-none focus:border-brand-gold text-white"
                 />
                 <button onClick={() => handleSaveResource(r.type as any)} className="bg-brand-eco p-4 sm:p-5 rounded-xl sm:rounded-2xl text-brand-dark hover:brightness-110 active:scale-90 transition-all shadow-xl">
                   <Plus size={24} strokeWidth={4} />
@@ -738,11 +738,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                 <ClipboardList size={14} className="hidden xs:block" /> Daily Cumulative
               </div>
             </div>
-            <div className="bg-[#0f2420] border-2 border-white/20 rounded-[24px] sm:rounded-[40px] overflow-hidden shadow-2xl">
+            <div className="bg-[#0f2420] border-2 border-brand-gold/20 rounded-[24px] sm:rounded-[40px] overflow-hidden shadow-2xl">
               <div className="overflow-x-auto scrollbar-hide">
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
-                    <tr className="bg-brand-dark/80 border-b-2 border-white/10">
+                    <tr className="bg-brand-dark/80 border-b-2 border-brand-gold/10">
                       <th className="px-6 sm:px-8 py-5 sm:py-6 text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-[0.2em]">Logged Item</th>
                       <th className="px-6 sm:px-8 py-5 sm:py-6 text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-[0.2em]">Verification</th>
                       <th className="px-6 sm:px-8 py-5 sm:py-6 text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-[0.2em]">Metrics</th>
@@ -761,7 +761,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                           <span className="block text-[7px] sm:text-[8px] font-black text-brand-gold uppercase tracking-[0.2em] mt-1 italic">Reason: {e.justification}</span>
                         </td>
                         <td className="px-6 sm:px-8 py-5 sm:py-6">
-                          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-brand-dark border-2 border-white/10 overflow-hidden shadow-xl">
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-brand-dark border-2 border-brand-gold/10 overflow-hidden shadow-xl">
                             {e.imageUrl ? <img src={e.imageUrl} className="w-full h-full object-cover" alt="Log" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={16} className="text-gray-800" /></div>}
                           </div>
                         </td>
@@ -775,8 +775,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                         </td>
                         <td className="px-6 sm:px-8 py-5 sm:py-6 text-right">
                           <div className="flex justify-end gap-2 sm:gap-3">
-                            <button onClick={() => handleEditWaste(e)} className="p-2 sm:p-2.5 text-gray-400 hover:text-brand-gold bg-brand-dark rounded-lg sm:rounded-xl border-2 border-white/10 transition-all shadow-md"><Edit2 size={16} /></button>
-                            <button onClick={() => deleteWaste(e.id)} className="p-2 sm:p-2.5 text-gray-400 hover:text-brand-alert bg-brand-dark rounded-lg sm:rounded-xl border-2 border-white/10 transition-all shadow-md"><Trash2 size={16} /></button>
+                            <button onClick={() => handleEditWaste(e)} className="p-2 sm:p-2.5 text-gray-400 hover:text-brand-gold bg-brand-dark rounded-lg sm:rounded-xl border-2 border-brand-gold/10 transition-all shadow-md"><Edit2 size={16} /></button>
+                            <button onClick={() => deleteWaste(e.id)} className="p-2 sm:p-2.5 text-gray-400 hover:text-brand-alert bg-brand-dark rounded-lg sm:rounded-xl border-2 border-brand-gold/10 transition-all shadow-md"><Trash2 size={16} /></button>
                           </div>
                         </td>
                       </tr>
@@ -789,11 +789,11 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
 
           <div className="space-y-6">
             <h3 className="text-[11px] sm:text-[14px] font-black text-white uppercase tracking-[0.4em] px-2 sm:px-4">Verification: Resource Flows</h3>
-            <div className="bg-[#0f2420] border-2 border-white/20 rounded-[24px] sm:rounded-[40px] overflow-hidden shadow-2xl">
+            <div className="bg-[#0f2420] border-2 border-brand-gold/20 rounded-[24px] sm:rounded-[40px] overflow-hidden shadow-2xl">
               <div className="overflow-x-auto scrollbar-hide">
                 <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
-                    <tr className="bg-brand-dark/80 border-b-2 border-white/10">
+                    <tr className="bg-brand-dark/80 border-b-2 border-brand-gold/10">
                       <th className="px-6 sm:px-8 py-5 sm:py-6 text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-[0.2em]">Flow Type</th>
                       <th className="px-6 sm:px-8 py-5 sm:py-6 text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-[0.2em]">Cumulative Consumption</th>
                       <th className="px-6 sm:px-8 py-5 sm:py-6 text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-[0.2em]">Log Time</th>
@@ -815,8 +815,8 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
                         <td className="px-6 sm:px-8 py-5 sm:py-6 text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest">{e.timestamp}</td>
                         <td className="px-6 sm:px-8 py-5 sm:py-6 text-right">
                           <div className="flex justify-end gap-2 sm:gap-3">
-                            <button onClick={() => handleEditResource(e)} className="p-2 sm:p-2.5 text-gray-400 hover:text-brand-gold bg-brand-dark rounded-lg sm:rounded-xl border-2 border-white/10 transition-all shadow-md"><Edit2 size={16} /></button>
-                            <button onClick={() => deleteResource(e.id)} className="p-2 sm:p-2.5 text-gray-400 hover:text-brand-alert bg-brand-dark rounded-lg sm:rounded-xl border-2 border-white/10 transition-all shadow-md"><Trash2 size={16} /></button>
+                            <button onClick={() => handleEditResource(e)} className="p-2 sm:p-2.5 text-gray-400 hover:text-brand-gold bg-brand-dark rounded-lg sm:rounded-xl border-2 border-brand-gold/10 transition-all shadow-md"><Edit2 size={16} /></button>
+                            <button onClick={() => deleteResource(e.id)} className="p-2 sm:p-2.5 text-gray-400 hover:text-brand-alert bg-brand-dark rounded-lg sm:rounded-xl border-2 border-brand-gold/10 transition-all shadow-md"><Trash2 size={16} /></button>
                           </div>
                         </td>
                       </tr>
@@ -836,7 +836,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
             <MessageSquare size={160} className="text-brand-gold" />
           </div>
           <div className="flex items-center gap-4 sm:gap-6 mb-10 sm:mb-14">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-brand-gold rounded-xl sm:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(200,164,19,0.4)] border-2 border-white/20 shrink-0">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-brand-gold rounded-xl sm:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(200,164,19,0.4)] border-2 border-brand-gold/20 shrink-0">
               <Cpu className="text-brand-dark" size={32} />
             </div>
             <div>
@@ -846,7 +846,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10 relative z-10">
-            <div className="space-y-4 p-6 sm:p-8 bg-brand-dark/40 rounded-[24px] sm:rounded-[32px] border-2 border-white/10 shadow-inner group/card hover:border-brand-gold/40 transition-all">
+            <div className="space-y-4 p-6 sm:p-8 bg-brand-dark/40 rounded-[24px] sm:rounded-[32px] border-2 border-brand-gold/10 shadow-inner group/card hover:border-brand-gold/40 transition-all">
               <span className="text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-widest flex items-center gap-3">
                 <Cloud size={16} /> Carbon Lifecycle
               </span>
@@ -859,7 +859,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
               </div>
             </div>
 
-            <div className="space-y-4 p-6 sm:p-8 bg-brand-dark/40 rounded-[24px] sm:rounded-[32px] border-2 border-white/10 shadow-inner group/card hover:border-blue-500/40 transition-all">
+            <div className="space-y-4 p-6 sm:p-8 bg-brand-dark/40 rounded-[24px] sm:rounded-[32px] border-2 border-brand-gold/10 shadow-inner group/card hover:border-blue-500/40 transition-all">
               <span className="text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-widest flex items-center gap-3">
                 <Droplets size={16} /> Water Resource
               </span>
@@ -879,7 +879,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
               <div className={`text-2xl sm:text-3xl lg:text-4xl font-black ${totals.waste > BENCHMARKS.waste ? 'text-brand-alert' : 'text-brand-eco'}`}>
                 ${totals.totalFinancialLoss.toFixed(2)}
               </div>
-              <div className="pt-3 sm:pt-4 border-t border-white/10 mt-2 sm:mt-4 space-y-1 sm:space-y-2">
+              <div className="pt-3 sm:pt-4 border-t border-brand-gold/10 mt-2 sm:mt-4 space-y-1 sm:space-y-2">
                 <div className="flex justify-between text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-gray-500">
                   <span>Item Loss:</span>
                   <span className="text-white">${totals.financialLossItems.toFixed(2)}</span>
@@ -928,7 +928,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
 
           <button
             onClick={onLogout}
-            className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px] font-black text-gray-500 uppercase tracking-[0.3em] hover:text-brand-alert transition-all group px-8 sm:px-12 py-3 sm:py-4 rounded-full border-2 border-white/10 hover:border-brand-alert/40 shadow-xl"
+            className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px] font-black text-gray-500 uppercase tracking-[0.3em] hover:text-brand-alert transition-all group px-8 sm:px-12 py-3 sm:py-4 rounded-full border-2 border-brand-gold/10 hover:border-brand-alert/40 shadow-xl"
           >
             <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
             TERMINATE SESSION
@@ -970,7 +970,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
       `}} />
 
       {/* 6. Mila AI Widget (Conditional) */}
-      {(user.role === 'basic' || user.role === 'chef') ? (
+      {(user.role === 'basic') ? (
         <MilaFeedbackWidget user={user} />
       ) : (
         <div className="fixed bottom-6 right-6 z-50">

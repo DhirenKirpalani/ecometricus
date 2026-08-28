@@ -27,14 +27,19 @@ export const useResourceChartData = () => {
   const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
   useEffect(() => {
+    // Listen for new resource entries to refresh chart
+    const handleStorageChange = () => fetchResourceData();
+    window.addEventListener('ecometricus_resource_updated', handleStorageChange);
+
     const fetchResourceData = async () => {
       setIsLoading(true);
       try {
-        // 1. Fetch Royal Data from resource_logs if available
-        const { data: royalLogs, error } = await supabase
+        // 1. Fetch all resource logs with outlet info
+        const { data: resourceLogs, error } = await supabase
           .from('resource_logs')
-          .select('amount, resource_type, created_at, outlets(name)')
-          .filter('outlets.name', 'ilike', 'Royal');
+          .select('amount, resource_type, created_at, outlet_name, outlets(name)')
+          .order('created_at', { ascending: false })
+          .limit(200);
 
         // 2. Initialize Day Maps — empty until real data arrives
         const waterMap: Record<string, any> = {};
@@ -45,15 +50,26 @@ export const useResourceChartData = () => {
           energyMap[day] = { day, "ROYAL": 0, "FISHER'S": 0, "RALPH'S": 0, "GUSTO": 0 };
         });
 
-        // 3. Map Royal Live Data
-        if (royalLogs && royalLogs.length > 0) {
-          royalLogs.forEach((log: any) => {
+        // 3. Map Live Data — support both outlet_name column and joined outlets.name
+        if (resourceLogs && resourceLogs.length > 0) {
+          resourceLogs.forEach((log: any) => {
             const date = new Date(log.created_at);
             const dayLabel = DAYS[date.getDay()];
-            if (log.resource_type === 'water') {
-              waterMap[dayLabel]["ROYAL"] += Number(log.amount);
-            } else {
-              energyMap[dayLabel]["ROYAL"] += Number(log.amount);
+            const outletName = (log.outlet_name || log.outlets?.name || 'ROYAL').toUpperCase();
+            const amount = Number(log.amount) || 0;
+
+            if (log.resource_type === 'water' && waterMap[dayLabel]) {
+              if (outletName.includes('ROYAL')) waterMap[dayLabel]["ROYAL"] += amount;
+              else if (outletName.includes('FISHER')) waterMap[dayLabel]["FISHER'S"] += amount;
+              else if (outletName.includes('RALPH')) waterMap[dayLabel]["RALPH'S"] += amount;
+              else if (outletName.includes('GUSTO')) waterMap[dayLabel]["GUSTO"] += amount;
+              else waterMap[dayLabel]["ROYAL"] += amount;
+            } else if (log.resource_type === 'energy' && energyMap[dayLabel]) {
+              if (outletName.includes('ROYAL')) energyMap[dayLabel]["ROYAL"] += amount;
+              else if (outletName.includes('FISHER')) energyMap[dayLabel]["FISHER'S"] += amount;
+              else if (outletName.includes('RALPH')) energyMap[dayLabel]["RALPH'S"] += amount;
+              else if (outletName.includes('GUSTO')) energyMap[dayLabel]["GUSTO"] += amount;
+              else energyMap[dayLabel]["ROYAL"] += amount;
             }
           });
         }
@@ -79,6 +95,7 @@ export const useResourceChartData = () => {
     };
 
     fetchResourceData();
+    return () => window.removeEventListener('ecometricus_resource_updated', handleStorageChange);
   }, []);
 
   return { 

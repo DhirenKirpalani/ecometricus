@@ -92,7 +92,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t border-white/5">
+      <div className="border-t border-brand-gold/5">
         <div className="max-w-7xl mx-auto px-5 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2 text-center">
           <p className="text-[10px] text-white/40 uppercase tracking-widest">
             {t('footer.copyright', { year: String(year) })}

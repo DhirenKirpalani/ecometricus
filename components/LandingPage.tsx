@@ -149,7 +149,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
       </section>
 
       {/* Industry Impact & SDG Alignment */}
-      <section className="py-14 sm:py-28 bg-[#1c3933] border-y border-white/5 relative overflow-hidden">
+      <section className="py-14 sm:py-28 bg-[#1c3933] border-y border-brand-gold/5 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(119,177,57,0.05), transparent 40%), radial-gradient(ellipse at 80% 50%, rgba(200,164,19,0.05), transparent 40%)' }} />
         <div className="max-w-7xl mx-auto px-5 sm:px-6 relative">
           <div className="text-center mb-10 sm:mb-16">
@@ -256,7 +256,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
       </section>
 
       {/* Book Demo CTA */}
-      <section className="py-14 sm:py-28 bg-brand-dark border-t border-white/5 relative overflow-hidden">
+      <section className="py-14 sm:py-28 bg-brand-dark border-t border-brand-gold/5 relative overflow-hidden">
         {/* Decorative background glow */}
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 70% 50%, rgba(200,164,19,0.08), transparent 60%)' }}></div>
         <div className="relative max-w-7xl mx-auto px-5 sm:px-6">
@@ -305,7 +305,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
 
 
       {/* F&B Operations Assessment CTA */}
-      <section className="py-14 sm:py-28 bg-[#1c3933] border-t border-white/5 relative overflow-hidden">
+      <section className="py-14 sm:py-28 bg-[#1c3933] border-t border-brand-gold/5 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 50%, rgba(119,177,57,0.07), transparent 60%)' }}></div>
         <div className="relative max-w-2xl mx-auto px-5 sm:px-6 text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-brand-eco/15 border border-brand-eco/30 mb-5 sm:mb-6">

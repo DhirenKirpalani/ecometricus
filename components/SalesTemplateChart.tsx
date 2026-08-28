@@ -84,7 +84,7 @@ const SalesTemplateChart: React.FC<SalesTemplateChartProps> = ({ data, benchmark
                 {/* Grid Lines */}
                 <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
                     {[35000, 30000, 25000, 20000, 15000, 10000].map((val) => (
-                        <div key={val} className="w-full border-t border-white/5 h-0"></div>
+                        <div key={val} className="w-full border-t border-brand-gold/5 h-0"></div>
                     ))}
                 </div>
 
@@ -167,7 +167,7 @@ const SalesTemplateChart: React.FC<SalesTemplateChartProps> = ({ data, benchmark
                                     maxWidth: '150px'
                                 }}
                             >
-                                <div className="flex justify-between items-center mb-1 border-b border-white/10 pb-1">
+                                <div className="flex justify-between items-center mb-1 border-b border-brand-gold/10 pb-1">
                                     <span className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{selectedDay.day} Breakdown</span>
                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="pointer-events-auto">
                                         <XIcon size={8} className="text-gray-500 hover:text-white transition-colors" />
@@ -182,7 +182,7 @@ const SalesTemplateChart: React.FC<SalesTemplateChartProps> = ({ data, benchmark
                                         <span>Bev</span>
                                         <span className="text-[#FF914D]">${selectedDay.bev.toLocaleString()}</span>
                                     </div>
-                                    <div className="border-t border-white/10 pt-1 flex justify-between text-[10px] font-black text-white uppercase">
+                                    <div className="border-t border-brand-gold/10 pt-1 flex justify-between text-[10px] font-black text-white uppercase">
                                         <span>Total</span>
                                         <span>${selectedDay.total.toLocaleString()}</span>
                                     </div>

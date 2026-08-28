@@ -62,7 +62,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Total Water Card */}
-        <div className="bg-[#0B221E] border border-white/10 rounded-[32px] p-8 flex flex-col justify-between h-[230px] relative overflow-hidden group hover:border-[#3b82f6]/30 transition-all">
+        <div className="bg-[#0B221E] border border-brand-gold/10 rounded-[32px] p-8 flex flex-col justify-between h-[230px] relative overflow-hidden group hover:border-[#3b82f6]/30 transition-all">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#3b82f6]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-[#3b82f6]/10 transition-colors"></div>
           <div>
             <div className="flex justify-between items-start mb-6">
@@ -97,7 +97,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
         </div>
 
         {/* Total Energy Card */}
-        <div className="bg-[#0B221E] border border-white/10 rounded-[32px] p-8 flex flex-col justify-between h-[230px] relative overflow-hidden group hover:border-brand-gold/30 transition-all">
+        <div className="bg-[#0B221E] border border-brand-gold/10 rounded-[32px] p-8 flex flex-col justify-between h-[230px] relative overflow-hidden group hover:border-brand-gold/30 transition-all">
           <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-brand-gold/10 transition-colors"></div>
           <div>
             <div className="flex justify-between items-start mb-6">
@@ -178,7 +178,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
             const isEnergyAttention = outlet.energy > energyTarget / OUTLET_KEYS.length;
             const isAttention = isWaterAttention || isEnergyAttention;
             return (
-              <div key={id} className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${isAttention ? 'border-[#FF4D4D]/40 bg-[#FF4D4D]/5' : 'border-white/10 bg-[#0B221E] hover:border-brand-gold/20'}`}>
+              <div key={id} className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${isAttention ? 'border-[#FF4D4D]/40 bg-[#FF4D4D]/5' : 'border-brand-gold/10 bg-[#0B221E] hover:border-brand-gold/20'}`}>
                 {/* Outlet name + status badge */}
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <div className="flex items-center gap-2">
@@ -202,7 +202,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
                 </div>
 
                 {/* Energy metric */}
-                <div className="pt-3 border-t border-white/8">
+                <div className="pt-3 border-t border-brand-gold/8">
                   <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">Energy Load</p>
                   <p className="text-xl font-geometric font-bold text-brand-gold leading-none">
                     {outlet.energy.toLocaleString()}

@@ -110,7 +110,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
     <div className="h-screen bg-brand-dark flex flex-col overflow-hidden">
 
       {/* ─── Header ─────────────────────────────────────────────── */}
-      <header className="border-b border-white/8 bg-[#0e1f1c] sticky top-0 z-50">
+      <header className="border-b border-brand-gold/8 bg-[#0e1f1c] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
@@ -135,7 +135,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
             </div>
 
             {/* Language toggle */}
-            <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-0.5">
+            <div className="flex items-center gap-1 bg-white/5 border border-brand-gold/10 rounded-lg p-0.5">
               <button
                 onClick={() => setEditingLang('en')}
                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editingLang === 'en' ? 'bg-brand-gold text-brand-dark' : 'text-white/40 hover:text-white'}`}
@@ -178,7 +178,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
       <div className="flex-1 flex overflow-hidden">
 
         {/* ─── Sidebar: sections ──────────────────────────────────── */}
-        <aside className="w-56 shrink-0 border-r border-white/8 bg-[#0e1f1c] overflow-y-auto">
+        <aside className="w-56 shrink-0 border-r border-brand-gold/8 bg-[#0e1f1c] overflow-y-auto">
           <div className="p-4 space-y-1">
             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 px-3 py-2">Sections</p>
             {sections.map(sec => {
@@ -212,7 +212,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
         {/* ─── Main: translation table ────────────────────────────── */}
         <main className="flex-1 overflow-y-auto">
           {/* Search bar */}
-          <div className="sticky top-0 bg-brand-dark/95 backdrop-blur-xl border-b border-white/5 px-6 py-3 z-10">
+          <div className="sticky top-0 bg-brand-dark/95 backdrop-blur-xl border-b border-brand-gold/5 px-6 py-3 z-10">
             <div className="relative max-w-md">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
               <input
@@ -220,7 +220,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search translations..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 outline-none focus:border-brand-gold/40 transition-all"
+                className="w-full bg-white/5 border border-brand-gold/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 outline-none focus:border-brand-gold/40 transition-all"
               />
             </div>
           </div>
@@ -229,7 +229,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
           <div className="px-6 py-4">
             <div className="space-y-1">
               {/* Header row */}
-              <div className="grid grid-cols-[1.5fr_2fr_2fr] gap-4 px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/20 border-b border-white/5">
+              <div className="grid grid-cols-[1.5fr_2fr_2fr] gap-4 px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/20 border-b border-brand-gold/5">
                 <div>Key</div>
                 <div>English (EN)</div>
                 <div>{editingLang === 'es' ? 'Spanish (ES)' : 'English (EN)'}</div>
@@ -266,7 +266,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
                         value={getEditValue(section, key, editingLang)}
                         onChange={e => handleEdit(section, key, e.target.value)}
                         rows={Math.max(1, Math.ceil((translations[section]?.[key]?.[editingLang] ?? '').length / 45))}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-gold/40 transition-all resize-none leading-relaxed"
+                        className="w-full bg-white/5 border border-brand-gold/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-gold/40 transition-all resize-none leading-relaxed"
                         placeholder={editingLang === 'es' ? 'Traducción al español...' : 'English translation...'}
                       />
                     </div>

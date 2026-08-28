@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { useNavigate as useRouterNavigate } from 'react-router-dom';
+import { useNavigate as useRouterNavigate, useLocation } from 'react-router-dom';
 import MilaWidget from './MilaWidget';
 import GamificationHub from './GamificationHub';
 import { supabase } from '../lib/supabase';
@@ -50,6 +50,10 @@ import {
   Plus,
   FileText,
   ScrollText,
+  LifeBuoy,
+  Mail,
+  Send,
+  ImageIcon,
   Calendar,
   FileDigit,
   ChevronDown,
@@ -85,6 +89,7 @@ import FoodWasteIntelligence from './FoodWasteIntelligence';
 import ResourceIntelligence from './ResourceIntelligence';
 import DailyInputForm from './DailyInputForm';
 import MilaKnowledgeManager from './MilaKnowledgeManager';
+import SuperAdminDashboard from './SuperAdminDashboard';
 import FoodWasteTemplateChart from './FoodWasteTemplateChart';
 import WaterUsageTemplateChart from './WaterUsageTemplateChart';
 import EnergyUsageTemplateChart from './EnergyUsageTemplateChart';
@@ -110,21 +115,51 @@ const brandAlert = '#FF3131';
 
 enum PortalView {
   DASHBOARD = 'dashboard',
+  DAILY_INPUT = 'daily_input',
   IDENTITY = 'identity',
   TEAM = 'team',
   PARAMETERS = 'parameters',
   AUDIT_LOG = 'audit_log',
+  CONTACT = 'contact',
+  SUPER_ADMIN = 'super_admin',
   SYSTEM = 'system'
 }
 
+// URL path mapping for portal views
+const PORTAL_VIEW_PATHS: Record<PortalView, string> = {
+  [PortalView.DASHBOARD]: '/dashboard',
+  [PortalView.DAILY_INPUT]: '/dashboard/daily-input',
+  [PortalView.IDENTITY]: '/dashboard/company',
+  [PortalView.TEAM]: '/dashboard/team',
+  [PortalView.PARAMETERS]: '/dashboard/benchmarks',
+  [PortalView.AUDIT_LOG]: '/dashboard/audit-log',
+  [PortalView.CONTACT]: '/dashboard/contact',
+  [PortalView.SUPER_ADMIN]: '/dashboard/super-admin',
+  [PortalView.SYSTEM]: '/dashboard/system',
+};
+
+const PATH_TO_PORTAL_VIEW: Record<string, PortalView> = Object.fromEntries(
+  Object.entries(PORTAL_VIEW_PATHS).map(([view, path]) => [path, view as PortalView])
+);
+
 enum DashboardTab {
-  SUMMARIZED = 'summarized',
-  DAILY_INPUT = 'daily_input',
-  FOOD_WASTE = 'food_waste',
-  ENERGY_WATER = 'energy_water',
-  MILA_AI = 'mila_ai',
+  SUMMARIZED = 'overview',
+  FOOD_WASTE = 'food-waste',
+  ENERGY_WATER = 'energy-water',
   GAMIFICATION = 'gamification'
 }
+
+// URL path mapping for dashboard inner tabs (nested under /dashboard)
+const DASHBOARD_TAB_PATHS: Record<DashboardTab, string> = {
+  [DashboardTab.SUMMARIZED]: '/dashboard/overview',
+  [DashboardTab.FOOD_WASTE]: '/dashboard/food-waste',
+  [DashboardTab.ENERGY_WATER]: '/dashboard/energy-water',
+  [DashboardTab.GAMIFICATION]: '/dashboard/gamification',
+};
+
+const PATH_TO_DASHBOARD_TAB: Record<string, DashboardTab> = Object.fromEntries(
+  Object.entries(DASHBOARD_TAB_PATHS).map(([tab, path]) => [path, tab as DashboardTab])
+);
 
 const REGION_DATA: Record<string, string[]> = {
   'Asia': [
@@ -397,7 +432,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
         className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors
-          ${disabled ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-brand-gold/25 hover:border-brand-gold/50 cursor-pointer'}
+          ${disabled ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/25 hover:border-brand-gold/150 cursor-pointer'}
           ${open ? 'border-brand-gold' : ''}`}
       >
         <span className={value ? 'text-white' : 'text-white/40'}>{value || placeholder || 'Select…'}</span>
@@ -419,7 +454,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
                   className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2
                     ${opt === value
                       ? 'text-brand-gold bg-brand-gold/10 font-semibold'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+                      : 'text-white/70 hover:text-white hover:bg-brand-dark/60'}`}
                 >
                   {opt === value && <Check size={12} className="text-brand-gold shrink-0" />}
                   {opt !== value && <span className="w-3 shrink-0" />}
@@ -577,7 +612,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-white/8">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-brand-gold/15">
         <button type="button"
           onClick={() => { onChange(''); setOpen(false); }}
           className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">
@@ -602,7 +637,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
         className={`w-full flex items-center gap-3 bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-left transition-colors
-          ${disabled ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40 cursor-pointer'}
+          ${disabled ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40 cursor-pointer'}
           ${open ? 'border-brand-gold' : ''}`}
       >
         <Calendar size={13} className="text-brand-gold/60 shrink-0" />
@@ -615,33 +650,56 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateUser }) => {
   const routerNavigate = useRouterNavigate();
-  const [activeView, setActiveView] = useState<PortalView>(() => {
-    const saved = localStorage.getItem('eco_dashboard_tab');
-    return (Object.values(PortalView).includes(saved as PortalView) ? saved : PortalView.DASHBOARD) as PortalView;
-  });
+  const location = useLocation();
 
-  // Persist active tab on every change
-  useEffect(() => {
-    localStorage.setItem('eco_dashboard_tab', activeView);
-  }, [activeView]);
-  const [dashboardTab, setDashboardTabState] = useState<DashboardTab>(() => {
-    try {
-      const saved = localStorage.getItem('eco_dashboard_tab_inner');
-      if (saved && Object.values(DashboardTab).includes(saved as DashboardTab)) {
-        return saved as DashboardTab;
-      }
-    } catch {}
-    return DashboardTab.SUMMARIZED;
-  });
+  // Derive active view from URL path
+  // Portal view paths (including /dashboard/daily-input) are checked first
+  // Inner tab paths (/dashboard/overview, /dashboard/food-waste, etc.) map to DASHBOARD portal view
+  const activeView = PATH_TO_PORTAL_VIEW[location.pathname]
+    || (PATH_TO_DASHBOARD_TAB[location.pathname] ? PortalView.DASHBOARD : null)
+    || (location.pathname === '/dashboard' ? PortalView.DASHBOARD : null)
+    || PortalView.DASHBOARD;
+
+  // Navigate to the URL for the selected view
+  const setActiveView = (view: PortalView) => {
+    if (view === PortalView.DASHBOARD) {
+      // Going to dashboard overview — keep current inner tab or default to overview
+      const currentTab = PATH_TO_DASHBOARD_TAB[location.pathname] || DashboardTab.SUMMARIZED;
+      routerNavigate(DASHBOARD_TAB_PATHS[currentTab]);
+    } else {
+      const path = PORTAL_VIEW_PATHS[view] || '/dashboard';
+      routerNavigate(path);
+    }
+  };
+
+  // Derive inner dashboard tab from URL path
+  const dashboardTab = PATH_TO_DASHBOARD_TAB[location.pathname] || DashboardTab.SUMMARIZED;
+
+  // Navigate to the URL for the selected inner tab
   const setDashboardTab = (tab: DashboardTab) => {
-    setDashboardTabState(tab);
-    try { localStorage.setItem('eco_dashboard_tab_inner', tab); } catch {}
+    const path = DASHBOARD_TAB_PATHS[tab] || '/dashboard/overview';
+    routerNavigate(path);
   };
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isHydrating, setIsHydrating] = useState(true);
 
+  // Redirect bare /dashboard to /dashboard/overview
+  useEffect(() => {
+    if (location.pathname === '/dashboard') {
+      routerNavigate('/dashboard/overview', { replace: true });
+    }
+  }, [location.pathname, routerNavigate]);
+
   // ── Toast + Confirm modal ──────────────────────────────────────────────────
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Contact form state
+  const [contactName, setContactName] = useState(user.fullName || '');
+  const [contactEmail, setContactEmail] = useState(user.email || '');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactScreenshots, setContactScreenshots] = useState<File[]>([]);
+  const [contactSending, setContactSending] = useState(false);
+  const [contactSent, setContactSent] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -858,7 +916,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           }
         } else {
           // If no benchmarks, explicitly ensure legal_consent is false for Admins
-          if (user.role?.toLowerCase() === 'admin') {
+          if (user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin') {
             onUpdateUser({ legal_consent: user.legal_consent ?? false });
           }
         }
@@ -916,7 +974,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       let query = supabase.from('food_cost_logs').select('*');
 
       // Supervisor Restriction: Only see own outlet
-      if (user.role !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           query = query.eq('outlet_id', (userOutlet as any).id);
@@ -946,7 +1004,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // 3. Fetch Labor Cost Logs based on Role
       let laborQuery = supabase.from('labor_cost_logs').select('*');
 
-      if (user.role !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           laborQuery = laborQuery.eq('outlet_id', (userOutlet as any).id);
@@ -976,7 +1034,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // 4. Fetch Profit Margin Logs based on Role
       let profitQuery = supabase.from('profit_margins_logs').select('*');
 
-      if (user.role !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           profitQuery = profitQuery.eq('outlet_id', (userOutlet as any).id);
@@ -1009,7 +1067,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // 5. Fetch Customer Sentiment Logs based on Role
       let sentimentQuery = supabase.from('sentiment_logs').select('*');
-      if (user.role !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           sentimentQuery = sentimentQuery.eq('outlet_id', (userOutlet as any).id);
@@ -1035,7 +1093,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // 6. Fetch Raw Waste Logs for Mila KPI Sync
       let wasteQuery = supabase.from('food_waste_logs').select('*');
-      if (user.role !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           wasteQuery = wasteQuery.eq('outlet_id', (userOutlet as any).id);
@@ -1049,7 +1107,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // 7. Fetch Raw Resource Logs for Mila KPI Sync
       let resourceQuery = supabase.from('resource_logs').select('*');
-      if (user.role !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           resourceQuery = resourceQuery.eq('outlet_id', (userOutlet as any).id);
@@ -1123,7 +1181,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   useEffect(() => {
     const fetchDynamicBenchmarks = async () => {
       const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
-        ? (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet')
+        ? (params.selectedManualOutlet === 'all'
+          ? 'All Outlets'
+          : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
         : 'Unknown Outlet';
         
       const { data: { session } } = await supabase.auth.getSession();
@@ -1237,7 +1297,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   // Load per-outlet settings when manual outlet selection changes
   useEffect(() => {
-    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
+    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
       const saved = manualOutletSettings[params.selectedManualOutlet];
       if (saved) {
         setParams(prev => ({ ...prev, ...saved }));
@@ -1747,7 +1807,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const userId = session.user.id;
 
     const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
-      ? (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet')
+      ? (params.selectedManualOutlet === 'all'
+        ? 'All Outlets'
+        : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
       : 'Unknown Outlet';
 
     const foodWaste = params.wasteTarget.toString();
@@ -1774,7 +1836,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       logAction('benchmarks_saved', 'benchmark', params.benchmarkRegion, `Saved benchmark parameters (${params.benchmarkRegion})`, { wasteTarget: params.wasteTarget, energyTarget: params.energyTarget, waterTarget: params.waterTarget });
     }
 
-    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
+    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
       setManualOutletSettings(prev => ({
         ...prev,
         [params.selectedManualOutlet]: {
@@ -1813,7 +1875,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         if (!session) { setAutoSaveStatus('idle'); return; }
 
         const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
-          ? (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet')
+          ? (params.selectedManualOutlet === 'all'
+            ? 'All Outlets'
+            : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
           : 'Unknown Outlet';
 
         await supabase.from('benchmarks').upsert({
@@ -1825,7 +1889,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id, outlet_name' });
 
-        if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
+        if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
           setManualOutletSettings(prev => ({
             ...prev,
             [params.selectedManualOutlet]: {
@@ -1910,21 +1974,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     return (
       <button
         onClick={() => setActiveView(view)}
-        className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors duration-150 whitespace-nowrap group ${
+        title={label}
+        className={`relative flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
           active
-            ? 'text-white'
-            : 'text-white/60 hover:text-white/90'
+            ? 'bg-brand-gold/20 text-white shadow-[0_0_15px_rgba(200,164,19,0.15)]'
+            : 'text-white/60 hover:text-white/90 hover:bg-brand-dark/60'
         }`}
       >
         <Icon
-          size={15}
-          className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/40 group-hover:text-white/70'}`}
+          size={22}
+          className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/40 group-hover/item:text-white/70'}`}
         />
-        <span className={`text-[12px] font-semibold tracking-tight ${active ? 'text-white' : ''}`}>
+        {/* Label — hidden on desktop collapsed, shown on sidebar hover via group-hover */}
+        <span className={`text-[14px] font-bold tracking-tight ${active ? 'text-white' : ''} hidden lg:block opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] transition-all duration-300`}>
           {label}
         </span>
-        {/* Underline indicator — absolute so it never affects tab width/height */}
-        <span className={`absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80 transition-opacity duration-150 ${active ? 'opacity-100' : 'opacity-0'}`} />
+        {/* Left bar indicator for active item */}
+        <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-8 rounded-r-full bg-brand-gold transition-opacity duration-200 ${active ? 'opacity-100' : 'opacity-0'}`} />
       </button>
     );
   };
@@ -1937,15 +2003,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const profile = BENCHMARK_PROFILES[params.benchmarkRegion];
       return {
         ...params,
-        wasteTarget: profile.waste,
-        waterTarget: profile.water,
-        energyTarget: profile.energy,
-        foodCostTarget: profile.foodCost,
-        laborCostTarget: profile.laborCost,
+        // Only use profile defaults for sustainability metrics (waste/water/energy)
+        // if the user hasn't saved custom values yet (paramsUpdatedAt is null = nothing loaded from DB)
+        wasteTarget: paramsUpdatedAt ? params.wasteTarget : profile.waste,
+        waterTarget: paramsUpdatedAt ? params.waterTarget : profile.water,
+        energyTarget: paramsUpdatedAt ? params.energyTarget : profile.energy,
+        // F&B KPIs (foodCostTarget, laborCostTarget) always use saved values —
+        // never override with profile defaults once the user has customized them
+        foodCostTarget: params.foodCostTarget,
+        laborCostTarget: params.laborCostTarget,
       };
     }
     return params;
-  }, [params, isManualBenchmark, isEditingSustainability, isEditingFnB]);
+  }, [params, isManualBenchmark, isEditingSustainability, isEditingFnB, paramsUpdatedAt]);
 
   const isSustainabilityEditable = isEditingSustainability;
   const isFnBEditable = isEditingFnB;
@@ -2011,6 +2081,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // Aggregate Context for Admin Intelligence
   const adminContext = {
     user: { name: user.fullName || 'Admin', role: 'administrator', firstName: user.fullName?.split(' ')[0] ?? 'Admin' },
+    userProfile: user, // Full profile for Mila agent tools
     company: {
       name: company.name || 'Your Hotel',
       outlet: company.currentOutletName || 'All Outlets',
@@ -2086,7 +2157,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setConfirmModal(null)}
-                className="px-4 py-2 rounded-lg border border-white/15 text-white/70 hover:text-white hover:border-white/30 text-[11px] font-semibold transition-colors"
+                className="px-4 py-2 rounded-lg border border-brand-gold/15 text-white/70 hover:text-white hover:border-brand-gold/30 text-[11px] font-semibold transition-colors"
               >Cancel</button>
               <button
                 onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
@@ -2098,7 +2169,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       )}
 
       {/* ── Navbar ── */}
-      <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-white/8 bg-brand-dark/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-brand-gold/30 bg-brand-dark/95 backdrop-blur-xl">
 
         <div className="max-w-[1920px] mx-auto h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-3">
 
@@ -2133,7 +2204,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <button
               onClick={onLogout}
               title="Log out"
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg border border-white/15 text-white/70 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg border border-brand-gold/15 text-white/70 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
             >
               <LogOut size={14} />
               <span className="hidden sm:inline text-[11px] font-semibold">Log out</span>
@@ -2144,132 +2215,153 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       {/* Background Dashboard Container with Blur Toggle */}
       <div className={`transition-all duration-1000 flex flex-col min-h-screen ${isPendingConsent ? 'blur-2xl grayscale pointer-events-none' : ''}`}>
-        <div className="flex-grow flex flex-col bg-brand-dark text-gray-100 font-body selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
+        <div className="flex-grow flex bg-brand-dark text-gray-100 font-body selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
 
-      <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-8 flex-grow overflow-hidden">
+        {/* Sidebar wrapper — group for hover-expand of spacer */}
+        <div className="group/sidebar flex shrink-0">
+        {/* ── Sidebar — fixed, full height ── */}
+        <aside className="lg:w-16 group-hover/sidebar:lg:w-56 flex flex-col transition-all duration-300 ease-out border-r border-brand-gold/30 bg-brand-dark/60 backdrop-blur-sm lg:fixed lg:top-16 lg:left-0 lg:z-20 lg:h-[calc(100vh-4rem)] lg:overflow-hidden">
+          {/* Nav items — scrollable if needed */}
+          <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-y-auto scrollbar-hide p-2 lg:p-3 lg:pt-6 lg:flex-grow lg:min-h-0">
 
-        {/* Greeting — below navbar, above nav tabs */}
-        {(() => {
-          const h = currentTime.getHours();
-          const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-          const firstName = user.fullName?.split(' ')[0] ?? 'there';
-          return (
-            <div className="flex items-end justify-between gap-4 shrink-0">
-              <div className="min-w-0">
-                <h2 className="text-xl sm:text-3xl font-geometric font-bold text-white leading-none tracking-tight">
-                  {greeting}, <span className="text-brand-gold font-bold">{firstName}</span>
-                </h2>
-                <p className="text-[11px] sm:text-[12px] font-medium text-white/50 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
-                  <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-                  <span className="w-1 h-1 rounded-full bg-white/15" />
-                  <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  <span className="w-1 h-1 rounded-full bg-white/15" />
-                  <span className="truncate">{company.currentOutletName || 'All Outlets'}</span>
-                </p>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Top navigation card */}
-        {/* Section nav — pill tabs */}
-        <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 border-b border-white/6 pb-1">
-
-          {/* Nav tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide w-full sm:w-auto">
-            <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
-            <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
-            <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
-            <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
-            <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
+              <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
+              <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label="Daily Input" />
+              {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin' || user.role.toLowerCase() === 'supervisor') && (
+                <>
+                  <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
+                  <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
+                  <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
+                  <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
+                </>
+              )}
+              {user.role.toLowerCase() === 'super_admin' && (
+                <SidebarItem view={PortalView.SUPER_ADMIN} icon={ShieldCheck} label="Super Admin" />
+              )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 pb-1 self-end sm:self-auto">
-            {/* Benchmarks tab: auto-save indicator */}
-            {activeView === PortalView.PARAMETERS && (
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
-                {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
-                {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : 'Auto-save on'}
-              </div>
-            )}
-            {/* Company tab: auto-save indicator */}
-            {activeView === PortalView.IDENTITY && (
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
-                {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
-                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
-              </div>
-            )}
-            {/* Save button — not shown on Team, Audit Log, Dashboard, Benchmarks or Company */}
-            {activeView !== PortalView.DASHBOARD && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && (
-              <button
-                onClick={handleSaveAll}
-                disabled={saveStatus !== 'idle'}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
-              >
-                {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
-                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
-              </button>
-            )}
-
-            {/* Auto-save indicator (Team tab edit mode) */}
-            {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold tracking-wide ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
-                {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : <Check size={12} />}
-                {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
-              </div>
-            )}
-
-            {/* System diagnostics button removed */}
+          {/* Contact — frozen at bottom, always visible */}
+          <div className="hidden lg:block p-2 lg:p-3 border-t border-brand-gold/15 shrink-0">
+            <SidebarItem view={PortalView.CONTACT} icon={LifeBuoy} label="Contact" />
           </div>
+        </aside>
+
+        {/* Spacer for fixed sidebar — expands on hover to push content */}
+        <div className="hidden lg:block w-16 group-hover/sidebar:w-56 shrink-0 transition-all duration-300 ease-out" />
         </div>
 
-        <>
-          <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-hidden">
-            <div className="bg-brand-dark border border-white/8 rounded-2xl p-3 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
+          {/* ── Main Content ── */}
+          <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-8 flex-grow">
+
+              {/* Greeting */}
+              {(() => {
+                const h = currentTime.getHours();
+                const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+                const firstName = user.fullName?.split(' ')[0] ?? 'there';
+                return (
+                  <div className="flex items-end justify-between gap-4 shrink-0">
+                    <div className="min-w-0">
+                      <h2 className="text-xl sm:text-3xl font-geometric font-bold text-white leading-none tracking-tight">
+                        {greeting}, <span className="text-brand-gold font-bold">{firstName}</span>
+                      </h2>
+                      <p className="text-[11px] sm:text-[12px] font-medium text-white/50 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
+                        <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                        <span className="w-1 h-1 rounded-full bg-white/15" />
+                        <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="w-1 h-1 rounded-full bg-white/15" />
+                        <span className="truncate">{company.currentOutletName || 'All Outlets'}</span>
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            <div className="bg-brand-dark border border-brand-gold/30 rounded-2xl p-3 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
               {/* Main View Header */}
               <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-5 shrink-0">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
+                    {activeView === PortalView.DAILY_INPUT && "Log Waste & Resource Data"}
                     {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
                     {activeView === PortalView.AUDIT_LOG && "System Activity & Change Tracking"}
+                    {activeView === PortalView.CONTACT && "Get Help & Share Feedback"}
+                    {activeView === PortalView.SUPER_ADMIN && "Platform Control Center"}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
+                    {activeView === PortalView.DAILY_INPUT && "Daily Input"}
                     {activeView === PortalView.IDENTITY && "Company Identity"}
                     {activeView === PortalView.TEAM && "Staff Registry"}
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
                     {activeView === PortalView.AUDIT_LOG && "Audit Log"}
+                    {activeView === PortalView.CONTACT && "Contact Support"}
+                    {activeView === PortalView.SUPER_ADMIN && "Super Admin"}
                   </h3>
+                </div>
+
+                {/* Save button & status indicators — in content header */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Benchmarks: auto-save indicator */}
+                  {activeView === PortalView.PARAMETERS && (
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
+                      {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
+                      {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : 'Auto-save on'}
+                    </div>
+                  )}
+                  {/* Company: auto-save indicator */}
+                  {activeView === PortalView.IDENTITY && (
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
+                      {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
+                      {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
+                    </div>
+                  )}
+                  {/* Team: auto-save indicator */}
+                  {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold tracking-wide ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
+                      {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : <Check size={12} />}
+                      {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
+                    </div>
+                  )}
+                  {/* Save button — not shown on Dashboard, Daily Input, Audit Log, Team, Benchmarks or Company */}
+                  {activeView !== PortalView.DASHBOARD && activeView !== PortalView.DAILY_INPUT && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && activeView !== PortalView.CONTACT && activeView !== PortalView.SUPER_ADMIN && (
+                    <button
+                      onClick={handleSaveAll}
+                      disabled={saveStatus !== 'idle'}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
+                    >
+                      {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
+                      {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
+                    </button>
+                  )}
                 </div>
               </div>
 
               <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
                 {activeView === PortalView.DASHBOARD && (
                   <div className="space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col flex-grow overflow-y-auto scrollbar-hide pr-2">
-                    <div className="flex overflow-x-auto gap-1 w-full sm:w-fit shrink-0 scrollbar-hide">
+                    <div className="flex overflow-x-auto gap-2 w-full sm:w-fit shrink-0 scrollbar-hide pb-1">
                       {[
-                        { id: DashboardTab.SUMMARIZED, label: 'Overview', icon: TrendingUp },
-                        { id: DashboardTab.DAILY_INPUT, label: 'Daily Input', icon: ClipboardList },
-                        { id: DashboardTab.FOOD_WASTE, label: 'Food Waste', icon: Leaf },
-                        { id: DashboardTab.ENERGY_WATER, label: 'Energy & Water', icon: Zap },
-                        { id: DashboardTab.MILA_AI, label: 'Mila AI', icon: Cpu },
-                        { id: DashboardTab.GAMIFICATION, label: 'Gamification', icon: Award },
+                        { id: DashboardTab.SUMMARIZED, label: 'Overview', icon: TrendingUp, color: 'brand-gold' },
+                        { id: DashboardTab.FOOD_WASTE, label: 'Food Waste', icon: Leaf, color: 'brand-eco' },
+                        { id: DashboardTab.ENERGY_WATER, label: 'Energy & Water', icon: Zap, color: 'brand-energy' },
+                        { id: DashboardTab.GAMIFICATION, label: 'Gamification', icon: Award, color: 'brand-gold' },
                       ].map((tab) => {
                         const active = dashboardTab === tab.id;
                         return (
                           <button
                             key={tab.id}
                             onClick={() => setDashboardTab(tab.id)}
-                            className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all whitespace-nowrap ${
-                              active ? 'text-white' : 'text-white/60 hover:text-white'
+                            className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 whitespace-nowrap border ${
+                              active
+                                ? 'bg-brand-gold/15 border-brand-gold/40 text-white shadow-[0_2px_12px_rgba(200,164,19,0.15)]'
+                                : 'bg-[#1c3933] border-transparent text-white/50 hover:text-white/80 hover:bg-brand-dark/60 hover:border-brand-gold/15'
                             }`}
                           >
-                            <tab.icon size={14} className={active ? 'text-brand-gold' : 'text-white/25'} />
-                            <span className="text-[12px] font-semibold tracking-tight">{tab.label}</span>
-                            {active && <span className="absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80" />}
+                            <tab.icon size={15} className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/30 group-hover:text-white/60'}`} />
+                            <span className="text-[12px] font-bold tracking-tight">{tab.label}</span>
                           </button>
                         );
                       })}
@@ -2282,71 +2374,93 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       {dashboardTab === DashboardTab.SUMMARIZED && (
                         <>
                           {/* MILA ACTIONABLE INTELLIGENCE - ADMIN CUMULATIVE VIEW */}
-                          {/* "Mount this duplicate at the absolute top of the Overview tab content... directly above the Earth Keeper Engagement % chart" */}
                           <div className="w-full max-w-full mb-8">
-                            <div className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-4 sm:p-8 relative overflow-hidden group shadow-xl">
-                              {/* Subtle glow */}
-                              <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'radial-gradient(ellipse at 80% 0%, rgba(200,164,19,0.05), transparent 55%)'}} />
-
-                              <div className="flex items-center gap-4 mb-6">
-                                <div className="w-11 h-11 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-                                  <Cpu className="text-brand-gold" size={20} />
-                                </div>
-                                <div>
-                                  <p className="text-[11px] font-black text-brand-gold/80 uppercase tracking-[0.35em]">Mila Intelligence</p>
-                                  <h3 className="text-base font-geometric font-black text-white leading-tight">ESG Performance Snapshot</h3>
-                                </div>
+                            {/* Header */}
+                            <div className="flex items-center gap-4 mb-6">
+                              <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+                                <Cpu className="text-brand-gold" size={24} />
                               </div>
+                              <div>
+                                <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                                  Mila Intelligence
+                                </h2>
+                                <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+                                  ESG Performance Snapshot — real-time carbon, water & financial impact tracking.
+                                </p>
+                              </div>
+                            </div>
 
-                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10">
-                                {/* Carbon */}
-                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-brand-gold/25 transition-all group/card">
-                                  <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
-                                    <Cloud size={13} /> Carbon Lifecycle
-                                  </span>
-                                  <div className="text-2xl font-geometric font-black text-white group-hover/card:text-brand-gold transition-colors">
-                                    {impacts.carbonImpact.toFixed(1)}<span className="text-xs font-normal text-white/50 ml-1">kg CO₂e</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 mt-auto">
-                                    <AlertTriangle className="text-brand-alert" size={12} />
-                                    <p className="text-[11px] text-brand-alert/80 uppercase font-bold tracking-wide">Deviation impact</p>
-                                  </div>
-                                </div>
-
-                                {/* Water */}
-                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-blue-500/30 transition-all group/card">
-                                  <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
-                                    <Droplets size={13} /> Water Resource
-                                  </span>
-                                  <div className="text-2xl font-geometric font-black text-white group-hover/card:text-blue-400 transition-colors">
-                                    {impacts.waterFootprint.toFixed(1)}<span className="text-xs font-normal text-white/50 ml-1">L</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 mt-auto">
-                                    <ShieldCheck className="text-brand-eco" size={12} />
-                                    <p className="text-[11px] text-brand-eco/80 uppercase font-bold tracking-wide">Averted loss</p>
-                                  </div>
-                                </div>
-
-                                {/* Financial */}
-                                <div className={`flex flex-col gap-2 p-5 rounded-xl border transition-all ${impacts.isDeviating ? 'bg-brand-alert/8 border-brand-alert/40' : 'bg-brand-eco/8 border-brand-eco/30'}`}>
-                                  <span className={`text-[11px] font-black uppercase tracking-widest flex items-center gap-2 ${impacts.isDeviating ? 'text-brand-alert/90' : 'text-brand-eco/90'}`}>
-                                    <DollarSign size={13} /> Financial Impact
-                                  </span>
-                                  <div className={`text-2xl font-geometric font-black ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
-                                    ${impacts.totalFinancialLoss.toFixed(2)}
+                            {/* Summary KPI Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                              {/* Carbon Lifecycle */}
+                              <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${impacts.isDeviating ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+                                <div className="flex items-center justify-between gap-2 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Cloud size={16} className="text-brand-gold" />
+                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Carbon Lifecycle</h4>
                                   </div>
                                   {impacts.isDeviating ? (
-                                    <div className="mt-auto flex items-center gap-1.5">
-                                      <AlertTriangle size={11} className="text-brand-alert" />
-                                      <p className="text-[11px] text-brand-alert/80 uppercase font-bold tracking-wide">Supervisor notified</p>
+                                    <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                      <AlertTriangle size={9} /> Attention
                                     </div>
                                   ) : (
-                                    <div className="mt-auto flex items-center gap-1.5">
-                                      <ShieldCheck size={11} className="text-brand-eco" />
-                                      <p className="text-[11px] text-brand-eco/80 uppercase font-bold tracking-wide">On target</p>
+                                    <div className="flex items-center gap-1.5 bg-brand-eco/15 text-brand-eco border border-brand-eco/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                      <ShieldCheck size={9} /> On Target
                                     </div>
                                   )}
                                 </div>
+                                <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+                                  {impacts.carbonImpact.toFixed(1)}
+                                  <span className="text-xs font-medium text-white/50 uppercase ml-1.5">kg CO₂e</span>
+                                </p>
+                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                                  {impacts.isDeviating ? 'Deviation impact detected' : 'Within target range'}
+                                </p>
+                              </div>
+
+                              {/* Water Resource */}
+                              <div className="rounded-2xl border p-5 sm:p-6 transition-all duration-300 border-brand-gold/10 bg-[#1c3933] hover:border-brand-gold/20">
+                                <div className="flex items-center justify-between gap-2 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Droplets size={16} className="text-brand-gold" />
+                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Water Resource</h4>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 bg-brand-eco/15 text-brand-eco border border-brand-eco/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                    <ShieldCheck size={9} /> Averted
+                                  </div>
+                                </div>
+                                <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+                                  {impacts.waterFootprint.toFixed(1)}
+                                  <span className="text-xs font-medium text-white/50 uppercase ml-1.5">L</span>
+                                </p>
+                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                                  Averted loss
+                                </p>
+                              </div>
+
+                              {/* Financial Impact */}
+                              <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${impacts.isDeviating ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-eco/30 bg-brand-eco/5 hover:border-brand-eco/40'}`}>
+                                <div className="flex items-center justify-between gap-2 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <DollarSign size={16} className={impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'} />
+                                    <h4 className={`text-[11px] font-black uppercase tracking-widest ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>Financial Impact</h4>
+                                  </div>
+                                  {impacts.isDeviating ? (
+                                    <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                      <AlertTriangle size={9} /> Notified
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 bg-brand-eco/15 text-brand-eco border border-brand-eco/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                      <ShieldCheck size={9} /> On Target
+                                    </div>
+                                  )}
+                                </div>
+                                <p className={`text-3xl font-geometric font-black leading-none mb-2 ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
+                                  ${impacts.totalFinancialLoss.toFixed(2)}
+                                </p>
+                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                                  {impacts.isDeviating ? 'Supervisor notified' : 'Within financial cap'}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -2397,7 +2511,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                             return (
                               <div className="w-full max-w-full mb-8">
-                                <div className="bg-[#1c3933] border border-white/8 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
+                                <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
 
                                   {/* HEADER SECTION */}
                                   <div className="flex justify-between items-start mb-6">
@@ -2469,7 +2583,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="flex items-center gap-2.5">
                               <Leaf size={16} className="text-brand-eco/60" />
                               <h2 className="text-base font-geometric font-black text-white">Sustainability Report</h2>
-                              <div className="flex-grow h-px bg-white/5 ml-2" />
+                              <div className="flex-grow h-px bg-brand-dark/60 ml-2" />
                             </div>
                           </div>
 
@@ -2506,7 +2620,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="flex items-center gap-2.5">
                               <BarChart3 size={16} className="text-brand-gold/50" />
                               <h2 className="text-base font-geometric font-black text-white">KPI Report</h2>
-                              <div className="flex-grow h-px bg-white/5 ml-2" />
+                              <div className="flex-grow h-px bg-brand-dark/60 ml-2" />
                             </div>
                           </div>
 
@@ -2520,7 +2634,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={foodCostLogs}
                                 dataKey="foodCost"
-                                multiSeries={user.role === 'admin'}
+                                multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
                                 benchmark={effectiveParams.foodCostTarget}
@@ -2538,7 +2652,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={laborCostLogs}
                                 dataKey="laborCost"
-                                multiSeries={user.role === 'admin'}
+                                multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
                                 benchmark={28}
@@ -2560,7 +2674,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={profitMarginLogs}
                                 dataKey="profitMargin"
-                                multiSeries={user.role === 'admin'}
+                                multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
                                 benchmark={25}
@@ -2604,7 +2718,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={sentimentLogs}
                                 dataKey="rating_value"
-                                multiSeries={user.role === 'admin'}
+                                multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
                                 benchmark={4.5}
@@ -2643,16 +2757,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </>
                       )}
 
-                      {dashboardTab === DashboardTab.DAILY_INPUT && (
-                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                          <DailyInputForm user={user} onAuditLog={logAction} />
-                        </div>
-                      )}
-
                       {dashboardTab === DashboardTab.FOOD_WASTE && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                           <FoodWasteIntelligence 
-                            outletId={user.role === 'admin' ? null : (outlets.find(o => o.code === user.outletCode) as any)?.id || null}
+                            outletId={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin' ? null : (outlets.find(o => o.code === user.outletCode) as any)?.id || null}
                             unitType={params.wasteUnit as 'kg' | 'Lbs'}
                             allOutlets={outlets}
                             benchmarks={{
@@ -2669,14 +2777,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                       )}
 
-                      {dashboardTab === DashboardTab.MILA_AI && (
-                        <MilaKnowledgeManager />
-                      )}
-
                       {dashboardTab === DashboardTab.GAMIFICATION && (
                         <GamificationHub />
                       )}
                     </div>
+                  </div>
+                )}
+                {activeView === PortalView.DAILY_INPUT && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <DailyInputForm user={user} onAuditLog={logAction} />
                   </div>
                 )}
                 {activeView === PortalView.IDENTITY && (
@@ -2694,7 +2803,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       const completed = steps.filter(s => s.done).length;
                       const pct = Math.round((completed / steps.length) * 100);
                       return (
-                        <div className="rounded-2xl border border-white/8 bg-gradient-to-r from-brand-gold/5 to-transparent p-5">
+                        <div className="rounded-2xl border border-brand-gold/20 bg-gradient-to-r from-brand-gold/5 to-transparent p-5">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-lg bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center">
@@ -2707,12 +2816,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <span className="text-2xl font-geometric font-black text-brand-gold tabular-nums">{pct}%</span>
                           </div>
-                          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                          <div className="h-2 rounded-full bg-brand-dark/60 overflow-hidden">
                             <div className="h-full rounded-full bg-gradient-to-r from-brand-eco to-brand-gold transition-all duration-500" style={{ width: `${pct}%` }} />
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-3">
                             {steps.map((s, i) => (
-                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-white/3 border border-white/5'}`}>
+                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-[#1c3933] border border-brand-gold/15'}`}>
                                 {s.done ? <CheckCircle2 size={9} /> : <div className="w-2 h-2 rounded-full border border-current" />}
                                 {s.label}
                               </span>
@@ -2800,7 +2909,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               type="text"
                               value={company.name}
                               onChange={e => setCompany({ ...company, name: e.target.value })}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
                               readOnly={!isEditingIdentity}
                             />
                           </div>
@@ -2834,7 +2943,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   const seq = String(outlets.filter(o => o.name).length + 1).padStart(2, '0');
                                   setCompany({ ...company, currentOutletName: name, currentOutletCode: prefix + seq });
                                 }}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
                                 placeholder="e.g. Skyline Lounge"
                                 readOnly={!isEditingIdentity}
                               />
@@ -2897,7 +3006,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setIsEditingAudit(!isEditingAudit)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-white/5 border border-white/10 text-white/60 hover:border-white/25 hover:text-white'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-dark/60 border border-brand-gold/10 text-white/60 hover:border-brand-gold/25 hover:text-white'}`}
                           >
                             {isEditingAudit ? <Unlock size={12} /> : <Edit2 size={12} />}
                             {isEditingAudit ? 'Lock' : 'Edit'}
@@ -2988,7 +3097,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               value={auditReport.comments}
                               onChange={e => setAuditReport({ ...auditReport, comments: e.target.value })}
                               disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
                             />
                           </div>
                         </div>
@@ -3000,18 +3109,162 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
 
 
+                {activeView === PortalView.SUPER_ADMIN && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto scrollbar-hide pb-20">
+                    <SuperAdminDashboard user={user} />
+                  </div>
+                )}
+
+                {activeView === PortalView.CONTACT && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto scrollbar-hide pb-20">
+                    <div className="max-w-2xl mx-auto">
+                      {/* Intro */}
+                      <div className="mb-8">
+                        <h4 className="text-lg font-geometric font-bold text-white mb-3">Need help?</h4>
+                        <p className="text-sm text-white/60 leading-relaxed">
+                          To help us enhance Ecometricus and deliver an even better experience, we'd greatly appreciate your feedback. Please share any comments or suggestions that could improve its performance. Thank you for your support!
+                        </p>
+                      </div>
+
+                      {/* Support email */}
+                      <div className="flex items-center gap-3 mb-8 p-4 rounded-xl bg-brand-gold/10 border border-brand-gold/25">
+                        <Mail size={18} className="text-brand-gold shrink-0" />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Support Email</p>
+                          <a href="mailto:support@ecometricus.com" className="text-sm text-white font-semibold hover:text-brand-gold transition-colors">support@ecometricus.com</a>
+                        </div>
+                      </div>
+
+                      {/* Form */}
+                      {contactSent ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                          <div className="w-16 h-16 rounded-full bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center mb-5">
+                            <CheckCircle2 size={32} className="text-brand-eco" />
+                          </div>
+                          <h4 className="text-lg font-geometric font-bold text-white mb-2">Message Sent!</h4>
+                          <p className="text-sm text-white/50 max-w-sm">Thank you for reaching out. Our support team will get back to you within 24 hours.</p>
+                          <button
+                            onClick={() => { setContactSent(false); setContactMessage(''); }}
+                            className="mt-6 px-5 py-2.5 rounded-xl bg-brand-gold/15 border border-brand-gold/30 text-brand-gold text-[12px] font-bold hover:bg-brand-gold/25 transition-all"
+                          >
+                            Send Another Message
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-5">
+                          {/* Name */}
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Your name</label>
+                            <input
+                              type="text"
+                              value={contactName}
+                              readOnly
+                              className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white/70 outline-none cursor-not-allowed"
+                            />
+                          </div>
+
+                          {/* Email */}
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Your email</label>
+                            <input
+                              type="email"
+                              value={contactEmail}
+                              readOnly
+                              className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white/70 outline-none cursor-not-allowed"
+                              placeholder="your@email.com"
+                            />
+                          </div>
+
+                          {/* Message */}
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">What happened?</label>
+                            <textarea
+                              value={contactMessage}
+                              onChange={e => setContactMessage(e.target.value)}
+                              className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all hover:border-brand-gold/30 min-h-[120px] resize-none"
+                              placeholder="Describe your issue in simple words..."
+                            />
+                          </div>
+
+                          {/* Screenshots */}
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Screenshots (optional)</label>
+                            <label className="flex flex-col items-center justify-center gap-2 w-full py-8 rounded-xl border-2 border-dashed border-brand-gold/15 hover:border-brand-gold/40 cursor-pointer transition-all bg-brand-dark/40 hover:bg-brand-gold/5">
+                              <ImageIcon size={24} className="text-brand-gold/50" />
+                              <span className="text-xs text-white/50 font-semibold">
+                                {contactScreenshots.length > 0
+                                  ? `${contactScreenshots.length} file${contactScreenshots.length > 1 ? 's' : ''} selected`
+                                  : 'Click to add images'}
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={e => {
+                                  const files = Array.from(e.target.files || []);
+                                  setContactScreenshots(prev => [...prev, ...files]);
+                                }}
+                              />
+                            </label>
+                            {contactScreenshots.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {contactScreenshots.map((file, i) => (
+                                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-gold/8 border border-brand-gold/20 text-xs text-white/70">
+                                    <ImageIcon size={12} className="text-brand-gold/60" />
+                                    <span className="truncate max-w-[120px]">{file.name}</span>
+                                    <button
+                                      onClick={() => setContactScreenshots(prev => prev.filter((_, idx) => idx !== i))}
+                                      className="text-white/30 hover:text-brand-alert transition-colors"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Send button */}
+                          <button
+                            onClick={async () => {
+                              if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) {
+                                setToast({ id: Date.now(), message: 'Please fill in all fields.', type: 'error' });
+                                return;
+                              }
+                              setContactSending(true);
+                              // Simulate sending — in production this would call an API
+                              await new Promise(r => setTimeout(r, 1200));
+                              setContactSending(false);
+                              setContactSent(true);
+                            }}
+                            disabled={contactSending || !contactName.trim() || !contactEmail.trim() || !contactMessage.trim()}
+                            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-gold/15 border border-brand-gold/40 text-brand-gold text-sm font-bold hover:bg-brand-gold/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {contactSending ? (
+                              <><RefreshCcw size={16} className="animate-spin" /> Sending…</>
+                            ) : (
+                              <><Send size={16} /> Send to support</>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {activeView === PortalView.AUDIT_LOG && (
                   <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
 
                     {/* ── Audit Log ── */}
-                    <div className="rounded-2xl overflow-hidden border border-white/8">
+                    <div className="rounded-2xl overflow-hidden border border-brand-gold/15">
                       {/* Header */}
                       <div className="bg-gradient-to-r from-brand-gold/8 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-gold/15 flex items-center gap-3 flex-wrap">
                         <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
                           <ScrollText size={18} className="text-brand-gold" />
                         </div>
                         {auditLogs.length > 0 && (
-                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-white/8">
+                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-brand-dark/60 border border-brand-gold/15">
                             {auditLogs.length} {auditLogs.length === 1 ? 'Entry' : 'Entries'}
                           </span>
                         )}
@@ -3049,11 +3302,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         };
                         const categories = [...new Set(actionTypes.map((a: string) => labelMap[a as string] || 'Other'))];
                         return (
-                          <div className="px-4 sm:px-8 py-3 border-b border-white/5 flex items-center gap-2 flex-wrap bg-brand-dark/20">
+                          <div className="px-4 sm:px-8 py-3 border-b border-brand-gold/15 flex items-center gap-2 flex-wrap bg-brand-dark/20">
                             <span className="text-[11px] font-black uppercase tracking-widest text-white/50 mr-1">Filter</span>
                             <button
                               onClick={() => setAuditFilter(null)}
-                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
+                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-[#1c3933] border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
                             >
                               All
                             </button>
@@ -3061,7 +3314,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <button
                                 key={cat}
                                 onClick={() => setAuditFilter(cat)}
-                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
+                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-[#1c3933] border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
                               >
                                 {cat}
                               </button>
@@ -3074,7 +3327,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[600px] overflow-y-auto scrollbar-gold">
                         {auditLogs.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="w-16 h-16 rounded-2xl bg-white/3 border border-white/8 flex items-center justify-center mb-5">
+                            <div className="w-16 h-16 rounded-2xl bg-[#1c3933] border border-brand-gold/20 flex items-center justify-center mb-5">
                               <ScrollText size={28} className="text-white/15" />
                             </div>
                             <p className="text-sm text-white/40 font-medium">No activity recorded yet</p>
@@ -3168,7 +3421,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                           benchmarks_updated: 'Benchmarks Updated',
                                         };
                                         const Icon = iconMap[log.action] || Activity;
-                                        const color = colorMap[log.action] || 'text-white/40 bg-white/5 border-white/10';
+                                        const color = colorMap[log.action] || 'text-white/40 bg-brand-dark/60 border-brand-gold/15';
                                         const label = labelMap[log.action] || log.action.replace(/_/g, ' ');
                                         const time = new Date(log.created_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
                                         const initials = (log.actor_name || '?').split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
@@ -3180,7 +3433,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                             </div>
 
                                             {/* Content */}
-                                            <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-white/5 group-hover:border-white/10 group-hover:bg-white/5 transition-colors px-4 py-3">
+                                            <div className="flex-1 min-w-0 rounded-xl bg-[#1c3933] border border-brand-gold/15 group-hover:border-brand-gold/25 group-hover:bg-brand-gold/5 transition-colors px-4 py-3">
                                               <div className="flex items-center justify-between gap-3 mb-1.5">
                                                 <div className="flex items-center gap-2 min-w-0">
                                                   <span className={`text-[11px] font-black uppercase tracking-widest ${color.split(' ')[0]} shrink-0`}>{label}</span>
@@ -3198,7 +3451,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                                   <span className="text-brand-gold text-[7px] font-black leading-none">{initials}</span>
                                                 </span>
                                                 <span className="text-[10px] font-bold text-white/50">{log.actor_name}</span>
-                                                <span className="text-[8px] font-bold text-white/25 uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/5">{log.actor_role}</span>
+                                                <span className="text-[8px] font-bold text-white/25 uppercase tracking-widest px-1.5 py-0.5 rounded bg-brand-dark/60">{log.actor_role}</span>
                                               </div>
                                             </div>
                                           </div>
@@ -3245,7 +3498,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               setEnrollPosition(''); setEnrollOutlet(''); setEnrollRole('');
                               setEnrollPermissions([]); setGenPassword(''); setGenLink('');
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-brand-gold/10 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-brand-gold/20 transition-colors"
                           >
                             <X size={10} /> Cancel
                           </button>
@@ -3269,12 +3522,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="space-y-1.5">
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Full Name</label>
                               <input type="text" value={enrollName} onChange={e => setEnrollName(e.target.value)} placeholder="Hotel Staff Name"
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
+                                className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Corporate Email</label>
                               <input type="email" value={enrollEmail} onChange={e => { const val = e.target.value; setEnrollEmail(val); setEnrollEmailError(validateCorporateEmail(val)); }} placeholder="staff@hotel.com"
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all ${enrollEmailError ? 'border-brand-alert' : enrollEmail && !enrollEmailError ? 'border-brand-eco/40' : 'border-white/15'}`} />
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all ${enrollEmailError ? 'border-brand-alert' : enrollEmail && !enrollEmailError ? 'border-brand-eco/40' : 'border-brand-gold/15'}`} />
                               {enrollEmailError ? (
                                 <p className="text-[10px] font-bold text-brand-alert ml-1">{enrollEmailError}</p>
                               ) : enrollEmail && !enrollEmailError ? (
@@ -3340,7 +3593,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               ref={permTriggerRef}
                               onClick={() => setIsPermDropdownOpen(!isPermDropdownOpen)}
                               className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors cursor-pointer
-                                ${isPermDropdownOpen ? 'border-brand-gold' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
+                                ${isPermDropdownOpen ? 'border-brand-gold' : 'border-brand-gold/25 hover:border-brand-gold/150'}`}
                             >
                               <span className={enrollPermissions.length ? 'text-white text-sm' : 'text-white/40 text-sm'}>
                                 {enrollPermissions.length === 0
@@ -3364,11 +3617,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors text-left
                                           ${checked
                                             ? 'bg-brand-gold/10 text-brand-gold'
-                                            : 'text-white/50 hover:bg-white/5 hover:text-white/80'}`}
+                                            : 'text-white/50 hover:bg-brand-dark/60 hover:text-white/80'}`}
                                       >
                                         {/* Custom themed checkbox */}
                                         <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-colors
-                                          ${checked ? 'bg-brand-gold border-brand-gold' : 'border-white/20 bg-transparent'}`}>
+                                          ${checked ? 'bg-brand-gold border-brand-gold' : 'border-brand-gold/20 bg-transparent'}`}>
                                           {checked && <Check size={10} className="text-brand-dark" strokeWidth={3} />}
                                         </span>
                                         <span className="text-[9px] font-bold uppercase tracking-tight leading-tight">{p}</span>
@@ -3377,7 +3630,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   })}
                                 </div>
                                 {/* Select all / Clear all footer */}
-                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/8">
+                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-brand-gold/15">
                                   <button type="button" onClick={() => setEnrollPermissions([])}
                                     className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">Clear all</button>
                                   <button type="button" onClick={() => setEnrollPermissions(AVAILABLE_PERMISSIONS)}
@@ -3469,7 +3722,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <div className="min-w-0">
                                   <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
                                   <div className="flex flex-wrap items-center gap-2 mt-1">
-                                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-white/5">{u.position}</span>
+                                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-brand-dark/60">{u.position}</span>
                                     <span className="text-[11px] text-brand-gold font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-gold/10 border border-brand-gold/20">{u.role.toUpperCase()}</span>
                                   </div>
                                 </div>
@@ -3519,10 +3772,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                                 {/* Actions */}
                                 <div className="flex gap-2 shrink-0">
-                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
                                     <Edit2 size={14} />
                                   </button>
-                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
                                     <Trash2 size={14} />
                                   </button>
                                 </div>
@@ -3546,7 +3799,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               {members.map((u) => {
                                 const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
                                 return (
-                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-white/3 rounded-2xl border border-white/8 hover:border-brand-gold/25 transition-colors gap-5">
+                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-[#1c3933] rounded-2xl border border-brand-gold/20 hover:border-brand-gold/25 transition-colors gap-5">
                                   {/* Left: avatar + identity */}
                                   <div className="flex items-center gap-4 min-w-0 flex-1">
                                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-eco/20 to-brand-eco/5 border border-brand-eco/20 flex items-center justify-center shrink-0">
@@ -3555,7 +3808,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <div className="min-w-0">
                                       <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
                                       <div className="flex flex-wrap items-center gap-2 mt-1">
-                                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-white/5">{u.position}</span>
+                                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-brand-dark/60">{u.position}</span>
                                         <span className="text-[11px] text-brand-eco font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-eco/10 border border-brand-eco/20">{u.role.toUpperCase()}</span>
                                       </div>
                                     </div>
@@ -3605,10 +3858,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                                     {/* Actions */}
                                     <div className="flex gap-2 shrink-0">
-                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
                                         <Edit2 size={14} />
                                       </button>
-                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
                                         <Trash2 size={14} />
                                       </button>
                                     </div>
@@ -3661,11 +3914,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <div className="space-y-2">
                             <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Outlet Selection</label>
                             <CustomSelect
-                              value={outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : ''}
-                              options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                              value={params.selectedManualOutlet === 'all' ? 'All Outlets' : (outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : '')}
+                              options={['All Outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
                               onChange={v => {
-                                const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
-                                setParams({ ...params, selectedManualOutlet: code });
+                                if (v === 'All Outlets') {
+                                  setParams({ ...params, selectedManualOutlet: 'all' });
+                                } else {
+                                  const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
+                                  setParams({ ...params, selectedManualOutlet: code });
+                                }
                               }}
                               placeholder="Select Target Outlet"
                               emptyMessage="No outlets added yet — go to Company → Outlets"
@@ -3717,7 +3974,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       {/* Cards */}
                       <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-brand-dark/40">
                         {/* Food Waste */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-white/5 border-brand-gold/30' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-brand-gold/10 border-brand-gold/30' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
                           {!isSustainabilityEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -3734,16 +3991,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-3xl font-geometric font-black text-brand-gold leading-none">{effectiveParams.wasteTarget}</span>
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">{effectiveParams.wasteUnit}</span>
                           </div>
-                          <div className="flex bg-brand-dark/80 rounded-full p-0.5 border border-white/5 w-fit mb-3">
+                          <div className="flex bg-brand-dark/80 rounded-full p-0.5 border border-brand-gold/15 w-fit mb-3">
                             <button disabled={!isSustainabilityEditable} onClick={() => setParams({ ...params, wasteUnit: 'kg' })} className={`px-3 py-1 rounded-full text-[8px] font-black transition-all ${effectiveParams.wasteUnit === 'kg' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}>KG</button>
                             <button disabled={!isSustainabilityEditable} onClick={() => setParams({ ...params, wasteUnit: 'lbs' })} className={`px-3 py-1 rounded-full text-[8px] font-black transition-all ${effectiveParams.wasteUnit === 'lbs' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}>LBS</button>
                           </div>
-                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.wasteTarget} onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-white/10 text-brand-gold focus:border-brand-gold' : 'border-brand-gold/30 text-brand-gold cursor-default'}`} />
+                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.wasteTarget} onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-brand-gold/10 text-brand-gold focus:border-brand-gold' : 'border-brand-gold/30 text-brand-gold cursor-default'}`} />
                           <input type="range" min="10" max="1000" disabled={!isSustainabilityEditable} value={effectiveParams.wasteTarget} onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-gold ${isSustainabilityEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
 
                         {/* Water Usage */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-white/5 border-blue-500/30' : 'bg-brand-dark/60 border-blue-500/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-blue-500/10 border-blue-500/30' : 'bg-brand-dark/60 border-blue-500/15'}`}>
                           {!isSustainabilityEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -3761,12 +4018,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">L</span>
                           </div>
                           <div className="h-7 mb-3" />
-                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.waterTarget} onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-white/10 text-blue-400 focus:border-brand-gold' : 'border-brand-gold/30 text-blue-400 cursor-default'}`} />
+                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.waterTarget} onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-brand-gold/10 text-blue-400 focus:border-brand-gold' : 'border-brand-gold/30 text-blue-400 cursor-default'}`} />
                           <input type="range" min="1000" max="100000" step="500" disabled={!isSustainabilityEditable} value={effectiveParams.waterTarget} onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-blue-500 ${isSustainabilityEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
 
                         {/* Energy Limit */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-white/5 border-brand-energy/30' : 'bg-brand-dark/60 border-brand-energy/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-brand-energy/10 border-brand-energy/30' : 'bg-brand-dark/60 border-brand-energy/15'}`}>
                           {!isSustainabilityEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -3784,7 +4041,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">kWh</span>
                           </div>
                           <div className="h-7 mb-3" />
-                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.energyTarget} onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-white/10 text-brand-energy focus:border-brand-gold' : 'border-brand-gold/30 text-brand-energy cursor-default'}`} />
+                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.energyTarget} onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-brand-gold/10 text-brand-energy focus:border-brand-gold' : 'border-brand-gold/30 text-brand-energy cursor-default'}`} />
                           <input type="range" min="100" max="10000" step="100" disabled={!isSustainabilityEditable} value={effectiveParams.energyTarget} onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-energy ${isSustainabilityEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
                       </div>
@@ -3815,7 +4072,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-brand-dark/40">
                         {/* Food Cost */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-white/5 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-brand-eco/10 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
                           {!isFnBEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -3832,12 +4089,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.foodCostTarget}</span>
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">%</span>
                           </div>
-                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.foodCostTarget} onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-white/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.foodCostTarget} onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
                           <input type="range" min="10" max="60" step="0.5" disabled={!isFnBEditable} value={effectiveParams.foodCostTarget} onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'opacity-20'}`} />
                         </div>
 
                         {/* Labor Cost */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-white/5 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-brand-eco/10 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
                           {!isFnBEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -3854,7 +4111,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.laborCostTarget}</span>
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">%</span>
                           </div>
-                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-white/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
                           <input type="range" min="5" max="50" step="0.5" disabled={!isFnBEditable} value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
                       </div>
@@ -3874,9 +4131,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-brand-dark/40">
                         {/* Deviation Alerts */}
-                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.alertsActive ? 'bg-brand-gold/8 border-brand-gold/25' : 'bg-brand-dark/60 border-white/8'}`}>
+                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.alertsActive ? 'bg-brand-gold/8 border-brand-gold/25' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-xl transition-all ${params.alertsActive ? 'bg-brand-gold/15' : 'bg-white/5'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${params.alertsActive ? 'bg-brand-gold/15' : 'bg-brand-dark/60'}`}>
                               <AlertCircle size={18} className={params.alertsActive ? 'text-brand-gold' : 'text-white/30'} />
                             </div>
                             <div>
@@ -3890,9 +4147,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
 
                         {/* Suggestion Engine */}
-                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.milaLogic ? 'bg-brand-eco/8 border-brand-eco/25' : 'bg-brand-dark/60 border-white/8'}`}>
+                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.milaLogic ? 'bg-brand-eco/8 border-brand-eco/25' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-xl transition-all ${params.milaLogic ? 'bg-brand-eco/15' : 'bg-white/5'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${params.milaLogic ? 'bg-brand-eco/15' : 'bg-brand-dark/60'}`}>
                               <Lightbulb size={18} className={params.milaLogic ? 'text-brand-eco' : 'text-white/30'} />
                             </div>
                             <div>
@@ -3951,7 +4208,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">POS API Key</label>
                             </div>
-                            <input type="password" disabled={!isEditingApis} value={params.posApiKey} onChange={e => setParams({ ...params, posApiKey: e.target.value })} placeholder="Connect POS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
+                            <input type="password" disabled={!isEditingApis} value={params.posApiKey} onChange={e => setParams({ ...params, posApiKey: e.target.value })} placeholder="Connect POS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-brand-gold/10'}`} />
                             <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Sales & Covers</p>
                           </div>
 
@@ -3963,7 +4220,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">CRM API Key</label>
                             </div>
-                            <input type="password" disabled={!isEditingApis} value={params.crmApiKey} onChange={e => setParams({ ...params, crmApiKey: e.target.value })} placeholder="Connect CRM..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
+                            <input type="password" disabled={!isEditingApis} value={params.crmApiKey} onChange={e => setParams({ ...params, crmApiKey: e.target.value })} placeholder="Connect CRM..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-brand-gold/10'}`} />
                             <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Guest Loyalty Data</p>
                           </div>
 
@@ -3975,7 +4232,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">PMS API Key</label>
                             </div>
-                            <input type="password" disabled={!isEditingApis} value={params.pmsApiKey} onChange={e => setParams({ ...params, pmsApiKey: e.target.value })} placeholder="Connect PMS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
+                            <input type="password" disabled={!isEditingApis} value={params.pmsApiKey} onChange={e => setParams({ ...params, pmsApiKey: e.target.value })} placeholder="Connect PMS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-brand-gold/10'}`} />
                             <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Occupancy & Forecast</p>
                           </div>
                         </div>
@@ -3990,13 +4247,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
               </div>
             </div>
+            </div>
           </main>
-          <MilaWidget context={adminContext} />
-        </>
+        </div>
+        <MilaWidget context={adminContext} />
       </div>
-    </div >
-
-    </div>
 
   {/* 🔐 Admin Legal Consent Window (Forensic Gate) */}
   {isPendingConsent && (

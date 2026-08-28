@@ -260,13 +260,13 @@ const KpiChart: React.FC<KpiChartProps> = ({
   };
 
   return (
-    <div className="bg-[#0e1f1c] border border-white/6 rounded-xl p-4 sm:p-5 flex flex-col h-full hover:border-white/10 transition-colors">
+    <div className="bg-[#0e1f1c] border border-brand-gold/6 rounded-xl p-4 sm:p-5 flex flex-col h-full hover:border-brand-gold/10 transition-colors">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3 mb-3">
         {/* Left: icon + title */}
         <div className="flex items-center gap-2.5 min-w-0">
           {Icon && (
-            <div className="w-8 h-8 rounded-lg bg-white/3 border border-white/6 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-white/3 border border-brand-gold/6 flex items-center justify-center shrink-0">
               <Icon size={14} className={iconColor} />
             </div>
           )}
@@ -330,7 +330,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
       </div>
 
       {/* Legend for multi-series / stacked */}
-      <div className="mt-2 pt-2 border-t border-white/4">
+      <div className="mt-2 pt-2 border-t border-brand-gold/4">
         {multiSeries && seriesNames.length > 0 ? (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {seriesNames.map((name, i) => (

@@ -5,6 +5,7 @@ import {
   Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown
 } from 'lucide-react';
 import { UserProfile } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface DailyInputFormProps {
   user: UserProfile;
@@ -36,7 +37,7 @@ const FormDropdown: React.FC<{
         type="button"
         onClick={() => setOpen(o => !o)}
         className={`w-full flex items-center justify-between bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-left transition-colors
-          ${open ? 'border-brand-gold' : 'border-white/15 hover:border-brand-gold/40'}`}
+          ${open ? 'border-brand-gold' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
       >
         <span className={value ? 'text-white' : 'text-white/40'}>{value || placeholder || 'Select…'}</span>
         <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
@@ -296,7 +297,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   const [wasteEntries, setWasteEntries] = useState<WasteEntry[]>(() => {
     const saved = localStorage.getItem('ecometricus_waste_entries');
     let entries: WasteEntry[] = saved ? JSON.parse(saved) : [];
-    if (user.role === 'basic' || user.role === 'chef') {
+    if (user.role === 'basic') {
       entries = entries.filter(e => e.outletCode === user.outletCode);
     }
     return entries;
@@ -413,12 +414,50 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
     setShowProductDropdown(false);
   };
 
-  const handleSaveWaste = (e: React.FormEvent) => {
+  const handleSaveWaste = async (e: React.FormEvent) => {
     e.preventDefault();
     const productList = form.products.length > 0 ? form.products : (form.product ? [form.product] : []);
     if (!form.category || productList.length === 0 || !form.amount || !form.reason || !form.destination) return;
     const finalReason = form.reason === 'Other' ? form.customReason : form.reason;
     const productStr = productList.join(', ');
+    const amountNum = parseFloat(form.amount);
+
+    // ── Sync to Supabase ──
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      // Find outlet by code
+      const { data: outlet } = await supabase
+        .from('outlets')
+        .select('id, name')
+        .eq('code', user.outletCode)
+        .single();
+
+      if (outlet) {
+        await supabase.from('food_waste_logs').insert({
+          outlet_id: outlet.id,
+          outlet_name: outlet.name,
+          mass_kg: unit === 'lbs' ? amountNum * 0.4536 : amountNum,
+          cost_per_kg: 6.53,
+          is_mock: false,
+          user_id: session?.user?.id || null,
+          created_by: user.fullName,
+        });
+      }
+
+      // ── Record daily check-in (streak tracking) ──
+      if (session?.user?.id) {
+        await supabase.rpc('record_daily_checkin', {
+          p_user_id: session.user.id,
+          p_user_name: user.fullName,
+          p_user_role: user.role,
+          p_outlet_code: user.outletCode,
+          p_entry_type: 'waste',
+        });
+        window.dispatchEvent(new Event('ecometricus_checkin_updated'));
+      }
+    } catch (err) {
+      console.error('[DailyInput] Failed to sync waste entry to Supabase:', err);
+    }
 
     if (editingId) {
       setWasteEntries(prev => prev.map(entry =>
@@ -446,8 +485,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       };
       setWasteEntries([newEntry, ...wasteEntries]);
       onAuditLog?.('waste_entry_added', 'daily_input', productStr,
-        `Logged waste: ${form.category} → ${productStr} (${parseFloat(form.amount)}${unit}) — ${finalReason}`,
-        { category: form.category, product: productStr, products: productList, amount: parseFloat(form.amount), unit, reason: finalReason, destination: form.destination, outletCode: user.outletCode });
+        `Logged waste: ${form.category} → ${productStr} (${amountNum}${unit}) — ${finalReason}`,
+        { category: form.category, product: productStr, products: productList, amount: amountNum, unit, reason: finalReason, destination: form.destination, outletCode: user.outletCode });
+      window.dispatchEvent(new Event('ecometricus_waste_updated'));
     }
     handleTare();
   };
@@ -469,9 +509,46 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
     setUnit(entry.unit);
   };
 
-  const handleSaveResource = (type: 'water' | 'energy') => {
+  const handleSaveResource = async (type: 'water' | 'energy') => {
     const val = type === 'water' ? form.water : form.energy;
     if (!val) return;
+    const amountNum = parseFloat(val);
+
+    // ── Sync to Supabase ──
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: outlet } = await supabase
+        .from('outlets')
+        .select('id, name')
+        .eq('code', user.outletCode)
+        .single();
+
+      if (outlet) {
+        await supabase.from('resource_logs').insert({
+          outlet_id: outlet.id,
+          outlet_name: outlet.name,
+          resource_type: type,
+          amount: amountNum,
+          user_id: session?.user?.id || null,
+          created_by: user.fullName,
+        });
+      }
+
+      // ── Record daily check-in (streak tracking) ──
+      if (session?.user?.id) {
+        await supabase.rpc('record_daily_checkin', {
+          p_user_id: session.user.id,
+          p_user_name: user.fullName,
+          p_user_role: user.role,
+          p_outlet_code: user.outletCode,
+          p_entry_type: type,
+        });
+        window.dispatchEvent(new Event('ecometricus_checkin_updated'));
+      }
+    } catch (err) {
+      console.error('[DailyInput] Failed to sync resource entry to Supabase:', err);
+    }
+
     if (editingResourceId) {
       setResourceEntries(prev => prev.map(entry =>
         entry.id === editingResourceId ? { ...entry, amount: parseFloat(val) } : entry
@@ -488,8 +565,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       };
       setResourceEntries([newEntry, ...resourceEntries]);
       onAuditLog?.(`${type}_entry_added`, 'daily_input', type,
-        `Logged ${type}: ${parseFloat(val)}${type === 'water' ? 'L' : 'kWh'}`,
-        { type, amount: parseFloat(val), outletCode: user.outletCode });
+        `Logged ${type}: ${amountNum}${type === 'water' ? 'L' : 'kWh'}`,
+        { type, amount: amountNum, outletCode: user.outletCode });
+      window.dispatchEvent(new Event('ecometricus_resource_updated'));
     }
     setForm(prev => ({ ...prev, [type]: '' }));
   };
@@ -546,7 +624,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       )}
 
       {/* ── FOOD WASTE FORM ── */}
-      <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5 sm:p-6">
+      <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-5 sm:p-6">
         <div className="flex items-center gap-3 mb-5">
           <Leaf size={18} className="text-brand-eco" />
           <h3 className="text-sm font-black text-white uppercase tracking-widest">Food Waste Entry</h3>
@@ -631,7 +709,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                       }
                     }}
                     placeholder="Search, select, or type then press Enter..."
-                    className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all"
+                    className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all"
                   />
                 </div>
                 {showProductDropdown && form.subCategory && INVENTORY_LOGIC[form.category]?.[form.subCategory] && (
@@ -679,7 +757,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               {form.reason === 'Other' && (
                 <input type="text" value={form.customReason} onChange={e => setForm({ ...form, customReason: e.target.value })}
                   placeholder="Specify reason..."
-                  className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-2.5 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
+                  className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-2.5 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
               )}
             </div>
           )}
@@ -695,9 +773,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 <div className="flex-1">
                   <input type="number" step="0.1" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })}
                     placeholder="0.0" min="0"
-                    className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-lg font-geometric font-black text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
+                    className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 px-4 text-lg font-geometric font-black text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
                 </div>
-                <div className="flex gap-1 bg-brand-dark/80 border border-white/15 rounded-xl p-1">
+                <div className="flex gap-1 bg-brand-dark/80 border border-brand-gold/15 rounded-xl p-1">
                   {(['kg', 'lbs', 'L'] as const).map(u => (
                     <button key={u} type="button" onClick={() => setUnit(u)}
                       className={`px-3 py-2 rounded-lg text-[11px] font-bold uppercase transition-all ${unit === u ? 'bg-brand-gold text-brand-dark' : 'text-white/50 hover:text-white'}`}>
@@ -735,7 +813,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               </button>
               {editingId && (
                 <button type="button" onClick={handleTare}
-                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
                   <RotateCcw size={14} /> Cancel
                 </button>
               )}
@@ -755,7 +833,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       {/* ── WATER & ENERGY TRACKING ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Water */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5 sm:p-6">
+        <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-5 sm:p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 bg-[#3b82f6]/10 border border-[#3b82f6]/30 rounded-xl flex items-center justify-center shrink-0">
               <Droplets size={18} className="text-[#3b82f6]" />
@@ -774,7 +852,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               <div className="relative">
                 <input type="number" value={form.water} onChange={e => setForm({ ...form, water: e.target.value })}
                   placeholder="Enter volume in liters" min="0"
-                  className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
+                  className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#3b82f6]/60 uppercase tracking-wider">L</span>
               </div>
             </div>
@@ -785,7 +863,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               </button>
               {editingResourceId && form.water && (
                 <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, water: '' })); }}
-                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
+                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
                   <RotateCcw size={14} /> Cancel
                 </button>
               )}
@@ -794,7 +872,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
         </div>
 
         {/* Energy */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5 sm:p-6">
+        <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-5 sm:p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
               <Zap size={18} className="text-brand-gold" />
@@ -813,7 +891,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               <div className="relative">
                 <input type="number" value={form.energy} onChange={e => setForm({ ...form, energy: e.target.value })}
                   placeholder="Enter volume in kilowatt-hours" min="0"
-                  className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
+                  className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-brand-gold/60 uppercase tracking-wider">kWh</span>
               </div>
             </div>
@@ -824,7 +902,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               </button>
               {editingResourceId && form.energy && (
                 <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, energy: '' })); }}
-                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
+                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
                   <RotateCcw size={14} /> Cancel
                 </button>
               )}
@@ -835,15 +913,15 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
 
       {/* ── VERIFICATION: FOOD WASTE LOG ── */}
       {wasteEntries.length > 0 && (
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl overflow-hidden">
-          <div className="p-5 border-b border-white/8 flex items-center gap-3">
+        <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl overflow-hidden">
+          <div className="p-5 border-b border-brand-gold/8 flex items-center gap-3">
             <CheckCircle2 size={16} className="text-brand-eco" />
             <h3 className="text-sm font-black text-white uppercase tracking-widest">Verification: Food Waste Log</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-white/5 bg-black/10">
+                <tr className="border-b border-brand-gold/5 bg-black/10">
                   <th className="py-3 px-4 text-[9px] font-black uppercase tracking-widest text-brand-gold/60">Logged Item</th>
                   <th className="py-3 px-4 text-[9px] font-black uppercase tracking-widest text-brand-gold/60">Category / Food Group</th>
                   <th className="py-3 px-4 text-[9px] font-black uppercase tracking-widest text-brand-gold/60">Reason</th>
@@ -855,7 +933,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               </thead>
               <tbody>
                 {wasteEntries.map((entry) => (
-                  <tr key={entry.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                  <tr key={entry.id} className="border-b border-brand-gold/5 hover:bg-white/3 transition-colors">
                     <td className="py-3 px-4">
                       <span className="text-xs font-black text-white uppercase tracking-wider">{entry.product}</span>
                     </td>
@@ -891,15 +969,15 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
 
       {/* ── VERIFICATION: RESOURCE FLOWS ── */}
       {resourceEntries.length > 0 && (
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl overflow-hidden">
-          <div className="p-5 border-b border-white/8 flex items-center gap-3">
+        <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl overflow-hidden">
+          <div className="p-5 border-b border-brand-gold/8 flex items-center gap-3">
             <TrendingDown size={16} className="text-brand-gold" />
             <h3 className="text-sm font-black text-white uppercase tracking-widest">Verification: Resource Flows</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-white/5 bg-black/10">
+                <tr className="border-b border-brand-gold/5 bg-black/10">
                   <th className="py-3 px-4 text-[9px] font-black uppercase tracking-widest text-brand-gold/60">Flow Type</th>
                   <th className="py-3 px-4 text-[9px] font-black uppercase tracking-widest text-brand-gold/60">Cumulative Consumption</th>
                   <th className="py-3 px-4 text-[9px] font-black uppercase tracking-widest text-brand-gold/60">Log Time</th>
@@ -908,7 +986,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               </thead>
               <tbody>
                 {resourceEntries.map((entry) => (
-                  <tr key={entry.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                  <tr key={entry.id} className="border-b border-brand-gold/5 hover:bg-white/3 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         {entry.type === 'water' ? <Droplets size={13} className="text-[#3b82f6]" /> : <Zap size={13} className="text-brand-gold" />}
@@ -949,7 +1027,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Carbon Lifecycle */}
-          <div className={`rounded-2xl border p-5 transition-all ${showAlertCarbon ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933]'}`}>
+          <div className={`rounded-2xl border p-5 transition-all ${showAlertCarbon ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933]'}`}>
             <div className="flex items-center gap-2 mb-4">
               <Cloud size={16} className="text-brand-gold" />
               <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Carbon Lifecycle</h4>
@@ -974,7 +1052,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
           </div>
 
           {/* Water Resource */}
-          <div className={`rounded-2xl border p-5 transition-all ${showAlertWater ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933]'}`}>
+          <div className={`rounded-2xl border p-5 transition-all ${showAlertWater ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933]'}`}>
             <div className="flex items-center gap-2 mb-4">
               <Scale size={16} className="text-brand-gold" />
               <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Water Resource</h4>
@@ -999,7 +1077,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
           </div>
 
           {/* Financial Impact */}
-          <div className={`rounded-2xl border p-5 transition-all ${showAlertFinance ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933]'}`}>
+          <div className={`rounded-2xl border p-5 transition-all ${showAlertFinance ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933]'}`}>
             <div className="flex items-center gap-2 mb-4">
               <DollarSign size={16} className="text-brand-gold" />
               <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Financial Impact</h4>
@@ -1007,7 +1085,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
             <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
               ${totals.totalFinancialLoss.toFixed(2)}
             </p>
-            <div className="space-y-1 pt-2 border-t border-white/8">
+            <div className="space-y-1 pt-2 border-t border-brand-gold/8">
               <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest text-white/40">
                 <span>Item Loss:</span>
                 <span className="text-white">${totals.financialLossItems.toFixed(2)}</span>
@@ -1048,7 +1126,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmModal(null)}
-                className="flex-1 px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/70 font-black text-xs uppercase tracking-widest hover:bg-white/10 hover:text-white hover:border-white/30 transition-all"
+                className="flex-1 px-5 py-3.5 rounded-xl bg-white/5 border border-brand-gold/15 text-white/70 font-black text-xs uppercase tracking-widest hover:bg-white/10 hover:text-white hover:border-brand-gold/30 transition-all"
               >
                 Cancel
               </button>

@@ -99,7 +99,7 @@ const CumulativeFoodWasteChart: React.FC<CumulativeFoodWasteChartProps> = ({ dat
         {/* Grid Lines */}
         <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
           {[maxVal, maxVal * 0.8, maxVal * 0.6, maxVal * 0.4, maxVal * 0.2, 0].map((val) => (
-            <div key={val} className="w-full border-t border-white/5 h-0"></div>
+            <div key={val} className="w-full border-t border-brand-gold/5 h-0"></div>
           ))}
         </div>
 
@@ -152,7 +152,7 @@ const CumulativeFoodWasteChart: React.FC<CumulativeFoodWasteChartProps> = ({ dat
                   transform: `translate(-50%, -110%)`,
                 }}
               >
-                <div className="flex justify-between items-center mb-1 border-b border-white/10 pb-1">
+                <div className="flex justify-between items-center mb-1 border-b border-brand-gold/10 pb-1">
                   <span className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{selectedDay.date} Detail</span>
                   <XIcon size={8} className="text-gray-500" />
                 </div>

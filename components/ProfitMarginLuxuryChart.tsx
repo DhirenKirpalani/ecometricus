@@ -131,7 +131,7 @@ const ProfitMarginLuxuryChart: React.FC<ProfitMarginLuxuryChartProps> = ({ data,
                 {/* Grid Lines */}
                 <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
                     {[40, 30, 20, 10, 0].map((val) => (
-                        <div key={val} className="w-full border-t border-white/5 h-0"></div>
+                        <div key={val} className="w-full border-t border-brand-gold/5 h-0"></div>
                     ))}
                 </div>
 
@@ -191,7 +191,7 @@ const ProfitMarginLuxuryChart: React.FC<ProfitMarginLuxuryChartProps> = ({ data,
                                     marginLeft: isRightSide ? '-20px' : '20px'
                                 }}
                             >
-                                <div className="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
+                                <div className="flex justify-between items-center mb-3 border-b border-brand-gold/10 pb-2">
                                     <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{selectedDay} Margins</span>
                                     <XIcon size={12} className="text-gray-500 cursor-pointer" onClick={() => setSelectedDay(null)} />
                                 </div>
@@ -207,7 +207,7 @@ const ProfitMarginLuxuryChart: React.FC<ProfitMarginLuxuryChartProps> = ({ data,
                                             </span>
                                         </div>
                                     ))}
-                                    <div className="pt-2 border-t border-white/10 flex justify-between items-center">
+                                    <div className="pt-2 border-t border-brand-gold/10 flex justify-between items-center">
                                         <span className="text-[9px] font-black text-white uppercase tracking-widest">Avg Margin</span>
                                         <span className="text-xs font-black text-brand-gold">
                                             {(dayInfo.total / outlets.length).toFixed(1)}%
@@ -234,7 +234,7 @@ const ProfitMarginLuxuryChart: React.FC<ProfitMarginLuxuryChartProps> = ({ data,
             </div>
 
             {/* Admin Legend */}
-            <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-white/5 z-20">
+            <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-brand-gold/5 z-20">
                 {outlets.map(outlet => (
                     <div key={outlet.code} className="flex items-center gap-2.5">
                         <div className="w-2.5 h-2.5" style={{ backgroundColor: outlet.color_hex }} />

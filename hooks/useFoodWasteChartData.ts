@@ -29,6 +29,11 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
       localStorage.removeItem('ecometricus_cumulative_waste');
       localStorage.setItem('ecometricus_waste_last_date', today);
     }
+
+    // Listen for new waste entries to refresh chart
+    const handleStorageChange = () => fetchChartData();
+    window.addEventListener('ecometricus_waste_updated', handleStorageChange);
+
     const fetchChartData = async () => {
 
       setIsLoading(true);
@@ -44,13 +49,14 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
         setTarget(weeklyCo2Target);
         setDailyBenchmark(dailyCo2Benchmark);
 
-        // 2. Fetch Live ROYAL Data
-        const { data: royalLogs, error: royalError } = await supabase
+        // 2. Fetch Live Data from all outlets
+        const { data: wasteLogs, error: wasteError } = await supabase
           .from('food_waste_logs')
-          .select('mass_kg, created_at')
-          .ilike('outlet_name', 'royal');
+          .select('mass_kg, created_at, outlet_name, outlets(name)')
+          .order('created_at', { ascending: false })
+          .limit(200);
 
-        if (royalError) throw royalError;
+        if (wasteError) throw wasteError;
 
         // 3. Data Mapping — only use real data from Supabase
         const dayMap: Record<string, any> = {};
@@ -65,14 +71,21 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
           };
         });
  
-        // Map Live Royal Data to Days if any exists
-        if (royalLogs && royalLogs.length > 0) {
-          royalLogs.forEach(log => {
+        // Map Live Data to Days — support both outlet_name column and joined outlets.name
+        if (wasteLogs && wasteLogs.length > 0) {
+          wasteLogs.forEach((log: any) => {
             const date = new Date(log.created_at);
             const dayLabel = DAYS[date.getDay()];
-            // Royal Data: CO2e derived from mass (Factor 2.85)
+            const outletName = (log.outlet_name || log.outlets?.name || 'ROYAL').toUpperCase();
+            const mass = Number(log.mass_kg) || 0;
+            const co2e = mass * 2.85;
+
             if (dayMap[dayLabel]) {
-              dayMap[dayLabel]["ROYAL"] += (Number(log.mass_kg) || 0) * 2.85;
+              if (outletName.includes('ROYAL')) dayMap[dayLabel]["ROYAL"] += co2e;
+              else if (outletName.includes('FISHER')) dayMap[dayLabel]["FISHER'S"] += co2e;
+              else if (outletName.includes('RALPH')) dayMap[dayLabel]["RALPH'S"] += co2e;
+              else if (outletName.includes('GUSTO')) dayMap[dayLabel]["GUSTO"] += co2e;
+              else dayMap[dayLabel]["ROYAL"] += co2e; // default to Royal
             }
           });
         }
@@ -94,6 +107,7 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
     };
 
     fetchChartData();
+    return () => window.removeEventListener('ecometricus_waste_updated', handleStorageChange);
   }, []);
 
   return { chartData, target, dailyBenchmark, weeklyTotal, isLoading };

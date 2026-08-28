@@ -107,7 +107,7 @@ const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
 
                 {/* Intro Message - Mila Style */}
                 <div className="flex justify-start">
-                    <div className="max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed bg-white/5 border border-white/10 text-gray-200 rounded-bl-none">
+                    <div className="max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed bg-white/5 border border-brand-gold/10 text-gray-200 rounded-bl-none">
                         Thank you for sharing your thoughts and comments to improve Ecometricus Sustainability system.
                     </div>
                 </div>
@@ -143,7 +143,7 @@ const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
                         placeholder="Type your suggestion..."
-                        className="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors"
+                        className="flex-grow bg-white/5 border border-brand-gold/10 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors"
                         disabled={isLoading || isSubmitted}
                     />
                     <button
