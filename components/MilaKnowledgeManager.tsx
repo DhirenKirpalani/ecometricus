@@ -476,7 +476,7 @@ const MilaKnowledgeManager: React.FC = () => {
                 <p className="text-[10px] text-white/40 mt-0.5">Earn +{XP_PER_UPLOAD} XP on upload</p>
               </div>
             </div>
-            <button onClick={() => setShowUpload(false)} className="p-2 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all">
+            <button onClick={() => setShowUpload(false)} className="p-2 rounded-lg text-white/30 hover:text-white hover:bg-brand-gold/10 transition-all">
               <X size={16} />
             </button>
           </div>
@@ -518,7 +518,7 @@ const MilaKnowledgeManager: React.FC = () => {
                 {/* File info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30 bg-white/5 px-1.5 py-0.5 rounded shrink-0">{ext}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30 bg-brand-dark/60 px-1.5 py-0.5 rounded shrink-0">{ext}</span>
                     <p className="text-xs font-bold text-white truncate">{item.name}</p>
                   </div>
                   <p className="text-[10px] text-white/40 mt-0.5">
@@ -601,7 +601,7 @@ const MilaKnowledgeManager: React.FC = () => {
         </div>
       ) : filteredDocs.length === 0 ? (
         <div className="text-center py-16 bg-[#1c3933]/50 border border-brand-gold/20 rounded-2xl">
-          <div className="inline-flex w-14 h-14 rounded-2xl bg-white/5 border border-brand-gold/20 items-center justify-center mb-4">
+          <div className="inline-flex w-14 h-14 rounded-2xl bg-brand-dark/60 border border-brand-gold/20 items-center justify-center mb-4">
             <FileText size={24} className="text-white/20" />
           </div>
           <p className="text-sm text-white/40 font-medium mb-1">
@@ -648,7 +648,7 @@ const MilaKnowledgeManager: React.FC = () => {
                       >
                         {meta.label}
                       </span>
-                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/25 bg-white/5 px-2 py-0.5 rounded">
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/25 bg-brand-dark/60 px-2 py-0.5 rounded">
                         {doc.source}
                       </span>
                       {doc.chunks.length > 1 && (

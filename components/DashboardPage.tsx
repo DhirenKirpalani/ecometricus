@@ -453,7 +453,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
                   className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2
                     ${opt === value
                       ? 'text-brand-gold bg-brand-gold/10 font-semibold'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+                      : 'text-white/70 hover:text-white hover:bg-brand-dark/60'}`}
                 >
                   {opt === value && <Check size={12} className="text-brand-gold shrink-0" />}
                   {opt !== value && <span className="w-3 shrink-0" />}
@@ -1977,7 +1977,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         className={`relative flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
           active
             ? 'bg-brand-gold/20 text-white border border-brand-gold/150 shadow-[0_0_15px_rgba(200,164,19,0.15)]'
-            : 'text-white/60 hover:text-white/90 hover:bg-white/5 border border-transparent'
+            : 'text-white/60 hover:text-white/90 hover:bg-brand-dark/60 border border-transparent'
         }`}
       >
         <Icon
@@ -2352,7 +2352,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 whitespace-nowrap border ${
                               active
                                 ? 'bg-brand-gold/15 border-brand-gold/40 text-white shadow-[0_2px_12px_rgba(200,164,19,0.15)]'
-                                : 'bg-white/3 border-transparent text-white/50 hover:text-white/80 hover:bg-white/5 hover:border-brand-gold/15'
+                                : 'bg-[#1c3933] border-transparent text-white/50 hover:text-white/80 hover:bg-brand-dark/60 hover:border-brand-gold/15'
                             }`}
                           >
                             <tab.icon size={15} className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/30 group-hover:text-white/60'}`} />
@@ -2578,7 +2578,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="flex items-center gap-2.5">
                               <Leaf size={16} className="text-brand-eco/60" />
                               <h2 className="text-base font-geometric font-black text-white">Sustainability Report</h2>
-                              <div className="flex-grow h-px bg-white/5 ml-2" />
+                              <div className="flex-grow h-px bg-brand-dark/60 ml-2" />
                             </div>
                           </div>
 
@@ -2615,7 +2615,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="flex items-center gap-2.5">
                               <BarChart3 size={16} className="text-brand-gold/50" />
                               <h2 className="text-base font-geometric font-black text-white">KPI Report</h2>
-                              <div className="flex-grow h-px bg-white/5 ml-2" />
+                              <div className="flex-grow h-px bg-brand-dark/60 ml-2" />
                             </div>
                           </div>
 
@@ -2815,12 +2815,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <span className="text-2xl font-geometric font-black text-brand-gold tabular-nums">{pct}%</span>
                           </div>
-                          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                          <div className="h-2 rounded-full bg-brand-dark/60 overflow-hidden">
                             <div className="h-full rounded-full bg-gradient-to-r from-brand-eco to-brand-gold transition-all duration-500" style={{ width: `${pct}%` }} />
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-3">
                             {steps.map((s, i) => (
-                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-white/3 border border-brand-gold/15'}`}>
+                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-[#1c3933] border border-brand-gold/15'}`}>
                                 {s.done ? <CheckCircle2 size={9} /> : <div className="w-2 h-2 rounded-full border border-current" />}
                                 {s.label}
                               </span>
@@ -3005,7 +3005,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setIsEditingAudit(!isEditingAudit)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-white/5 border border-brand-gold/10 text-white/60 hover:border-brand-gold/25 hover:text-white'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-dark/60 border border-brand-gold/10 text-white/60 hover:border-brand-gold/25 hover:text-white'}`}
                           >
                             {isEditingAudit ? <Unlock size={12} /> : <Edit2 size={12} />}
                             {isEditingAudit ? 'Lock' : 'Edit'}
@@ -3258,7 +3258,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <ScrollText size={18} className="text-brand-gold" />
                         </div>
                         {auditLogs.length > 0 && (
-                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-brand-gold/15">
+                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-brand-dark/60 border border-brand-gold/15">
                             {auditLogs.length} {auditLogs.length === 1 ? 'Entry' : 'Entries'}
                           </span>
                         )}
@@ -3300,7 +3300,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-[11px] font-black uppercase tracking-widest text-white/50 mr-1">Filter</span>
                             <button
                               onClick={() => setAuditFilter(null)}
-                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
+                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-[#1c3933] border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
                             >
                               All
                             </button>
@@ -3308,7 +3308,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <button
                                 key={cat}
                                 onClick={() => setAuditFilter(cat)}
-                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
+                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-[#1c3933] border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
                               >
                                 {cat}
                               </button>
@@ -3321,7 +3321,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[600px] overflow-y-auto scrollbar-gold">
                         {auditLogs.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="w-16 h-16 rounded-2xl bg-white/3 border border-brand-gold/20 flex items-center justify-center mb-5">
+                            <div className="w-16 h-16 rounded-2xl bg-[#1c3933] border border-brand-gold/20 flex items-center justify-center mb-5">
                               <ScrollText size={28} className="text-white/15" />
                             </div>
                             <p className="text-sm text-white/40 font-medium">No activity recorded yet</p>
@@ -3415,7 +3415,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                           benchmarks_updated: 'Benchmarks Updated',
                                         };
                                         const Icon = iconMap[log.action] || Activity;
-                                        const color = colorMap[log.action] || 'text-white/40 bg-white/5 border-brand-gold/10';
+                                        const color = colorMap[log.action] || 'text-white/40 bg-brand-dark/60 border-brand-gold/15';
                                         const label = labelMap[log.action] || log.action.replace(/_/g, ' ');
                                         const time = new Date(log.created_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
                                         const initials = (log.actor_name || '?').split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
@@ -3427,7 +3427,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                             </div>
 
                                             {/* Content */}
-                                            <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-brand-gold/15 group-hover:border-brand-gold/10 group-hover:bg-white/5 transition-colors px-4 py-3">
+                                            <div className="flex-1 min-w-0 rounded-xl bg-[#1c3933] border border-brand-gold/15 group-hover:border-brand-gold/25 group-hover:bg-brand-gold/5 transition-colors px-4 py-3">
                                               <div className="flex items-center justify-between gap-3 mb-1.5">
                                                 <div className="flex items-center gap-2 min-w-0">
                                                   <span className={`text-[11px] font-black uppercase tracking-widest ${color.split(' ')[0]} shrink-0`}>{label}</span>
@@ -3445,7 +3445,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                                   <span className="text-brand-gold text-[7px] font-black leading-none">{initials}</span>
                                                 </span>
                                                 <span className="text-[10px] font-bold text-white/50">{log.actor_name}</span>
-                                                <span className="text-[8px] font-bold text-white/25 uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/5">{log.actor_role}</span>
+                                                <span className="text-[8px] font-bold text-white/25 uppercase tracking-widest px-1.5 py-0.5 rounded bg-brand-dark/60">{log.actor_role}</span>
                                               </div>
                                             </div>
                                           </div>
@@ -3611,7 +3611,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors text-left
                                           ${checked
                                             ? 'bg-brand-gold/10 text-brand-gold'
-                                            : 'text-white/50 hover:bg-white/5 hover:text-white/80'}`}
+                                            : 'text-white/50 hover:bg-brand-dark/60 hover:text-white/80'}`}
                                       >
                                         {/* Custom themed checkbox */}
                                         <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-colors
@@ -3716,7 +3716,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <div className="min-w-0">
                                   <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
                                   <div className="flex flex-wrap items-center gap-2 mt-1">
-                                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-white/5">{u.position}</span>
+                                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-brand-dark/60">{u.position}</span>
                                     <span className="text-[11px] text-brand-gold font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-gold/10 border border-brand-gold/20">{u.role.toUpperCase()}</span>
                                   </div>
                                 </div>
@@ -3766,10 +3766,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                                 {/* Actions */}
                                 <div className="flex gap-2 shrink-0">
-                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
                                     <Edit2 size={14} />
                                   </button>
-                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
                                     <Trash2 size={14} />
                                   </button>
                                 </div>
@@ -3793,7 +3793,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               {members.map((u) => {
                                 const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
                                 return (
-                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-white/3 rounded-2xl border border-brand-gold/20 hover:border-brand-gold/25 transition-colors gap-5">
+                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-[#1c3933] rounded-2xl border border-brand-gold/20 hover:border-brand-gold/25 transition-colors gap-5">
                                   {/* Left: avatar + identity */}
                                   <div className="flex items-center gap-4 min-w-0 flex-1">
                                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-eco/20 to-brand-eco/5 border border-brand-eco/20 flex items-center justify-center shrink-0">
@@ -3802,7 +3802,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <div className="min-w-0">
                                       <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
                                       <div className="flex flex-wrap items-center gap-2 mt-1">
-                                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-white/5">{u.position}</span>
+                                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-brand-dark/60">{u.position}</span>
                                         <span className="text-[11px] text-brand-eco font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-eco/10 border border-brand-eco/20">{u.role.toUpperCase()}</span>
                                       </div>
                                     </div>
@@ -3852,10 +3852,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                                     {/* Actions */}
                                     <div className="flex gap-2 shrink-0">
-                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
                                         <Edit2 size={14} />
                                       </button>
-                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
                                         <Trash2 size={14} />
                                       </button>
                                     </div>
@@ -3968,7 +3968,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       {/* Cards */}
                       <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-brand-dark/40">
                         {/* Food Waste */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-white/5 border-brand-gold/30' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-brand-gold/10 border-brand-gold/30' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
                           {!isSustainabilityEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -3994,7 +3994,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
 
                         {/* Water Usage */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-white/5 border-blue-500/30' : 'bg-brand-dark/60 border-blue-500/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-blue-500/10 border-blue-500/30' : 'bg-brand-dark/60 border-blue-500/15'}`}>
                           {!isSustainabilityEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -4017,7 +4017,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
 
                         {/* Energy Limit */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-white/5 border-brand-energy/30' : 'bg-brand-dark/60 border-brand-energy/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isSustainabilityEditable ? 'bg-brand-energy/10 border-brand-energy/30' : 'bg-brand-dark/60 border-brand-energy/15'}`}>
                           {!isSustainabilityEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -4066,7 +4066,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-brand-dark/40">
                         {/* Food Cost */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-white/5 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-brand-eco/10 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
                           {!isFnBEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -4088,7 +4088,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
 
                         {/* Labor Cost */}
-                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-white/5 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
+                        <div className={`relative rounded-2xl p-4 border transition-all ${isFnBEditable ? 'bg-brand-eco/10 border-brand-eco/30' : 'bg-brand-dark/60 border-brand-eco/15'}`}>
                           {!isFnBEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
@@ -4127,7 +4127,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         {/* Deviation Alerts */}
                         <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.alertsActive ? 'bg-brand-gold/8 border-brand-gold/25' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-xl transition-all ${params.alertsActive ? 'bg-brand-gold/15' : 'bg-white/5'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${params.alertsActive ? 'bg-brand-gold/15' : 'bg-brand-dark/60'}`}>
                               <AlertCircle size={18} className={params.alertsActive ? 'text-brand-gold' : 'text-white/30'} />
                             </div>
                             <div>
@@ -4143,7 +4143,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         {/* Suggestion Engine */}
                         <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.milaLogic ? 'bg-brand-eco/8 border-brand-eco/25' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-xl transition-all ${params.milaLogic ? 'bg-brand-eco/15' : 'bg-white/5'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${params.milaLogic ? 'bg-brand-eco/15' : 'bg-brand-dark/60'}`}>
                               <Lightbulb size={18} className={params.milaLogic ? 'text-brand-eco' : 'text-white/30'} />
                             </div>
                             <div>
