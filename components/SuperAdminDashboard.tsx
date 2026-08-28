@@ -48,20 +48,20 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   const fetchPlatformData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch companies
+      // Fetch companies (company_settings table — one row per admin/company)
       const { data: companyData } = await supabase
         .from('company_settings')
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Fetch outlets
+      // Fetch outlets (linked to companies via user_id)
       const { data: outletData } = await supabase
         .from('outlets')
         .select('*');
 
-      // Fetch users
-      const { data: userData } = await supabase
-        .from('users')
+      // Fetch personnel (users/staff registered per company)
+      const { data: personnelData } = await supabase
+        .from('personnel')
         .select('*');
 
       // Fetch waste logs count
@@ -74,34 +74,57 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
         .from('resource_logs')
         .select('*', { count: 'exact', head: true });
 
+      // Fetch waste logs for carbon/financial impact
+      const { data: wasteLogs } = await supabase
+        .from('food_waste_logs')
+        .select('mass_kg, cost_per_kg');
+
+      // Fetch resource logs for water footprint
+      const { data: resourceLogs } = await supabase
+        .from('resource_logs')
+        .select('resource_type, amount');
+
       const totalOutlets = outletData?.length || 0;
-      const totalUsers = userData?.length || 0;
+      const totalUsers = (personnelData?.length || 0) + (companyData?.length || 0);
       const totalCompanies = companyData?.length || 0;
+
+      // Calculate ESG impact from actual data
+      const carbonImpact = (wasteLogs || []).reduce((sum: number, log: any) =>
+        sum + ((log.mass_kg || 0) * 2.5), 0); // ~2.5 kg CO2e per kg waste
+      const financialLoss = (wasteLogs || []).reduce((sum: number, log: any) =>
+        sum + ((log.mass_kg || 0) * (log.cost_per_kg || 6.5)), 0);
+      const waterFootprint = (resourceLogs || []).filter((r: any) =>
+        r.resource_type === 'water').reduce((sum: number, r: any) =>
+        sum + (r.amount || 0), 0);
 
       setStats({
         totalCompanies,
         totalOutlets,
         totalUsers,
-        activeUsers: userData?.filter((u: any) => u.status !== 'suspended')?.length || 0,
+        activeUsers: totalUsers, // No status column — all are active
         totalDataPoints: (wasteCount || 0) + (resourceCount || 0),
         totalWasteEntries: wasteCount || 0,
         totalResourceEntries: resourceCount || 0,
-        totalCarbonImpact: 0,
-        totalFinancialLoss: 0,
-        totalWaterFootprint: 0,
+        totalCarbonImpact: carbonImpact,
+        totalFinancialLoss: financialLoss,
+        totalWaterFootprint: waterFootprint,
       });
 
-      // Build company rows
-      const rows: CompanyRow[] = (companyData || []).map((c: any) => ({
-        id: c.id,
-        name: c.name || 'Unnamed',
-        region: c.region || '—',
-        city: c.city || '—',
-        outlets: outletData?.filter((o: any) => o.company_id === c.id)?.length || 0,
-        users: userData?.filter((u: any) => u.company_id === c.id)?.length || 0,
-        status: c.status || 'active',
-        created_at: c.created_at || '',
-      }));
+      // Build company rows — match outlets by user_id
+      const rows: CompanyRow[] = (companyData || []).map((c: any) => {
+        const companyOutlets = outletData?.filter((o: any) => o.user_id === c.user_id) || [];
+        const companyPersonnel = personnelData?.filter((p: any) => p.user_id === c.user_id) || [];
+        return {
+          id: c.id,
+          name: c.company_name || c.admin_name || 'Unnamed',
+          region: c.region || '—',
+          city: c.city_country || c.city || '—',
+          outlets: companyOutlets.length,
+          users: companyPersonnel.length + 1, // +1 for the admin themselves
+          status: 'active' as const,
+          created_at: c.created_at || '',
+        };
+      });
 
       setCompanies(rows);
     } catch (err) {
