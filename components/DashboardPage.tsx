@@ -2364,71 +2364,93 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       {dashboardTab === DashboardTab.SUMMARIZED && (
                         <>
                           {/* MILA ACTIONABLE INTELLIGENCE - ADMIN CUMULATIVE VIEW */}
-                          {/* "Mount this duplicate at the absolute top of the Overview tab content... directly above the Earth Keeper Engagement % chart" */}
                           <div className="w-full max-w-full mb-8">
-                            <div className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-4 sm:p-8 relative overflow-hidden group shadow-xl">
-                              {/* Subtle glow */}
-                              <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'radial-gradient(ellipse at 80% 0%, rgba(200,164,19,0.05), transparent 55%)'}} />
-
-                              <div className="flex items-center gap-4 mb-6">
-                                <div className="w-11 h-11 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-                                  <Cpu className="text-brand-gold" size={20} />
-                                </div>
-                                <div>
-                                  <p className="text-[11px] font-black text-brand-gold/80 uppercase tracking-[0.35em]">Mila Intelligence</p>
-                                  <h3 className="text-base font-geometric font-black text-white leading-tight">ESG Performance Snapshot</h3>
-                                </div>
+                            {/* Header */}
+                            <div className="flex items-center gap-4 mb-6">
+                              <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+                                <Cpu className="text-brand-gold" size={24} />
                               </div>
+                              <div>
+                                <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                                  Mila Intelligence
+                                </h2>
+                                <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+                                  ESG Performance Snapshot — real-time carbon, water & financial impact tracking.
+                                </p>
+                              </div>
+                            </div>
 
-                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10">
-                                {/* Carbon */}
-                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/20 hover:border-brand-gold/40 transition-all group/card">
-                                  <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
-                                    <Cloud size={13} /> Carbon Lifecycle
-                                  </span>
-                                  <div className="text-2xl font-geometric font-black text-white group-hover/card:text-brand-gold transition-colors">
-                                    {impacts.carbonImpact.toFixed(1)}<span className="text-xs font-normal text-white/50 ml-1">kg CO₂e</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 mt-auto">
-                                    <AlertTriangle className="text-brand-alert" size={12} />
-                                    <p className="text-[11px] text-brand-alert/80 uppercase font-bold tracking-wide">Deviation impact</p>
-                                  </div>
-                                </div>
-
-                                {/* Water */}
-                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/20 hover:border-blue-500/40 transition-all group/card">
-                                  <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
-                                    <Droplets size={13} /> Water Resource
-                                  </span>
-                                  <div className="text-2xl font-geometric font-black text-white group-hover/card:text-blue-400 transition-colors">
-                                    {impacts.waterFootprint.toFixed(1)}<span className="text-xs font-normal text-white/50 ml-1">L</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 mt-auto">
-                                    <ShieldCheck className="text-brand-eco" size={12} />
-                                    <p className="text-[11px] text-brand-eco/80 uppercase font-bold tracking-wide">Averted loss</p>
-                                  </div>
-                                </div>
-
-                                {/* Financial */}
-                                <div className={`flex flex-col gap-2 p-5 rounded-xl border transition-all ${impacts.isDeviating ? 'bg-brand-alert/8 border-brand-alert/40' : 'bg-brand-eco/8 border-brand-eco/30'}`}>
-                                  <span className={`text-[11px] font-black uppercase tracking-widest flex items-center gap-2 ${impacts.isDeviating ? 'text-brand-alert/90' : 'text-brand-eco/90'}`}>
-                                    <DollarSign size={13} /> Financial Impact
-                                  </span>
-                                  <div className={`text-2xl font-geometric font-black ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
-                                    ${impacts.totalFinancialLoss.toFixed(2)}
+                            {/* Summary KPI Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                              {/* Carbon Lifecycle */}
+                              <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${impacts.isDeviating ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+                                <div className="flex items-center justify-between gap-2 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Cloud size={16} className="text-brand-gold" />
+                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Carbon Lifecycle</h4>
                                   </div>
                                   {impacts.isDeviating ? (
-                                    <div className="mt-auto flex items-center gap-1.5">
-                                      <AlertTriangle size={11} className="text-brand-alert" />
-                                      <p className="text-[11px] text-brand-alert/80 uppercase font-bold tracking-wide">Supervisor notified</p>
+                                    <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                      <AlertTriangle size={9} /> Attention
                                     </div>
                                   ) : (
-                                    <div className="mt-auto flex items-center gap-1.5">
-                                      <ShieldCheck size={11} className="text-brand-eco" />
-                                      <p className="text-[11px] text-brand-eco/80 uppercase font-bold tracking-wide">On target</p>
+                                    <div className="flex items-center gap-1.5 bg-brand-eco/15 text-brand-eco border border-brand-eco/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                      <ShieldCheck size={9} /> On Target
                                     </div>
                                   )}
                                 </div>
+                                <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+                                  {impacts.carbonImpact.toFixed(1)}
+                                  <span className="text-xs font-medium text-white/50 uppercase ml-1.5">kg CO₂e</span>
+                                </p>
+                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                                  {impacts.isDeviating ? 'Deviation impact detected' : 'Within target range'}
+                                </p>
+                              </div>
+
+                              {/* Water Resource */}
+                              <div className="rounded-2xl border p-5 sm:p-6 transition-all duration-300 border-brand-gold/10 bg-[#1c3933] hover:border-brand-gold/20">
+                                <div className="flex items-center justify-between gap-2 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Droplets size={16} className="text-brand-gold" />
+                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Water Resource</h4>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 bg-brand-eco/15 text-brand-eco border border-brand-eco/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                    <ShieldCheck size={9} /> Averted
+                                  </div>
+                                </div>
+                                <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+                                  {impacts.waterFootprint.toFixed(1)}
+                                  <span className="text-xs font-medium text-white/50 uppercase ml-1.5">L</span>
+                                </p>
+                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                                  Averted loss
+                                </p>
+                              </div>
+
+                              {/* Financial Impact */}
+                              <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${impacts.isDeviating ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-eco/30 bg-brand-eco/5 hover:border-brand-eco/40'}`}>
+                                <div className="flex items-center justify-between gap-2 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <DollarSign size={16} className={impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'} />
+                                    <h4 className={`text-[11px] font-black uppercase tracking-widest ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>Financial Impact</h4>
+                                  </div>
+                                  {impacts.isDeviating ? (
+                                    <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                      <AlertTriangle size={9} /> Notified
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 bg-brand-eco/15 text-brand-eco border border-brand-eco/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                                      <ShieldCheck size={9} /> On Target
+                                    </div>
+                                  )}
+                                </div>
+                                <p className={`text-3xl font-geometric font-black leading-none mb-2 ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
+                                  ${impacts.totalFinancialLoss.toFixed(2)}
+                                </p>
+                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                                  {impacts.isDeviating ? 'Supervisor notified' : 'Within financial cap'}
+                                </p>
                               </div>
                             </div>
                           </div>
