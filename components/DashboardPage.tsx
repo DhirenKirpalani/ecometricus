@@ -1943,15 +1943,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const profile = BENCHMARK_PROFILES[params.benchmarkRegion];
       return {
         ...params,
-        wasteTarget: profile.waste,
-        waterTarget: profile.water,
-        energyTarget: profile.energy,
-        foodCostTarget: profile.foodCost,
-        laborCostTarget: profile.laborCost,
+        // Only use profile defaults for sustainability metrics (waste/water/energy)
+        // if the user hasn't saved custom values yet (paramsUpdatedAt is null = nothing loaded from DB)
+        wasteTarget: paramsUpdatedAt ? params.wasteTarget : profile.waste,
+        waterTarget: paramsUpdatedAt ? params.waterTarget : profile.water,
+        energyTarget: paramsUpdatedAt ? params.energyTarget : profile.energy,
+        // F&B KPIs (foodCostTarget, laborCostTarget) always use saved values —
+        // never override with profile defaults once the user has customized them
+        foodCostTarget: params.foodCostTarget,
+        laborCostTarget: params.laborCostTarget,
       };
     }
     return params;
-  }, [params, isManualBenchmark, isEditingSustainability, isEditingFnB]);
+  }, [params, isManualBenchmark, isEditingSustainability, isEditingFnB, paramsUpdatedAt]);
 
   const isSustainabilityEditable = isEditingSustainability;
   const isFnBEditable = isEditingFnB;
