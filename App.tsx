@@ -47,6 +47,8 @@ const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
 const pathToPage = (pathname: string): Page => {
   // Invite links: /access/OUTL01?token=abc → treat as sign-up
   if (pathname.startsWith('/access/')) return Page.SIGN_UP;
+  // Dashboard sub-routes: /dashboard/company, /dashboard/team, etc. → all map to DASHBOARD
+  if (pathname.startsWith('/dashboard')) return Page.DASHBOARD;
   return PATH_TO_PAGE[pathname] ?? Page.HOME;
 };
 

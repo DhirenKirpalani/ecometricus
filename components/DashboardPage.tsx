@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { useNavigate as useRouterNavigate } from 'react-router-dom';
+import { useNavigate as useRouterNavigate, useLocation } from 'react-router-dom';
 import MilaWidget from './MilaWidget';
 import GamificationHub from './GamificationHub';
 import { supabase } from '../lib/supabase';
@@ -116,6 +116,20 @@ enum PortalView {
   AUDIT_LOG = 'audit_log',
   SYSTEM = 'system'
 }
+
+// URL path mapping for portal views
+const PORTAL_VIEW_PATHS: Record<PortalView, string> = {
+  [PortalView.DASHBOARD]: '/dashboard',
+  [PortalView.IDENTITY]: '/dashboard/company',
+  [PortalView.TEAM]: '/dashboard/team',
+  [PortalView.PARAMETERS]: '/dashboard/benchmarks',
+  [PortalView.AUDIT_LOG]: '/dashboard/audit-log',
+  [PortalView.SYSTEM]: '/dashboard/system',
+};
+
+const PATH_TO_PORTAL_VIEW: Record<string, PortalView> = Object.fromEntries(
+  Object.entries(PORTAL_VIEW_PATHS).map(([view, path]) => [path, view as PortalView])
+);
 
 enum DashboardTab {
   SUMMARIZED = 'summarized',
@@ -615,15 +629,16 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateUser }) => {
   const routerNavigate = useRouterNavigate();
-  const [activeView, setActiveView] = useState<PortalView>(() => {
-    const saved = localStorage.getItem('eco_dashboard_tab');
-    return (Object.values(PortalView).includes(saved as PortalView) ? saved : PortalView.DASHBOARD) as PortalView;
-  });
+  const location = useLocation();
 
-  // Persist active tab on every change
-  useEffect(() => {
-    localStorage.setItem('eco_dashboard_tab', activeView);
-  }, [activeView]);
+  // Derive active view from URL path
+  const activeView = PATH_TO_PORTAL_VIEW[location.pathname] || PortalView.DASHBOARD;
+
+  // Navigate to the URL for the selected view
+  const setActiveView = (view: PortalView) => {
+    const path = PORTAL_VIEW_PATHS[view] || '/dashboard';
+    routerNavigate(path);
+  };
   const [dashboardTab, setDashboardTabState] = useState<DashboardTab>(() => {
     try {
       const saved = localStorage.getItem('eco_dashboard_tab_inner');
