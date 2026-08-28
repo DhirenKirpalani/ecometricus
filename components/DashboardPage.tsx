@@ -2349,7 +2349,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         { id: DashboardTab.SUMMARIZED, label: 'Overview', icon: TrendingUp, color: 'brand-gold' },
                         { id: DashboardTab.FOOD_WASTE, label: 'Food Waste', icon: Leaf, color: 'brand-eco' },
                         { id: DashboardTab.ENERGY_WATER, label: 'Energy & Water', icon: Zap, color: 'brand-energy' },
-                        { id: DashboardTab.MILA_AI, label: 'Mila AI', icon: Cpu, color: 'brand-gold' },
                         { id: DashboardTab.GAMIFICATION, label: 'Gamification', icon: Award, color: 'brand-gold' },
                       ].map((tab) => {
                         const active = dashboardTab === tab.id;
@@ -2778,10 +2777,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                           <ResourceIntelligence allOutlets={outlets} />
                         </div>
-                      )}
-
-                      {dashboardTab === DashboardTab.MILA_AI && (
-                        <MilaKnowledgeManager />
                       )}
 
                       {dashboardTab === DashboardTab.GAMIFICATION && (
