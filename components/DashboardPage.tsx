@@ -915,7 +915,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           }
         } else {
           // If no benchmarks, explicitly ensure legal_consent is false for Admins
-          if (user.role?.toLowerCase() === 'admin') {
+          if (user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin') {
             onUpdateUser({ legal_consent: user.legal_consent ?? false });
           }
         }
@@ -973,7 +973,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       let query = supabase.from('food_cost_logs').select('*');
 
       // Supervisor Restriction: Only see own outlet
-      if (user.role?.toLowerCase() !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           query = query.eq('outlet_id', (userOutlet as any).id);
@@ -1003,7 +1003,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // 3. Fetch Labor Cost Logs based on Role
       let laborQuery = supabase.from('labor_cost_logs').select('*');
 
-      if (user.role?.toLowerCase() !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           laborQuery = laborQuery.eq('outlet_id', (userOutlet as any).id);
@@ -1033,7 +1033,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // 4. Fetch Profit Margin Logs based on Role
       let profitQuery = supabase.from('profit_margins_logs').select('*');
 
-      if (user.role?.toLowerCase() !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           profitQuery = profitQuery.eq('outlet_id', (userOutlet as any).id);
@@ -1066,7 +1066,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // 5. Fetch Customer Sentiment Logs based on Role
       let sentimentQuery = supabase.from('sentiment_logs').select('*');
-      if (user.role?.toLowerCase() !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           sentimentQuery = sentimentQuery.eq('outlet_id', (userOutlet as any).id);
@@ -1092,7 +1092,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // 6. Fetch Raw Waste Logs for Mila KPI Sync
       let wasteQuery = supabase.from('food_waste_logs').select('*');
-      if (user.role?.toLowerCase() !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           wasteQuery = wasteQuery.eq('outlet_id', (userOutlet as any).id);
@@ -1106,7 +1106,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // 7. Fetch Raw Resource Logs for Mila KPI Sync
       let resourceQuery = supabase.from('resource_logs').select('*');
-      if (user.role?.toLowerCase() !== 'admin' && user.outletCode) {
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
         const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
         if (userOutlet && (userOutlet as any).id) {
           resourceQuery = resourceQuery.eq('outlet_id', (userOutlet as any).id);
@@ -2225,13 +2225,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
               <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
               <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label="Daily Input" />
-              {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'manager') && (
+              {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'manager' || user.role.toLowerCase() === 'super_admin') && (
                 <>
                   <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
                   <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
                   <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
                   <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
                 </>
+              )}
+              {user.role.toLowerCase() === 'super_admin' && (
+                <a href="/super-admin" className="relative flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300 whitespace-nowrap lg:w-full justify-center lg:justify-start text-brand-alert/80 hover:text-brand-alert hover:bg-brand-alert/10">
+                  <ShieldCheck size={22} className="shrink-0" />
+                  <span className="text-[14px] font-bold tracking-tight hidden lg:block opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] transition-all duration-300">
+                    Super Admin
+                  </span>
+                </a>
               )}
           </div>
 
@@ -2629,7 +2637,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={foodCostLogs}
                                 dataKey="foodCost"
-                                multiSeries={user.role?.toLowerCase() === 'admin'}
+                                multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
                                 benchmark={effectiveParams.foodCostTarget}
@@ -2647,7 +2655,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={laborCostLogs}
                                 dataKey="laborCost"
-                                multiSeries={user.role?.toLowerCase() === 'admin'}
+                                multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
                                 benchmark={28}
@@ -2669,7 +2677,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={profitMarginLogs}
                                 dataKey="profitMargin"
-                                multiSeries={user.role?.toLowerCase() === 'admin'}
+                                multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
                                 benchmark={25}
@@ -2713,7 +2721,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={sentimentLogs}
                                 dataKey="rating_value"
-                                multiSeries={user.role?.toLowerCase() === 'admin'}
+                                multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
                                 benchmark={4.5}
@@ -2755,7 +2763,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       {dashboardTab === DashboardTab.FOOD_WASTE && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                           <FoodWasteIntelligence 
-                            outletId={user.role?.toLowerCase() === 'admin' ? null : (outlets.find(o => o.code === user.outletCode) as any)?.id || null}
+                            outletId={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin' ? null : (outlets.find(o => o.code === user.outletCode) as any)?.id || null}
                             unitType={params.wasteUnit as 'kg' | 'Lbs'}
                             allOutlets={outlets}
                             benchmarks={{
