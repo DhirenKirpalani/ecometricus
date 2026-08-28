@@ -1958,21 +1958,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     return (
       <button
         onClick={() => setActiveView(view)}
-        className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors duration-150 whitespace-nowrap group ${
+        className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 whitespace-nowrap group lg:w-full ${
           active
-            ? 'text-white'
-            : 'text-white/60 hover:text-white/90'
+            ? 'bg-brand-gold/10 text-white border border-brand-gold/30'
+            : 'text-white/60 hover:text-white/90 hover:bg-white/3 border border-transparent'
         }`}
       >
         <Icon
-          size={15}
+          size={16}
           className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/40 group-hover:text-white/70'}`}
         />
         <span className={`text-[12px] font-semibold tracking-tight ${active ? 'text-white' : ''}`}>
           {label}
         </span>
-        {/* Underline indicator — absolute so it never affects tab width/height */}
-        <span className={`absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80 transition-opacity duration-150 ${active ? 'opacity-100' : 'opacity-0'}`} />
+        {/* Left bar indicator for active item */}
+        <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-brand-gold transition-opacity duration-200 ${active ? 'opacity-100' : 'opacity-0'}`} />
       </button>
     );
   };
@@ -2224,59 +2224,58 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           );
         })()}
 
-        {/* Top navigation card */}
-        {/* Section nav — pill tabs */}
-        <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 border-b border-brand-gold/6 pb-1">
+        {/* Sidebar + Main Content layout */}
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-grow overflow-hidden">
 
-          {/* Nav tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide w-full sm:w-auto">
-            <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
-            <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
-            <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
-            <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
-            <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
-          </div>
+          {/* ── Sidebar ── */}
+          <aside className="lg:w-56 shrink-0 flex flex-col gap-2">
+            <div className="bg-brand-dark border border-brand-gold/8 rounded-2xl p-3 flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible scrollbar-hide shadow-xl">
 
-          <div className="flex items-center gap-2 shrink-0 pb-1 self-end sm:self-auto">
-            {/* Benchmarks tab: auto-save indicator */}
-            {activeView === PortalView.PARAMETERS && (
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
-                {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
-                {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : 'Auto-save on'}
-              </div>
-            )}
-            {/* Company tab: auto-save indicator */}
-            {activeView === PortalView.IDENTITY && (
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
-                {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
-                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
-              </div>
-            )}
-            {/* Save button — not shown on Team, Audit Log, Dashboard, Benchmarks or Company */}
-            {activeView !== PortalView.DASHBOARD && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && (
-              <button
-                onClick={handleSaveAll}
-                disabled={saveStatus !== 'idle'}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
-              >
-                {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
-                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
-              </button>
-            )}
+              {/* Nav items */}
+              <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
+              <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
+              <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
+              <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
+              <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
 
-            {/* Auto-save indicator (Team tab edit mode) */}
-            {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold tracking-wide ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
-                {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : <Check size={12} />}
-                {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
-              </div>
-            )}
+              {/* Divider */}
+              <div className="hidden lg:block h-px bg-brand-gold/8 my-1" />
 
-            {/* System diagnostics button removed */}
-          </div>
-        </div>
+              {/* Status indicators in sidebar */}
+              {activeView === PortalView.PARAMETERS && (
+                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
+                  {autoSaveStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={10} /> : <Save size={10} />}
+                  {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? 'Saved' : 'Auto-save'}
+                </div>
+              )}
+              {activeView === PortalView.IDENTITY && (
+                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
+                  {saveStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : saveStatus === 'success' ? <Check size={10} /> : <Save size={10} />}
+                  {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save'}
+                </div>
+              )}
+              {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
+                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
+                  {saveStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : <Check size={10} />}
+                  {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
+                </div>
+              )}
 
-        <>
+              {/* Save button — not shown on Team, Audit Log, Dashboard, Benchmarks or Company */}
+              {activeView !== PortalView.DASHBOARD && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && (
+                <button
+                  onClick={handleSaveAll}
+                  disabled={saveStatus !== 'idle'}
+                  className={`hidden lg:flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
+                >
+                  {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
+                  {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
+                </button>
+              )}
+            </div>
+          </aside>
+
+          {/* ── Main Content ── */}
           <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-hidden">
             <div className="bg-brand-dark border border-brand-gold/8 rounded-2xl p-3 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
               {/* Main View Header */}
@@ -4048,8 +4047,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               </div>
             </div>
           </main>
-          <MilaWidget context={adminContext} />
-        </>
+        </div>
+        <MilaWidget context={adminContext} />
       </div>
     </div >
 
