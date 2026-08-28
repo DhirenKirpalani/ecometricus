@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Trash2, Edit2, Plus, RotateCcw, CheckCircle2, AlertTriangle,
   Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown
@@ -7,6 +8,7 @@ import { UserProfile } from '../types';
 
 interface DailyInputFormProps {
   user: UserProfile;
+  onAuditLog?: (action: string, entityType: string, entityName: string, description: string, metadata?: Record<string, any>) => void;
 }
 
 // Reusable dropdown component
@@ -41,7 +43,7 @@ const FormDropdown: React.FC<{
       </button>
 
       {open && (
-        <div className="absolute z-[9999] mt-1 w-full rounded-xl border border-brand-gold/25 bg-brand-dark shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
+        <div className="relative mt-1 w-full rounded-xl border border-brand-gold/25 bg-brand-dark shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
           <ul className="max-h-56 overflow-y-auto scrollbar-gold py-1">
             {options.map(opt => (
               <li key={opt}>
@@ -287,7 +289,7 @@ const WASTE_DESTINATIONS: string[] = [
   'Anaerobic Digestion', 'Recycling', 'Landfill', 'Drain / Sewer', 'Other'
 ];
 
-const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
+const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => {
   const [unit, setUnit] = useState<'kg' | 'lbs' | 'L'>('kg');
   const [showAlert, setShowAlert] = useState<{ msg: string; color: string } | null>(null);
 
@@ -305,24 +307,53 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [form, setForm] = useState({
-    category: '',
-    subCategory: '',
-    product: '',
-    productSearch: '',
-    reason: '',
-    customReason: '',
-    destination: '',
-    amount: '',
-    imageUrl: '',
-    water: '',
-    energy: ''
+  const [form, setForm] = useState<{
+    category: string;
+    subCategory: string;
+    product: string;
+    products: string[];
+    productSearch: string;
+    reason: string;
+    customReason: string;
+    destination: string;
+    amount: string;
+    imageUrl: string;
+    water: string;
+    energy: string;
+  }>(() => {
+    try {
+      const saved = localStorage.getItem('ecometricus_daily_form');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      category: '',
+      subCategory: '',
+      product: '',
+      products: [],
+      productSearch: '',
+      reason: '',
+      customReason: '',
+      destination: '',
+      amount: '',
+      imageUrl: '',
+      water: '',
+      energy: ''
+    };
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const productInputRef = useRef<HTMLInputElement>(null);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const showConfirm = (message: string, onConfirm: () => void) => setConfirmModal({ message, onConfirm });
+
+  useEffect(() => {
+    if (confirmModal) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [confirmModal]);
 
   useEffect(() => {
     localStorage.setItem('ecometricus_waste_entries', JSON.stringify(wasteEntries));
@@ -331,6 +362,10 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
   useEffect(() => {
     localStorage.setItem('ecometricus_resource_entries', JSON.stringify(resourceEntries));
   }, [resourceEntries]);
+
+  useEffect(() => {
+    localStorage.setItem('ecometricus_daily_form', JSON.stringify(form));
+  }, [form]);
 
   const totals = useMemo(() => {
     const wasteTotal = wasteEntries.reduce((sum, e) => sum + e.amount, 0);
@@ -370,7 +405,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
 
   const handleTare = () => {
     setForm({
-      category: '', subCategory: '', product: '', productSearch: '',
+      category: '', subCategory: '', product: '', products: [], productSearch: '',
       reason: '', customReason: '', destination: '', amount: '', imageUrl: '', water: '', energy: ''
     });
     setEditingId(null);
@@ -380,22 +415,27 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
 
   const handleSaveWaste = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.category || !form.product || !form.amount || !form.reason || !form.destination) return;
+    const productList = form.products.length > 0 ? form.products : (form.product ? [form.product] : []);
+    if (!form.category || productList.length === 0 || !form.amount || !form.reason || !form.destination) return;
     const finalReason = form.reason === 'Other' ? form.customReason : form.reason;
+    const productStr = productList.join(', ');
 
     if (editingId) {
       setWasteEntries(prev => prev.map(entry =>
         entry.id === editingId
-          ? { ...entry, category: form.category, subCategory: form.subCategory, product: form.product, reason: finalReason, destination: form.destination, amount: parseFloat(form.amount), unit }
+          ? { ...entry, category: form.category, subCategory: form.subCategory, product: productStr, reason: finalReason, destination: form.destination, amount: parseFloat(form.amount), unit }
           : entry
       ));
+      onAuditLog?.('waste_entry_updated', 'daily_input', productStr,
+        `Updated waste entry: ${form.category} → ${productStr} (${parseFloat(form.amount)}${unit})`,
+        { category: form.category, product: productStr, products: productList, amount: parseFloat(form.amount), unit, reason: finalReason, destination: form.destination, outletCode: user.outletCode });
       setEditingId(null);
     } else {
       const newEntry: WasteEntry = {
         id: Math.random().toString(36).substr(2, 9),
         category: form.category,
         subCategory: form.subCategory,
-        product: form.product,
+        product: productStr,
         reason: finalReason,
         destination: form.destination,
         amount: parseFloat(form.amount),
@@ -405,6 +445,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
         outletCode: user.outletCode
       };
       setWasteEntries([newEntry, ...wasteEntries]);
+      onAuditLog?.('waste_entry_added', 'daily_input', productStr,
+        `Logged waste: ${form.category} → ${productStr} (${parseFloat(form.amount)}${unit}) — ${finalReason}`,
+        { category: form.category, product: productStr, products: productList, amount: parseFloat(form.amount), unit, reason: finalReason, destination: form.destination, outletCode: user.outletCode });
     }
     handleTare();
   };
@@ -412,10 +455,12 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
   const handleEditWaste = (entry: WasteEntry) => {
     setEditingId(entry.id);
     const isCustom = !PRIMARY_REASONS.includes(entry.reason);
+    const editProducts = entry.product ? entry.product.split(',').map(p => p.trim()).filter(Boolean) : [];
     setForm({
       ...form,
       category: entry.category, subCategory: entry.subCategory, product: entry.product,
-      productSearch: entry.product,
+      products: editProducts,
+      productSearch: '',
       reason: isCustom ? 'Other' : entry.reason,
       customReason: isCustom ? entry.reason : '',
       destination: entry.destination,
@@ -431,6 +476,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
       setResourceEntries(prev => prev.map(entry =>
         entry.id === editingResourceId ? { ...entry, amount: parseFloat(val) } : entry
       ));
+      onAuditLog?.(`${type}_entry_updated`, 'daily_input', type,
+        `Updated ${type} entry: ${parseFloat(val)}${type === 'water' ? 'L' : 'kWh'}`,
+        { type, amount: parseFloat(val), outletCode: user.outletCode });
       setEditingResourceId(null);
     } else {
       const newEntry: ResourceEntry = {
@@ -439,12 +487,34 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setResourceEntries([newEntry, ...resourceEntries]);
+      onAuditLog?.(`${type}_entry_added`, 'daily_input', type,
+        `Logged ${type}: ${parseFloat(val)}${type === 'water' ? 'L' : 'kWh'}`,
+        { type, amount: parseFloat(val), outletCode: user.outletCode });
     }
     setForm(prev => ({ ...prev, [type]: '' }));
   };
 
-  const deleteWaste = (id: string) => setWasteEntries(prev => prev.filter(e => e.id !== id));
-  const deleteResource = (id: string) => setResourceEntries(prev => prev.filter(e => e.id !== id));
+  const deleteWaste = (id: string) => {
+    const entry = wasteEntries.find(e => e.id === id);
+    if (!entry) return;
+    showConfirm(`Delete waste entry "${entry.product}" (${entry.amount}${entry.unit})? This cannot be undone.`, () => {
+      setWasteEntries(prev => prev.filter(e => e.id !== id));
+      onAuditLog?.('waste_entry_deleted', 'daily_input', entry.product,
+        `Deleted waste entry: ${entry.category} → ${entry.product} (${entry.amount}${entry.unit})`,
+        { category: entry.category, product: entry.product, amount: entry.amount, unit: entry.unit, outletCode: entry.outletCode });
+    });
+  };
+  const deleteResource = (id: string) => {
+    const entry = resourceEntries.find(e => e.id === id);
+    if (!entry) return;
+    const label = entry.type === 'water' ? 'Water Reading' : 'Energy Reading';
+    showConfirm(`Delete ${label} of ${entry.amount}${entry.type === 'water' ? 'L' : 'kWh'}? This cannot be undone.`, () => {
+      setResourceEntries(prev => prev.filter(e => e.id !== id));
+      onAuditLog?.(`${entry.type}_entry_deleted`, 'daily_input', entry.type,
+        `Deleted ${entry.type} entry: ${entry.amount}${entry.type === 'water' ? 'L' : 'kWh'}`,
+        { type: entry.type, amount: entry.amount, outletCode: user.outletCode });
+    });
+  };
 
   const showAlertCarbon = totals.carbonImpact > 180;
   const showAlertWater = totals.waterFootprint > 400;
@@ -492,7 +562,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
             <FormDropdown
               value={form.category}
               options={Object.keys(INVENTORY_LOGIC)}
-              onChange={v => setForm({ ...form, category: v, subCategory: '', product: '', productSearch: '' })}
+              onChange={v => setForm({ ...form, category: v, subCategory: '', product: '', products: [], productSearch: '' })}
               placeholder="Select category…"
             />
           </div>
@@ -507,19 +577,37 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
               <FormDropdown
                 value={form.subCategory}
                 options={Object.keys(INVENTORY_LOGIC[form.category])}
-                onChange={v => setForm({ ...form, subCategory: v, product: '', productSearch: '' })}
+                onChange={v => setForm({ ...form, subCategory: v, product: '', products: [], productSearch: '' })}
                 placeholder="Select sub-category…"
               />
             </div>
           )}
 
-          {/* Step 3: Product Description (searchable) */}
+          {/* Step 3: Product Description (searchable, multi-select) */}
           {form.subCategory && (
             <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
                 <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">3</span>
                 Product Description
+                {form.products.length > 0 && (
+                  <span className="ml-1 text-[9px] bg-brand-gold/20 text-brand-gold px-1.5 py-0.5 rounded-full">{form.products.length} selected</span>
+                )}
               </label>
+
+              {/* Selected product chips */}
+              {form.products.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {form.products.map(prod => (
+                    <span key={prod} className="inline-flex items-center gap-1.5 bg-brand-gold/15 border border-brand-gold/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-brand-gold">
+                      {prod}
+                      <button type="button" onClick={() => setForm({ ...form, products: form.products.filter(p => p !== prod) })} className="hover:text-white transition-colors">
+                        <Trash2 size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <div className="relative">
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
@@ -530,21 +618,45 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
                     onChange={e => { setForm({ ...form, product: e.target.value, productSearch: e.target.value }); setShowProductDropdown(true); }}
                     onFocus={() => setShowProductDropdown(true)}
                     onBlur={() => setTimeout(() => setShowProductDropdown(false), 150)}
-                    placeholder="Search or type product name..."
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && form.productSearch.trim()) {
+                        e.preventDefault();
+                        const val = form.productSearch.trim();
+                        if (!form.products.includes(val)) {
+                          setForm({ ...form, products: [...form.products, val], product: val, productSearch: '' });
+                        } else {
+                          setForm({ ...form, productSearch: '' });
+                        }
+                        setShowProductDropdown(false);
+                      }
+                    }}
+                    placeholder="Search, select, or type then press Enter..."
                     className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all"
                   />
                 </div>
                 {showProductDropdown && form.subCategory && INVENTORY_LOGIC[form.category]?.[form.subCategory] && (
-                  <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-brand-dark border border-brand-gold/30 rounded-xl shadow-2xl max-h-48 overflow-y-auto scrollbar-gold">
+                  <div className="relative bg-brand-dark border border-brand-gold/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-h-48 overflow-y-auto scrollbar-gold mt-1">
                     {INVENTORY_LOGIC[form.category][form.subCategory]
                       .filter(p => p.toLowerCase().includes(form.productSearch.toLowerCase()))
-                      .map(prod => (
-                        <button key={prod} type="button"
-                          onMouseDown={() => { setForm({ ...form, product: prod, productSearch: prod }); setShowProductDropdown(false); }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-white/70 hover:bg-brand-gold/10 hover:text-brand-gold transition-colors">
-                          {prod}
-                        </button>
-                      ))}
+                      .map(prod => {
+                        const isSelected = form.products.includes(prod);
+                        return (
+                          <button key={prod} type="button"
+                            onMouseDown={() => {
+                              if (isSelected) {
+                                setForm({ ...form, products: form.products.filter(p => p !== prod), productSearch: '' });
+                              } else {
+                                setForm({ ...form, products: [...form.products, prod], product: prod, productSearch: '' });
+                              }
+                              setShowProductDropdown(true);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between
+                              ${isSelected ? 'text-brand-gold bg-brand-gold/10 font-semibold' : 'text-white/70 hover:bg-brand-gold/10 hover:text-brand-gold'}`}>
+                              <span>{prod}</span>
+                              {isSelected && <CheckCircle2 size={14} className="text-brand-gold shrink-0" />}
+                            </button>
+                        );
+                      })}
                   </div>
                 )}
               </div>
@@ -552,7 +664,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
           )}
 
           {/* Step 4: Primary Reason */}
-          {form.product && (
+          {(form.products.length > 0 || form.product) && (
             <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
                 <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">4</span>
@@ -573,7 +685,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
           )}
 
           {/* Step 5: Weight / Volume Entry */}
-          {form.product && form.reason && (
+          {(form.products.length > 0 || form.product) && form.reason && (
             <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
                 <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">5</span>
@@ -598,7 +710,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
           )}
 
           {/* Step 6: Waste Destination */}
-          {form.product && form.reason && form.amount && (
+          {(form.products.length > 0 || form.product) && form.reason && form.amount && (
             <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
                 <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">6</span>
@@ -613,13 +725,21 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
             </div>
           )}
 
-          {/* Submit */}
-          {form.product && form.reason && form.amount && form.destination && (
-            <button type="submit"
-              className="w-full px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
-              {editingId ? <CheckCircle2 size={16} /> : <Plus size={16} />}
-              {editingId ? 'Update Entry' : 'Log Entry'}
-            </button>
+          {/* Submit / Cancel */}
+          {(form.products.length > 0 || form.product) && form.reason && form.amount && form.destination && (
+            <div className="flex gap-3">
+              <button type="submit"
+                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                {editingId ? <CheckCircle2 size={16} /> : <Plus size={16} />}
+                {editingId ? 'Update Entry' : 'Log Entry'}
+              </button>
+              {editingId && (
+                <button type="button" onClick={handleTare}
+                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                  <RotateCcw size={14} /> Cancel
+                </button>
+              )}
+            </div>
           )}
 
           {/* Tare / Reset */}
@@ -633,38 +753,82 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
       </div>
 
       {/* ── WATER & ENERGY TRACKING ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Water */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Droplets size={18} className="text-[#3b82f6]" />
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">Water Usage Tracking</h3>
+        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 bg-[#3b82f6]/10 border border-[#3b82f6]/30 rounded-xl flex items-center justify-center shrink-0">
+              <Droplets size={18} className="text-[#3b82f6]" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-widest">Water Usage Tracking</h3>
+              <p className="text-[10px] text-white/40 font-medium mt-0.5">Log daily water consumption</p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <input type="number" value={form.water} onChange={e => setForm({ ...form, water: e.target.value })}
-              placeholder="Liters (L)" min="0"
-              className="flex-1 bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
-            <button type="button" onClick={() => handleSaveResource('water')}
-              className="px-4 rounded-xl bg-[#3b82f6] text-white font-black text-sm uppercase hover:bg-[#3b82f6]/90 transition-all flex items-center gap-1.5">
-              <Plus size={14} /> Log
-            </button>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-[#3b82f6]">
+                <span className="w-5 h-5 rounded-full bg-[#3b82f6]/15 border border-[#3b82f6]/30 flex items-center justify-center text-[9px]">1</span>
+                Consumption Volume
+              </label>
+              <div className="relative">
+                <input type="number" value={form.water} onChange={e => setForm({ ...form, water: e.target.value })}
+                  placeholder="Enter volume in liters" min="0"
+                  className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#3b82f6]/60 uppercase tracking-wider">L</span>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => handleSaveResource('water')} disabled={!form.water}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-[#3b82f6] text-white font-black text-sm uppercase tracking-wider hover:bg-[#3b82f6]/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
+                <Plus size={16} /> {editingResourceId && form.water ? 'Update' : 'Log Water Reading'}
+              </button>
+              {editingResourceId && form.water && (
+                <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, water: '' })); }}
+                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
+                  <RotateCcw size={14} /> Cancel
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Energy */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Zap size={18} className="text-brand-gold" />
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">Energy Reading</h3>
+        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+              <Zap size={18} className="text-brand-gold" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-widest">Energy Reading</h3>
+              <p className="text-[10px] text-white/40 font-medium mt-0.5">Log daily energy consumption</p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <input type="number" value={form.energy} onChange={e => setForm({ ...form, energy: e.target.value })}
-              placeholder="kWh" min="0"
-              className="flex-1 bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
-            <button type="button" onClick={() => handleSaveResource('energy')}
-              className="px-4 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase hover:bg-brand-gold/90 transition-all flex items-center gap-1.5">
-              <Plus size={14} /> Log
-            </button>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
+                <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">1</span>
+                Consumption Volume
+              </label>
+              <div className="relative">
+                <input type="number" value={form.energy} onChange={e => setForm({ ...form, energy: e.target.value })}
+                  placeholder="Enter volume in kilowatt-hours" min="0"
+                  className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-brand-gold/60 uppercase tracking-wider">kWh</span>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => handleSaveResource('energy')} disabled={!form.energy}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
+                <Plus size={16} /> {editingResourceId && form.energy ? 'Update' : 'Log Energy Reading'}
+              </button>
+              {editingResourceId && form.energy && (
+                <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, energy: '' })); }}
+                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
+                  <RotateCcw size={14} /> Cancel
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -856,6 +1020,49 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {/* ── CONFIRMATION MODAL ── */}
+      {confirmModal && createPortal(
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-brand-dark/90 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setConfirmModal(null)}
+        >
+          <div
+            className="relative bg-gradient-to-br from-[#1c3933] to-[#152e2a] border border-brand-alert/30 rounded-3xl p-8 shadow-[0_24px_80px_rgba(0,0,0,0.8)] max-w-[400px] w-[calc(100%-2rem)] animate-in zoom-in-95 fade-in slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="flex justify-center mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-brand-alert/15 border border-brand-alert/40 flex items-center justify-center shadow-[0_0_24px_rgba(239,68,68,0.2)]">
+                <Trash2 size={28} className="text-brand-alert" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-center text-lg font-geometric font-bold text-white uppercase tracking-tight mb-2">Confirm Deletion</h3>
+
+            {/* Message */}
+            <p className="text-center text-sm text-white/60 leading-relaxed mb-7">{confirmModal.message}</p>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/70 font-black text-xs uppercase tracking-widest hover:bg-white/10 hover:text-white hover:border-white/30 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-alert/20 border border-brand-alert/50 text-brand-alert font-black text-xs uppercase tracking-widest hover:bg-brand-alert/30 hover:border-brand-alert/70 transition-all flex items-center justify-center gap-2"
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

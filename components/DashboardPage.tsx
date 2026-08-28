@@ -624,7 +624,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   useEffect(() => {
     localStorage.setItem('eco_dashboard_tab', activeView);
   }, [activeView]);
-  const [dashboardTab, setDashboardTab] = useState<DashboardTab>(DashboardTab.SUMMARIZED);
+  const [dashboardTab, setDashboardTabState] = useState<DashboardTab>(() => {
+    try {
+      const saved = localStorage.getItem('eco_dashboard_tab_inner');
+      if (saved && Object.values(DashboardTab).includes(saved as DashboardTab)) {
+        return saved as DashboardTab;
+      }
+    } catch {}
+    return DashboardTab.SUMMARIZED;
+  });
+  const setDashboardTab = (tab: DashboardTab) => {
+    setDashboardTabState(tab);
+    try { localStorage.setItem('eco_dashboard_tab_inner', tab); } catch {}
+  };
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isHydrating, setIsHydrating] = useState(true);
 
@@ -2633,7 +2645,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       {dashboardTab === DashboardTab.DAILY_INPUT && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                          <DailyInputForm user={user} />
+                          <DailyInputForm user={user} onAuditLog={logAction} />
                         </div>
                       )}
 
@@ -3025,6 +3037,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           personnel_removed: 'Personnel',
                           benchmarks_saved: 'Benchmarks',
                           benchmarks_updated: 'Benchmarks',
+                          waste_entry_added: 'Daily Input',
+                          waste_entry_updated: 'Daily Input',
+                          waste_entry_deleted: 'Daily Input',
+                          water_entry_added: 'Daily Input',
+                          water_entry_updated: 'Daily Input',
+                          water_entry_deleted: 'Daily Input',
+                          energy_entry_added: 'Daily Input',
+                          energy_entry_updated: 'Daily Input',
+                          energy_entry_deleted: 'Daily Input',
                         };
                         const categories = [...new Set(actionTypes.map((a: string) => labelMap[a as string] || 'Other'))];
                         return (
