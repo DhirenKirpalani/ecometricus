@@ -101,7 +101,8 @@ const App: React.FC = () => {
           const meta = authUser.user_metadata || {};
           const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
           const role = meta.role || 'admin';
-          const position = role === 'admin' ? 'GM' : role === 'manager' ? 'Outlet Manager' : role === 'chef' ? 'Head Chef' : role === 'basic' ? (meta.position || 'Staff') : 'Supervisor';
+          const rl = role.toLowerCase();
+          const position = rl === 'admin' ? 'GM' : rl === 'manager' ? 'Outlet Manager' : rl === 'chef' ? 'Head Chef' : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'view' ? (meta.position || 'GM') : 'Supervisor';
 
           const hasAuthHash = window.location.hash.includes('access_token');
           const isSignupConfirmation = window.location.hash.includes('type=signup');
@@ -145,12 +146,13 @@ const App: React.FC = () => {
           // Normal session restore (SIGNED_IN without hash, or TOKEN_REFRESHED)
           // should NEVER redirect — respect whatever URL the user is on.
           if (event === 'SIGNED_IN' && hasAuthHash) {
+            const rl = role.toLowerCase();
             const targetPath =
-              role === 'admin' || role === 'manager' ? PAGE_TO_PATH[Page.DASHBOARD] :
-              role === 'supervisor' ? PAGE_TO_PATH[Page.SUPERVISOR_DASHBOARD] :
+              rl === 'admin' || rl === 'manager' ? PAGE_TO_PATH[Page.DASHBOARD] :
+              rl === 'supervisor' ? PAGE_TO_PATH[Page.SUPERVISOR_DASHBOARD] :
               '/dashboard/daily-input';
             navigate(targetPath);
-            setCurrentPageState(role === 'supervisor' ? Page.SUPERVISOR_DASHBOARD : Page.DASHBOARD);
+            setCurrentPageState(rl === 'supervisor' ? Page.SUPERVISOR_DASHBOARD : Page.DASHBOARD);
             // Clean the hash so it doesn't trigger again on refresh
             window.history.replaceState(null, '', window.location.pathname);
           }
@@ -171,12 +173,13 @@ const App: React.FC = () => {
 
   const handleLogin = useCallback((user: UserProfile) => {
     setCurrentUser(user);
-    if (user.role === 'admin' || user.role === 'manager') {
+    const role = user.role.toLowerCase();
+    if (role === 'admin' || role === 'manager') {
       handleNavigate(Page.DASHBOARD);
-    } else if (user.role === 'supervisor') {
+    } else if (role === 'supervisor') {
       handleNavigate(Page.SUPERVISOR_DASHBOARD);
     } else {
-      // Basic/chef roles go to Daily Input on the dashboard
+      // Basic/chef/view roles go to Daily Input on the dashboard
       navigate('/dashboard/daily-input');
       setCurrentPageState(Page.DASHBOARD);
     }

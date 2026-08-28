@@ -17,7 +17,7 @@ export enum Page {
   TRANSLATION_MANAGER = 'translation_manager'
 }
 
-export type UserRole = 'admin' | 'supervisor' | 'chef' | 'manager' | 'basic';
+export type UserRole = 'admin' | 'supervisor' | 'chef' | 'manager' | 'basic' | 'view';
 export type StaffPosition = 'F&B Director' | 'GM' | 'Exec Chef' | 'Manager' | 'Chef Prep' | 'Outlet Manager';
 
 export interface Outlet {
