@@ -42,7 +42,7 @@ const FormDropdown: React.FC<{
       </button>
 
       {open && (
-        <div className="absolute z-[9999] mt-1 w-full rounded-xl border border-brand-gold/25 bg-brand-dark shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
+        <div className="relative mt-1 w-full rounded-xl border border-brand-gold/25 bg-brand-dark shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
           <ul className="max-h-56 overflow-y-auto scrollbar-gold py-1">
             {options.map(opt => (
               <li key={opt}>
@@ -564,7 +564,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                   />
                 </div>
                 {showProductDropdown && form.subCategory && INVENTORY_LOGIC[form.category]?.[form.subCategory] && (
-                  <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-brand-dark border border-brand-gold/30 rounded-xl shadow-2xl max-h-48 overflow-y-auto scrollbar-gold">
+                  <div className="relative bg-brand-dark border border-brand-gold/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-h-48 overflow-y-auto scrollbar-gold mt-1">
                     {INVENTORY_LOGIC[form.category][form.subCategory]
                       .filter(p => p.toLowerCase().includes(form.productSearch.toLowerCase()))
                       .map(prod => (
