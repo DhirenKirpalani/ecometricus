@@ -1974,22 +1974,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       <button
         onClick={() => setActiveView(view)}
         title={label}
-        className={`relative flex items-center gap-3 px-3 lg:px-4 py-3.5 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
+        className={`relative flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
           active
-            ? 'bg-brand-gold/10 text-white border border-brand-gold/30'
-            : 'text-white/60 hover:text-white/90 hover:bg-white/3 border border-transparent'
+            ? 'bg-brand-gold/20 text-white border border-brand-gold/50 shadow-[0_0_15px_rgba(200,164,19,0.15)]'
+            : 'text-white/60 hover:text-white/90 hover:bg-white/5 border border-transparent'
         }`}
       >
         <Icon
-          size={20}
+          size={22}
           className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/40 group-hover/item:text-white/70'}`}
         />
         {/* Label — hidden on desktop collapsed, shown on sidebar hover via group-hover */}
-        <span className={`text-[14px] font-semibold tracking-tight ${active ? 'text-white' : ''} hidden lg:block opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] transition-all duration-300`}>
+        <span className={`text-[14px] font-bold tracking-tight ${active ? 'text-white' : ''} hidden lg:block opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] transition-all duration-300`}>
           {label}
         </span>
         {/* Left bar indicator for active item */}
-        <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-brand-gold transition-opacity duration-200 ${active ? 'opacity-100' : 'opacity-0'}`} />
+        <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-8 rounded-r-full bg-brand-gold transition-opacity duration-200 ${active ? 'opacity-100' : 'opacity-0'}`} />
       </button>
     );
   };
@@ -2216,11 +2216,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       <div className={`transition-all duration-1000 flex flex-col min-h-screen ${isPendingConsent ? 'blur-2xl grayscale pointer-events-none' : ''}`}>
         <div className="flex-grow flex bg-brand-dark text-gray-100 font-body selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
 
-        {/* ── Sidebar — full height, from below navbar to bottom of page ── */}
-        <aside className="lg:w-16 lg:hover:w-56 shrink-0 flex flex-col transition-all duration-300 ease-out group/sidebar border-r border-brand-gold/30 bg-brand-dark/60 backdrop-blur-sm lg:relative lg:z-20">
-          <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto scrollbar-hide p-2 lg:p-3 lg:h-full">
+        {/* Sidebar wrapper — group for hover-expand of spacer */}
+        <div className="group/sidebar flex shrink-0">
+        {/* ── Sidebar — fixed, full height ── */}
+        <aside className="lg:w-16 group-hover/sidebar:lg:w-56 flex flex-col transition-all duration-300 ease-out border-r border-brand-gold/30 bg-brand-dark/60 backdrop-blur-sm lg:fixed lg:top-16 lg:left-0 lg:z-20 lg:h-[calc(100vh-4rem)] lg:overflow-hidden">
+          {/* Nav items — scrollable if needed */}
+          <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-y-auto scrollbar-hide p-2 lg:p-3 lg:pt-6 lg:flex-grow lg:min-h-0">
 
-              {/* Nav items — basic/chef/view roles only see Overview & Daily Input */}
               <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
               <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label="Daily Input" />
               {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'manager') && (
@@ -2231,14 +2233,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
                 </>
               )}
+          </div>
 
-              {/* Spacer to push Contact to bottom */}
-              <div className="hidden lg:block flex-grow" />
+          {/* Contact — frozen at bottom, always visible */}
+          <div className="hidden lg:block p-2 lg:p-3 border-t border-brand-gold/15 shrink-0">
+            <SidebarItem view={PortalView.CONTACT} icon={LifeBuoy} label="Contact" />
+          </div>
+        </aside>
 
-              {/* Contact — pinned to bottom */}
-              <SidebarItem view={PortalView.CONTACT} icon={LifeBuoy} label="Contact" />
-            </div>
-          </aside>
+        {/* Spacer for fixed sidebar — expands on hover to push content */}
+        <div className="hidden lg:block w-16 group-hover/sidebar:w-56 shrink-0 transition-all duration-300 ease-out" />
+        </div>
 
           {/* ── Main Content ── */}
           <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-y-auto scrollbar-hide">

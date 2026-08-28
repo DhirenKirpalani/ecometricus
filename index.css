@@ -22,3 +22,13 @@ input:-webkit-autofill:active {
   border-color: rgba(200, 164, 19, 0.3) !important;
   transition: background-color 9999s ease-in-out 0s;
 }
+
+/* ── Mila AI widget: slow ping animation ── */
+@keyframes ping-slow {
+  0%   { transform: scale(1);    opacity: 0.5; }
+  70%  { transform: scale(1.4);  opacity: 0;   }
+  100% { transform: scale(1.4);  opacity: 0;   }
+}
+.animate-ping-slow {
+  animation: ping-slow 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}

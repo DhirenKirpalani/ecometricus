@@ -363,20 +363,38 @@ INSTRUCTIONS:
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-8 right-8 z-[100] w-16 h-16 bg-[#0f2420] border border-[#39ff14] rounded-full flex items-center justify-center shadow-[0_4px_20px_rgba(0,0,0,0.6)] hover:scale-110 transition-transform duration-300 group"
+                className="fixed bottom-8 right-8 z-[100] group"
+                aria-label="Open Mila AI"
             >
-                <div className="absolute inset-0 rounded-full border border-[#39ff14] opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                <Lightbulb className="text-[#39ff14] animate-pulse" size={32} />
-                {proactiveInsights.length > 0 && (
-                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-brand-alert rounded-full border-2 border-brand-dark flex items-center justify-center">
-                        <span className="text-[10px] font-bold text-white">{proactiveInsights.length}</span>
-                    </div>
-                )}
-                {proactiveInsights.length === 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-brand-gold rounded-full border-2 border-brand-dark flex items-center justify-center">
-                        <span className="text-[10px] font-bold text-brand-dark">AI</span>
-                    </div>
-                )}
+                {/* Outer pulsing ring */}
+                <div className="absolute inset-0 rounded-full bg-brand-gold/20 animate-ping-slow" />
+                {/* Glow halo */}
+                <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-brand-gold/30 to-brand-eco/20 blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+
+                {/* Main orb */}
+                <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-brand-gold via-brand-gold/80 to-brand-eco/60 flex items-center justify-center shadow-[0_8px_32px_rgba(200,164,19,0.4)] group-hover:scale-110 group-active:scale-95 transition-transform duration-300 border-2 border-brand-gold/50">
+                    {/* Inner shine */}
+                    <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-white/30" />
+
+                    {/* AI Avatar — sparkles icon */}
+                    <Sparkles className="text-white drop-shadow-lg" size={26} />
+
+                    {/* Status dot */}
+                    <div className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-brand-eco border-2 border-brand-dark" />
+
+                    {/* Insight badge */}
+                    {proactiveInsights.length > 0 && (
+                        <div className="absolute -top-1.5 -right-1.5 min-w-6 h-6 px-1.5 bg-brand-alert rounded-full border-2 border-brand-dark flex items-center justify-center shadow-lg">
+                            <span className="text-[10px] font-black text-white">{proactiveInsights.length}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Tooltip on hover */}
+                <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-2 rounded-lg bg-brand-dark border border-brand-gold/30 text-[11px] font-bold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-xl">
+                    Ask Mila AI
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-brand-dark" />
+                </div>
             </button>
         );
     }
@@ -385,16 +403,20 @@ INSTRUCTIONS:
         <div className={`fixed z-[100] transition-all duration-300 ease-in-out ${isMinimized ? 'bottom-8 right-8 w-72 h-auto' : 'bottom-8 right-8 w-[400px] h-[600px]'} bg-[#0f2420]/95 backdrop-blur-xl border border-brand-gold/50 rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden`}>
 
             {/* Header */}
-            <div className="p-4 bg-brand-dark/50 border-b border-brand-gold/20 flex items-center justify-between shrink-0">
+            <div className="p-4 bg-gradient-to-r from-brand-gold/10 to-transparent border-b border-brand-gold/20 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-brand-eco/10 flex items-center justify-center border border-brand-eco relative">
-                        <Lightbulb className="text-brand-eco" size={16} />
+                    <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-brand-gold via-brand-gold/80 to-brand-eco/60 flex items-center justify-center border border-brand-gold/50 shadow-[0_4px_16px_rgba(200,164,19,0.3)]">
+                        <div className="absolute inset-0.5 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-white/20" />
+                        <Sparkles className="text-white relative z-10" size={18} />
                         {activeTool && (
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-brand-gold rounded-full animate-pulse"></div>
+                            <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-brand-alert rounded-full animate-pulse border border-brand-dark"></div>
                         )}
                     </div>
                     <div>
-                        <h3 className="text-sm font-black text-white uppercase tracking-wider">Mila AI</h3>
+                        <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                            Mila AI
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-eco animate-pulse" />
+                        </h3>
                         <p className="text-[10px] text-brand-gold uppercase tracking-widest">
                             {activeTool ? 'Working...' : 'ESG Agent'}
                         </p>
