@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
+import MilaKnowledgeManager from './MilaKnowledgeManager';
 import {
   LayoutDashboard, Users, Building2, Database, Activity, ShieldCheck,
   TrendingUp, TrendingDown, Server, Globe, Cpu, AlertTriangle,
   CheckCircle2, DollarSign, Leaf, Zap, Droplets, Cloud,
   RefreshCcw, Search, Eye, EyeOff, Ban, Unlock,
   BarChart3, Settings, Bell, FileText, Mail, Webhook,
-  ArrowUpRight, ArrowDownRight, Clock, ChevronRight
+  ArrowUpRight, ArrowDownRight, Clock, ChevronRight, UserPlus, Trash2, BookOpen
 } from 'lucide-react';
 
 interface SuperAdminDashboardProps {
@@ -43,7 +44,14 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'users' | 'system'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'users' | 'system' | 'knowledge' | 'superadmins'>('overview');
+
+  // Super admin user management
+  const [superAdminEmails, setSuperAdminEmails] = useState<string[]>([
+    'dhirenkirpalani2308@gmail.com',
+  ]);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [addingAdmin, setAddingAdmin] = useState(false);
 
   const fetchPlatformData = useCallback(async () => {
     setIsLoading(true);
@@ -218,6 +226,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
         <TabButton id="companies" label="Companies" icon={Building2} />
         <TabButton id="users" label="Users" icon={Users} />
         <TabButton id="system" label="System" icon={Server} />
+        <TabButton id="knowledge" label="Mila KB" icon={BookOpen} />
+        <TabButton id="superadmins" label="Super Admins" icon={ShieldCheck} />
       </div>
 
       {isLoading ? (
@@ -505,6 +515,111 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         <p className="text-[10px] text-white/40 uppercase tracking-wider">Check table sizes</p>
                       </div>
                     </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Mila Knowledge Base Tab ── */}
+            {activeTab === 'knowledge' && (
+              <div className="animate-in fade-in duration-500">
+                <MilaKnowledgeManager />
+              </div>
+            )}
+
+            {/* ── Super Admins Tab ── */}
+            {activeTab === 'superadmins' && (
+              <div className="space-y-6 animate-in fade-in duration-500">
+                {/* Add super admin */}
+                <div className="rounded-2xl border border-brand-alert/20 bg-brand-alert/5 p-5 sm:p-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-xl bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center shrink-0">
+                      <UserPlus size={18} className="text-brand-alert" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                        Add Super Admin
+                      </h4>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-alert/80">
+                        Grant Platform Control Access
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="email"
+                      value={newAdminEmail}
+                      onChange={e => setNewAdminEmail(e.target.value)}
+                      placeholder="user@email.com"
+                      className="flex-grow bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all"
+                    />
+                    <button
+                      onClick={() => {
+                        const email = newAdminEmail.trim().toLowerCase();
+                        if (!email || !email.includes('@')) return;
+                        if (superAdminEmails.includes(email)) return;
+                        setSuperAdminEmails(prev => [...prev, email]);
+                        setNewAdminEmail('');
+                        setAddingAdmin(true);
+                        setTimeout(() => setAddingAdmin(false), 1000);
+                      }}
+                      disabled={!newAdminEmail.trim() || !newAdminEmail.includes('@')}
+                      className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-alert/15 border border-brand-alert/40 text-brand-alert text-sm font-bold hover:bg-brand-alert/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {addingAdmin ? <CheckCircle2 size={16} /> : <UserPlus size={16} />}
+                      {addingAdmin ? 'Added!' : 'Add Super Admin'}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-white/30 mt-3">
+                    Note: This email will get super_admin privileges on next login. The override is hardcoded in App.tsx and AuthPage.tsx — add the email there too for persistence.
+                  </p>
+                </div>
+
+                {/* Super admin list */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-10 h-10 border border-brand-alert/50 rounded-xl bg-brand-alert/5 flex items-center justify-center shrink-0">
+                      <ShieldCheck size={18} className="text-brand-alert" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                        Super Admin Users
+                      </h4>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-alert/80">
+                        {superAdminEmails.length} Registered
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {superAdminEmails.map((email, i) => (
+                      <div key={i} className="flex items-center justify-between gap-3 p-4 rounded-xl border border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/30 transition-all">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center shrink-0">
+                            <ShieldCheck size={16} className="text-brand-alert" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-white truncate">{email}</p>
+                            <p className="text-[10px] text-white/40 uppercase tracking-wider">
+                              {email === user.email?.toLowerCase() ? 'You (current session)' : 'Super Admin'}
+                            </p>
+                          </div>
+                        </div>
+                        {email !== 'dhirenkirpalani2308@gmail.com' && (
+                          <button
+                            onClick={() => setSuperAdminEmails(prev => prev.filter(e => e !== email))}
+                            className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors shrink-0"
+                            title="Remove super admin"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                        {email === 'dhirenkirpalani2308@gmail.com' && (
+                          <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-brand-eco/15 text-brand-eco border border-brand-eco/30 shrink-0">
+                            Primary
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
