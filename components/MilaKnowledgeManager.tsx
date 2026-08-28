@@ -400,7 +400,7 @@ const MilaKnowledgeManager: React.FC = () => {
           className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
             !activeCategory
               ? 'bg-brand-gold/20 border-brand-gold/50 text-brand-gold'
-              : 'bg-brand-dark/40 border-brand-gold/8 text-white/40 hover:text-white/70 hover:border-brand-gold/15'
+              : 'bg-brand-dark/40 border-brand-gold/20 text-white/40 hover:text-white/70 hover:border-brand-gold/30'
           }`}
         >
           All ({stats.total})
@@ -417,7 +417,7 @@ const MilaKnowledgeManager: React.FC = () => {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
                 activeCategory === cat
                   ? 'border-transparent text-white'
-                  : 'bg-brand-dark/40 border-brand-gold/8 text-white/40 hover:text-white/70 hover:border-brand-gold/15'
+                  : 'bg-brand-dark/40 border-brand-gold/20 text-white/40 hover:text-white/70 hover:border-brand-gold/30'
               }`}
               style={activeCategory === cat ? { background: `${meta.color}25`, borderColor: `${meta.color}50`, color: meta.color } : {}}
             >
@@ -554,7 +554,7 @@ const MilaKnowledgeManager: React.FC = () => {
                 return (
                   <button key={cat} type="button" onClick={() => setUploadForm({ ...uploadForm, category: cat })}
                     className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${
-                      active ? 'border-transparent' : 'bg-brand-dark/60 border-brand-gold/8 text-white/40 hover:text-white/60'
+                      active ? 'border-transparent' : 'bg-brand-dark/60 border-brand-gold/20 text-white/40 hover:text-white/60'
                     }`}
                     style={active ? { background: `${meta.color}20`, borderColor: `${meta.color}50`, color: meta.color } : {}}>
                     <Icon size={10} style={{ color: active ? meta.color : `${meta.color}80` }} />
@@ -600,8 +600,8 @@ const MilaKnowledgeManager: React.FC = () => {
           <p className="text-sm text-white/40 font-medium">Loading knowledge base...</p>
         </div>
       ) : filteredDocs.length === 0 ? (
-        <div className="text-center py-16 bg-[#1c3933]/50 border border-brand-gold/5 rounded-2xl">
-          <div className="inline-flex w-14 h-14 rounded-2xl bg-white/5 border border-brand-gold/10 items-center justify-center mb-4">
+        <div className="text-center py-16 bg-[#1c3933]/50 border border-brand-gold/20 rounded-2xl">
+          <div className="inline-flex w-14 h-14 rounded-2xl bg-white/5 border border-brand-gold/20 items-center justify-center mb-4">
             <FileText size={24} className="text-white/20" />
           </div>
           <p className="text-sm text-white/40 font-medium mb-1">
@@ -621,7 +621,7 @@ const MilaKnowledgeManager: React.FC = () => {
             return (
               <div
                 key={doc.baseTitle}
-                className="group relative bg-[#1c3933] border border-brand-gold/8 rounded-2xl p-4 hover:border-brand-gold/15 transition-all overflow-hidden animate-in fade-in slide-in-from-bottom-2"
+                className="group relative bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-4 hover:border-brand-gold/30 transition-all overflow-hidden animate-in fade-in slide-in-from-bottom-2"
                 style={{ animationDelay: `${idx * 40}ms`, animationDuration: '400ms' }}
               >
                 {/* Category accent bar */}
@@ -679,7 +679,7 @@ const MilaKnowledgeManager: React.FC = () => {
                     )}
 
                     {/* Footer: word count + delete */}
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-brand-gold/5">
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-brand-gold/15">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-white/20">
                         {doc.totalWords.toLocaleString()} words · +{doc.chunks.length * XP_PER_DOC} XP
                       </span>

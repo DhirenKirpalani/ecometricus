@@ -431,7 +431,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
         className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors
-          ${disabled ? 'opacity-40 cursor-not-allowed border-brand-gold/8' : 'border-brand-gold/25 hover:border-brand-gold/50 cursor-pointer'}
+          ${disabled ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/25 hover:border-brand-gold/150 cursor-pointer'}
           ${open ? 'border-brand-gold' : ''}`}
       >
         <span className={value ? 'text-white' : 'text-white/40'}>{value || placeholder || 'Select…'}</span>
@@ -611,7 +611,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-brand-gold/8">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-brand-gold/15">
         <button type="button"
           onClick={() => { onChange(''); setOpen(false); }}
           className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">
@@ -636,7 +636,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
         className={`w-full flex items-center gap-3 bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-left transition-colors
-          ${disabled ? 'opacity-40 cursor-not-allowed border-brand-gold/8' : 'border-brand-gold/15 hover:border-brand-gold/40 cursor-pointer'}
+          ${disabled ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40 cursor-pointer'}
           ${open ? 'border-brand-gold' : ''}`}
       >
         <Calendar size={13} className="text-brand-gold/60 shrink-0" />
@@ -1976,7 +1976,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         title={label}
         className={`relative flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
           active
-            ? 'bg-brand-gold/20 text-white border border-brand-gold/50 shadow-[0_0_15px_rgba(200,164,19,0.15)]'
+            ? 'bg-brand-gold/20 text-white border border-brand-gold/150 shadow-[0_0_15px_rgba(200,164,19,0.15)]'
             : 'text-white/60 hover:text-white/90 hover:bg-white/5 border border-transparent'
         }`}
       >
@@ -2506,7 +2506,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                             return (
                               <div className="w-full max-w-full mb-8">
-                                <div className="bg-[#1c3933] border border-brand-gold/8 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
+                                <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
 
                                   {/* HEADER SECTION */}
                                   <div className="flex justify-between items-start mb-6">
@@ -2802,7 +2802,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       const completed = steps.filter(s => s.done).length;
                       const pct = Math.round((completed / steps.length) * 100);
                       return (
-                        <div className="rounded-2xl border border-brand-gold/8 bg-gradient-to-r from-brand-gold/5 to-transparent p-5">
+                        <div className="rounded-2xl border border-brand-gold/20 bg-gradient-to-r from-brand-gold/5 to-transparent p-5">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-lg bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center">
@@ -2820,7 +2820,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-3">
                             {steps.map((s, i) => (
-                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-white/3 border border-brand-gold/5'}`}>
+                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-white/3 border border-brand-gold/15'}`}>
                                 {s.done ? <CheckCircle2 size={9} /> : <div className="w-2 h-2 rounded-full border border-current" />}
                                 {s.label}
                               </span>
@@ -2908,7 +2908,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               type="text"
                               value={company.name}
                               onChange={e => setCompany({ ...company, name: e.target.value })}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/8' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
                               readOnly={!isEditingIdentity}
                             />
                           </div>
@@ -2942,7 +2942,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   const seq = String(outlets.filter(o => o.name).length + 1).padStart(2, '0');
                                   setCompany({ ...company, currentOutletName: name, currentOutletCode: prefix + seq });
                                 }}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/8' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
                                 placeholder="e.g. Skyline Lounge"
                                 readOnly={!isEditingIdentity}
                               />
@@ -3096,7 +3096,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               value={auditReport.comments}
                               onChange={e => setAuditReport({ ...auditReport, comments: e.target.value })}
                               disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-brand-gold/8' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
                             />
                           </div>
                         </div>
@@ -3120,7 +3120,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       </div>
 
                       {/* Support email */}
-                      <div className="flex items-center gap-3 mb-8 p-4 rounded-xl bg-brand-gold/8 border border-brand-gold/20">
+                      <div className="flex items-center gap-3 mb-8 p-4 rounded-xl bg-brand-gold/10 border border-brand-gold/25">
                         <Mail size={18} className="text-brand-gold shrink-0" />
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Support Email</p>
@@ -3251,14 +3251,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
 
                     {/* ── Audit Log ── */}
-                    <div className="rounded-2xl overflow-hidden border border-brand-gold/8">
+                    <div className="rounded-2xl overflow-hidden border border-brand-gold/15">
                       {/* Header */}
                       <div className="bg-gradient-to-r from-brand-gold/8 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-gold/15 flex items-center gap-3 flex-wrap">
                         <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
                           <ScrollText size={18} className="text-brand-gold" />
                         </div>
                         {auditLogs.length > 0 && (
-                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-brand-gold/8">
+                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-brand-gold/15">
                             {auditLogs.length} {auditLogs.length === 1 ? 'Entry' : 'Entries'}
                           </span>
                         )}
@@ -3296,11 +3296,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         };
                         const categories = [...new Set(actionTypes.map((a: string) => labelMap[a as string] || 'Other'))];
                         return (
-                          <div className="px-4 sm:px-8 py-3 border-b border-brand-gold/5 flex items-center gap-2 flex-wrap bg-brand-dark/20">
+                          <div className="px-4 sm:px-8 py-3 border-b border-brand-gold/15 flex items-center gap-2 flex-wrap bg-brand-dark/20">
                             <span className="text-[11px] font-black uppercase tracking-widest text-white/50 mr-1">Filter</span>
                             <button
                               onClick={() => setAuditFilter(null)}
-                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-brand-gold/8 text-white/40 hover:text-white/70'}`}
+                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
                             >
                               All
                             </button>
@@ -3308,7 +3308,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <button
                                 key={cat}
                                 onClick={() => setAuditFilter(cat)}
-                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-brand-gold/8 text-white/40 hover:text-white/70'}`}
+                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
                               >
                                 {cat}
                               </button>
@@ -3321,7 +3321,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[600px] overflow-y-auto scrollbar-gold">
                         {auditLogs.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="w-16 h-16 rounded-2xl bg-white/3 border border-brand-gold/8 flex items-center justify-center mb-5">
+                            <div className="w-16 h-16 rounded-2xl bg-white/3 border border-brand-gold/20 flex items-center justify-center mb-5">
                               <ScrollText size={28} className="text-white/15" />
                             </div>
                             <p className="text-sm text-white/40 font-medium">No activity recorded yet</p>
@@ -3427,7 +3427,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                             </div>
 
                                             {/* Content */}
-                                            <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-brand-gold/5 group-hover:border-brand-gold/10 group-hover:bg-white/5 transition-colors px-4 py-3">
+                                            <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-brand-gold/15 group-hover:border-brand-gold/10 group-hover:bg-white/5 transition-colors px-4 py-3">
                                               <div className="flex items-center justify-between gap-3 mb-1.5">
                                                 <div className="flex items-center gap-2 min-w-0">
                                                   <span className={`text-[11px] font-black uppercase tracking-widest ${color.split(' ')[0]} shrink-0`}>{label}</span>
@@ -3587,7 +3587,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               ref={permTriggerRef}
                               onClick={() => setIsPermDropdownOpen(!isPermDropdownOpen)}
                               className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors cursor-pointer
-                                ${isPermDropdownOpen ? 'border-brand-gold' : 'border-brand-gold/25 hover:border-brand-gold/50'}`}
+                                ${isPermDropdownOpen ? 'border-brand-gold' : 'border-brand-gold/25 hover:border-brand-gold/150'}`}
                             >
                               <span className={enrollPermissions.length ? 'text-white text-sm' : 'text-white/40 text-sm'}>
                                 {enrollPermissions.length === 0
@@ -3624,7 +3624,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   })}
                                 </div>
                                 {/* Select all / Clear all footer */}
-                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-brand-gold/8">
+                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-brand-gold/15">
                                   <button type="button" onClick={() => setEnrollPermissions([])}
                                     className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">Clear all</button>
                                   <button type="button" onClick={() => setEnrollPermissions(AVAILABLE_PERMISSIONS)}
@@ -3766,10 +3766,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                                 {/* Actions */}
                                 <div className="flex gap-2 shrink-0">
-                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
                                     <Edit2 size={14} />
                                   </button>
-                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
                                     <Trash2 size={14} />
                                   </button>
                                 </div>
@@ -3793,7 +3793,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               {members.map((u) => {
                                 const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
                                 return (
-                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-white/3 rounded-2xl border border-brand-gold/8 hover:border-brand-gold/25 transition-colors gap-5">
+                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-white/3 rounded-2xl border border-brand-gold/20 hover:border-brand-gold/25 transition-colors gap-5">
                                   {/* Left: avatar + identity */}
                                   <div className="flex items-center gap-4 min-w-0 flex-1">
                                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-eco/20 to-brand-eco/5 border border-brand-eco/20 flex items-center justify-center shrink-0">
@@ -3852,10 +3852,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                                     {/* Actions */}
                                     <div className="flex gap-2 shrink-0">
-                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
                                         <Edit2 size={14} />
                                       </button>
-                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
                                         <Trash2 size={14} />
                                       </button>
                                     </div>
@@ -3985,7 +3985,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-3xl font-geometric font-black text-brand-gold leading-none">{effectiveParams.wasteTarget}</span>
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">{effectiveParams.wasteUnit}</span>
                           </div>
-                          <div className="flex bg-brand-dark/80 rounded-full p-0.5 border border-brand-gold/5 w-fit mb-3">
+                          <div className="flex bg-brand-dark/80 rounded-full p-0.5 border border-brand-gold/15 w-fit mb-3">
                             <button disabled={!isSustainabilityEditable} onClick={() => setParams({ ...params, wasteUnit: 'kg' })} className={`px-3 py-1 rounded-full text-[8px] font-black transition-all ${effectiveParams.wasteUnit === 'kg' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}>KG</button>
                             <button disabled={!isSustainabilityEditable} onClick={() => setParams({ ...params, wasteUnit: 'lbs' })} className={`px-3 py-1 rounded-full text-[8px] font-black transition-all ${effectiveParams.wasteUnit === 'lbs' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}>LBS</button>
                           </div>
@@ -4125,7 +4125,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-brand-dark/40">
                         {/* Deviation Alerts */}
-                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.alertsActive ? 'bg-brand-gold/8 border-brand-gold/25' : 'bg-brand-dark/60 border-brand-gold/8'}`}>
+                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.alertsActive ? 'bg-brand-gold/8 border-brand-gold/25' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-xl transition-all ${params.alertsActive ? 'bg-brand-gold/15' : 'bg-white/5'}`}>
                               <AlertCircle size={18} className={params.alertsActive ? 'text-brand-gold' : 'text-white/30'} />
@@ -4141,7 +4141,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
 
                         {/* Suggestion Engine */}
-                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.milaLogic ? 'bg-brand-eco/8 border-brand-eco/25' : 'bg-brand-dark/60 border-brand-gold/8'}`}>
+                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.milaLogic ? 'bg-brand-eco/8 border-brand-eco/25' : 'bg-brand-dark/60 border-brand-gold/15'}`}>
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-xl transition-all ${params.milaLogic ? 'bg-brand-eco/15' : 'bg-white/5'}`}>
                               <Lightbulb size={18} className={params.milaLogic ? 'text-brand-eco' : 'text-white/30'} />
