@@ -146,7 +146,6 @@ enum DashboardTab {
   SUMMARIZED = 'overview',
   FOOD_WASTE = 'food-waste',
   ENERGY_WATER = 'energy-water',
-  MILA_AI = 'mila-ai',
   GAMIFICATION = 'gamification'
 }
 
@@ -155,7 +154,6 @@ const DASHBOARD_TAB_PATHS: Record<DashboardTab, string> = {
   [DashboardTab.SUMMARIZED]: '/dashboard/overview',
   [DashboardTab.FOOD_WASTE]: '/dashboard/food-waste',
   [DashboardTab.ENERGY_WATER]: '/dashboard/energy-water',
-  [DashboardTab.MILA_AI]: '/dashboard/mila-ai',
   [DashboardTab.GAMIFICATION]: '/dashboard/gamification',
 };
 
