@@ -2300,27 +2300,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
                 {activeView === PortalView.DASHBOARD && (
                   <div className="space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col flex-grow overflow-y-auto scrollbar-hide pr-2">
-                    <div className="flex overflow-x-auto gap-1 w-full sm:w-fit shrink-0 scrollbar-hide">
+                    <div className="flex overflow-x-auto gap-2 w-full sm:w-fit shrink-0 scrollbar-hide pb-1">
                       {[
-                        { id: DashboardTab.SUMMARIZED, label: 'Overview', icon: TrendingUp },
-                        { id: DashboardTab.DAILY_INPUT, label: 'Daily Input', icon: ClipboardList },
-                        { id: DashboardTab.FOOD_WASTE, label: 'Food Waste', icon: Leaf },
-                        { id: DashboardTab.ENERGY_WATER, label: 'Energy & Water', icon: Zap },
-                        { id: DashboardTab.MILA_AI, label: 'Mila AI', icon: Cpu },
-                        { id: DashboardTab.GAMIFICATION, label: 'Gamification', icon: Award },
+                        { id: DashboardTab.SUMMARIZED, label: 'Overview', icon: TrendingUp, color: 'brand-gold' },
+                        { id: DashboardTab.DAILY_INPUT, label: 'Daily Input', icon: ClipboardList, color: 'brand-eco' },
+                        { id: DashboardTab.FOOD_WASTE, label: 'Food Waste', icon: Leaf, color: 'brand-eco' },
+                        { id: DashboardTab.ENERGY_WATER, label: 'Energy & Water', icon: Zap, color: 'brand-energy' },
+                        { id: DashboardTab.MILA_AI, label: 'Mila AI', icon: Cpu, color: 'brand-gold' },
+                        { id: DashboardTab.GAMIFICATION, label: 'Gamification', icon: Award, color: 'brand-gold' },
                       ].map((tab) => {
                         const active = dashboardTab === tab.id;
                         return (
                           <button
                             key={tab.id}
                             onClick={() => setDashboardTab(tab.id)}
-                            className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all whitespace-nowrap ${
-                              active ? 'text-white' : 'text-white/60 hover:text-white'
+                            className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 whitespace-nowrap border ${
+                              active
+                                ? 'bg-brand-gold/15 border-brand-gold/40 text-white shadow-[0_2px_12px_rgba(200,164,19,0.15)]'
+                                : 'bg-white/3 border-transparent text-white/50 hover:text-white/80 hover:bg-white/5 hover:border-brand-gold/15'
                             }`}
                           >
-                            <tab.icon size={14} className={active ? 'text-brand-gold' : 'text-white/25'} />
-                            <span className="text-[12px] font-semibold tracking-tight">{tab.label}</span>
-                            {active && <span className="absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand-gold/80" />}
+                            <tab.icon size={15} className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/30 group-hover:text-white/60'}`} />
+                            <span className="text-[12px] font-bold tracking-tight">{tab.label}</span>
                           </button>
                         );
                       })}
