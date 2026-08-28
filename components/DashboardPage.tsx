@@ -1958,17 +1958,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     return (
       <button
         onClick={() => setActiveView(view)}
-        className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 whitespace-nowrap group lg:w-full ${
+        title={label}
+        className={`relative flex items-center gap-3 px-3 lg:px-3.5 py-3 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
           active
             ? 'bg-brand-gold/10 text-white border border-brand-gold/30'
             : 'text-white/60 hover:text-white/90 hover:bg-white/3 border border-transparent'
         }`}
       >
         <Icon
-          size={16}
-          className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/40 group-hover:text-white/70'}`}
+          size={18}
+          className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/40 group-hover/item:text-white/70'}`}
         />
-        <span className={`text-[12px] font-semibold tracking-tight ${active ? 'text-white' : ''}`}>
+        {/* Label — hidden on desktop collapsed, shown on sidebar hover via group-hover */}
+        <span className={`text-[12px] font-semibold tracking-tight ${active ? 'text-white' : ''} hidden lg:block opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] transition-all duration-300`}>
           {label}
         </span>
         {/* Left bar indicator for active item */}
@@ -2227,9 +2229,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         {/* Sidebar + Main Content layout */}
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-grow overflow-hidden">
 
-          {/* ── Sidebar ── */}
-          <aside className="lg:w-56 shrink-0 flex flex-col gap-2">
-            <div className="bg-brand-dark border border-brand-gold/8 rounded-2xl p-3 flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible scrollbar-hide shadow-xl">
+          {/* ── Sidebar — collapsible, expands on hover (IDE-style) ── */}
+          <aside className="lg:w-16 lg:hover:w-56 shrink-0 flex flex-col gap-2 transition-all duration-300 ease-out group/sidebar lg:relative lg:z-20">
+            <div className="bg-brand-dark border border-brand-gold/8 rounded-2xl p-2 lg:p-3 flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto scrollbar-hide shadow-xl lg:h-full">
 
               {/* Nav items */}
               <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
@@ -2239,23 +2241,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
 
               {/* Divider */}
-              <div className="hidden lg:block h-px bg-brand-gold/8 my-1" />
+              <div className="hidden lg:block h-px bg-brand-gold/8 my-1 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300" />
 
-              {/* Status indicators in sidebar */}
+              {/* Status indicators in sidebar — visible only when expanded */}
               {activeView === PortalView.PARAMETERS && (
-                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
+                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all opacity-0 group-hover/sidebar:opacity-100 ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
                   {autoSaveStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={10} /> : <Save size={10} />}
                   {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? 'Saved' : 'Auto-save'}
                 </div>
               )}
               {activeView === PortalView.IDENTITY && (
-                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
+                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all opacity-0 group-hover/sidebar:opacity-100 ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
                   {saveStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : saveStatus === 'success' ? <Check size={10} /> : <Save size={10} />}
                   {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save'}
                 </div>
               )}
               {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
-                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
+                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
                   {saveStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : <Check size={10} />}
                   {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
                 </div>
@@ -2266,7 +2268,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 <button
                   onClick={handleSaveAll}
                   disabled={saveStatus !== 'idle'}
-                  className={`hidden lg:flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
+                  className={`hidden lg:flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-bold tracking-wide transition-all opacity-0 group-hover/sidebar:opacity-100 ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
                 >
                   {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
                   {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
