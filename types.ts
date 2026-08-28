@@ -18,7 +18,7 @@ export enum Page {
   SUPER_ADMIN = 'super_admin',
 }
 
-export type UserRole = 'super_admin' | 'admin' | 'supervisor' | 'chef' | 'manager' | 'basic' | 'view';
+export type UserRole = 'super_admin' | 'admin' | 'supervisor' | 'basic' | 'view';
 export type StaffPosition = 'F&B Director' | 'GM' | 'Exec Chef' | 'Manager' | 'Chef Prep' | 'Outlet Manager';
 
 export interface Outlet {

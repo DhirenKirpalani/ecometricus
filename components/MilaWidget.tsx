@@ -210,10 +210,9 @@ INSTRUCTIONS:
    - Cite specific numbers from tool results and session context.
 
 6. ROLE AWARENESS:
-   - ${userProfile.role === 'admin' ? 'You are talking to an ADMIN/GM. They have full access. You can use all tools including audit trail and cross-outlet comparison.' : ''}
-   - ${userProfile.role === 'manager' ? 'You are talking to a MANAGER. They manage outlets. Focus on outlet-level insights and staff management.' : ''}
+   - ${userProfile.role === 'admin' || userProfile.role === 'super_admin' ? 'You are talking to an ADMIN/GM. They have full access. You can use all tools including audit trail and cross-outlet comparison.' : ''}
    - ${userProfile.role === 'supervisor' ? 'You are talking to a SUPERVISOR. They review data and log entries. Help them validate and triage alerts.' : ''}
-   - ${userProfile.role === 'chef' || userProfile.role === 'basic' ? 'You are talking to a CHEF/STAFF member. Help them log entries quickly and give them quick feedback on their performance.' : ''}
+   - ${userProfile.role === 'basic' ? 'You are talking to a STAFF member. Help them log entries quickly and give them quick feedback on their performance.' : ''}
 
 7. SAFETY: Never fabricate data. If a tool returns no results, say so honestly.`;
 

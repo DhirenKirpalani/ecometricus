@@ -153,7 +153,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
     const saved = localStorage.getItem('ecometricus_waste_entries');
     let entries = saved ? JSON.parse(saved) : [];
     // SECURITY FILTER: Basic/Chef roles only see their own outlet's data
-    if (user.role === 'basic' || user.role === 'chef') {
+    if (user.role === 'basic') {
       entries = entries.filter((e: WasteEntry) => e.outletCode === user.outletCode);
     }
     return entries;
@@ -970,7 +970,7 @@ const StaffPortal: React.FC<StaffPortalProps> = ({ user, onLogout }) => {
       `}} />
 
       {/* 6. Mila AI Widget (Conditional) */}
-      {(user.role === 'basic' || user.role === 'chef') ? (
+      {(user.role === 'basic') ? (
         <MilaFeedbackWidget user={user} />
       ) : (
         <div className="fixed bottom-6 right-6 z-50">

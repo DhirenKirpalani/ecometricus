@@ -296,7 +296,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   const [wasteEntries, setWasteEntries] = useState<WasteEntry[]>(() => {
     const saved = localStorage.getItem('ecometricus_waste_entries');
     let entries: WasteEntry[] = saved ? JSON.parse(saved) : [];
-    if (user.role === 'basic' || user.role === 'chef') {
+    if (user.role === 'basic') {
       entries = entries.filter(e => e.outletCode === user.outletCode);
     }
     return entries;

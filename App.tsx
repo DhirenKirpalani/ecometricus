@@ -108,7 +108,7 @@ const App: React.FC = () => {
           const isSuperAdmin = authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
           const role = isSuperAdmin ? 'super_admin' : (meta.role || 'admin');
           const rl = role.toLowerCase();
-          const position = rl === 'super_admin' ? 'F&B Director' : rl === 'admin' ? 'GM' : rl === 'manager' ? 'Outlet Manager' : rl === 'chef' ? 'Head Chef' : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'view' ? (meta.position || 'GM') : 'Supervisor';
+          const position = rl === 'super_admin' ? 'F&B Director' : rl === 'admin' ? 'GM' : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'view' ? (meta.position || 'GM') : 'Supervisor';
 
           const hasAuthHash = window.location.hash.includes('access_token');
           const isSignupConfirmation = window.location.hash.includes('type=signup');
@@ -155,7 +155,7 @@ const App: React.FC = () => {
             const rl = role.toLowerCase();
             const targetPath =
               rl === 'super_admin' ? PAGE_TO_PATH[Page.DASHBOARD] :
-              rl === 'admin' || rl === 'manager' ? PAGE_TO_PATH[Page.DASHBOARD] :
+              rl === 'admin' ? PAGE_TO_PATH[Page.DASHBOARD] :
               rl === 'supervisor' ? PAGE_TO_PATH[Page.SUPERVISOR_DASHBOARD] :
               '/dashboard/daily-input';
             navigate(targetPath);
@@ -188,12 +188,12 @@ const App: React.FC = () => {
     const role = effectiveUser.role.toLowerCase();
     if (role === 'super_admin') {
       handleNavigate(Page.DASHBOARD);
-    } else if (role === 'admin' || role === 'manager') {
+    } else if (role === 'admin') {
       handleNavigate(Page.DASHBOARD);
     } else if (role === 'supervisor') {
       handleNavigate(Page.SUPERVISOR_DASHBOARD);
     } else {
-      // Basic/chef/view roles go to Daily Input on the dashboard
+      // Basic/view roles go to Daily Input on the dashboard
       navigate('/dashboard/daily-input');
       setCurrentPageState(Page.DASHBOARD);
     }

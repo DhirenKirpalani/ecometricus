@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
         const { data: users, error: usersError } = await supabase
             .from('personnel')
             .select('id, full_name, role, outlet_code, email')
-            .in('role', ['admin', 'manager', 'supervisor']);
+            .in('role', ['admin', 'super_admin', 'supervisor']);
 
         if (usersError || !users) {
             return json({ error: 'Could not fetch users', detail: usersError?.message }, 500);

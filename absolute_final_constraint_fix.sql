@@ -6,7 +6,7 @@ ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
 
 -- Optional: Re-add a more permissive constraint that matches frontend 'types.ts'
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check 
-CHECK (role IN ('admin', 'supervisor', 'chef', 'manager', 'basic', 'gm', 'Admin', 'Supervisor', 'View'));
+CHECK (role IN ('super_admin', 'admin', 'supervisor', 'basic', 'view', 'Admin', 'Supervisor', 'View'));
 
 -- 2. Fix Company Settings Unique Constraint
 -- The app uses ON CONFLICT (user_id), so we MUST have a UNIQUE index or constraint on user_id.
