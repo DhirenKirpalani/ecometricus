@@ -110,6 +110,7 @@ const brandAlert = '#FF3131';
 
 enum PortalView {
   DASHBOARD = 'dashboard',
+  DAILY_INPUT = 'daily_input',
   IDENTITY = 'identity',
   TEAM = 'team',
   PARAMETERS = 'parameters',
@@ -120,6 +121,7 @@ enum PortalView {
 // URL path mapping for portal views
 const PORTAL_VIEW_PATHS: Record<PortalView, string> = {
   [PortalView.DASHBOARD]: '/dashboard',
+  [PortalView.DAILY_INPUT]: '/dashboard/daily-input',
   [PortalView.IDENTITY]: '/dashboard/company',
   [PortalView.TEAM]: '/dashboard/team',
   [PortalView.PARAMETERS]: '/dashboard/benchmarks',
@@ -133,7 +135,6 @@ const PATH_TO_PORTAL_VIEW: Record<string, PortalView> = Object.fromEntries(
 
 enum DashboardTab {
   SUMMARIZED = 'overview',
-  DAILY_INPUT = 'daily-input',
   FOOD_WASTE = 'food-waste',
   ENERGY_WATER = 'energy-water',
   MILA_AI = 'mila-ai',
@@ -143,7 +144,6 @@ enum DashboardTab {
 // URL path mapping for dashboard inner tabs (nested under /dashboard)
 const DASHBOARD_TAB_PATHS: Record<DashboardTab, string> = {
   [DashboardTab.SUMMARIZED]: '/dashboard/overview',
-  [DashboardTab.DAILY_INPUT]: '/dashboard/daily-input',
   [DashboardTab.FOOD_WASTE]: '/dashboard/food-waste',
   [DashboardTab.ENERGY_WATER]: '/dashboard/energy-water',
   [DashboardTab.MILA_AI]: '/dashboard/mila-ai',
@@ -646,7 +646,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const location = useLocation();
 
   // Derive active view from URL path
-  // Inner tab paths (/dashboard/overview, /dashboard/daily-input, etc.) map to DASHBOARD portal view
+  // Portal view paths (including /dashboard/daily-input) are checked first
+  // Inner tab paths (/dashboard/overview, /dashboard/food-waste, etc.) map to DASHBOARD portal view
   const activeView = PATH_TO_PORTAL_VIEW[location.pathname]
     || (PATH_TO_DASHBOARD_TAB[location.pathname] ? PortalView.DASHBOARD : null)
     || (location.pathname === '/dashboard' ? PortalView.DASHBOARD : null)
@@ -2207,6 +2208,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
               {/* Nav items */}
               <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
+              <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label="Daily Input" />
               <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
               <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
               <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
@@ -2282,6 +2284,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
+                    {activeView === PortalView.DAILY_INPUT && "Log Waste & Resource Data"}
                     {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
@@ -2289,6 +2292,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
+                    {activeView === PortalView.DAILY_INPUT && "Daily Input"}
                     {activeView === PortalView.IDENTITY && "Company Identity"}
                     {activeView === PortalView.TEAM && "Staff Registry"}
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
@@ -2303,7 +2307,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     <div className="flex overflow-x-auto gap-2 w-full sm:w-fit shrink-0 scrollbar-hide pb-1">
                       {[
                         { id: DashboardTab.SUMMARIZED, label: 'Overview', icon: TrendingUp, color: 'brand-gold' },
-                        { id: DashboardTab.DAILY_INPUT, label: 'Daily Input', icon: ClipboardList, color: 'brand-eco' },
                         { id: DashboardTab.FOOD_WASTE, label: 'Food Waste', icon: Leaf, color: 'brand-eco' },
                         { id: DashboardTab.ENERGY_WATER, label: 'Energy & Water', icon: Zap, color: 'brand-energy' },
                         { id: DashboardTab.MILA_AI, label: 'Mila AI', icon: Cpu, color: 'brand-gold' },
@@ -2695,12 +2698,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </>
                       )}
 
-                      {dashboardTab === DashboardTab.DAILY_INPUT && (
-                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                          <DailyInputForm user={user} onAuditLog={logAction} />
-                        </div>
-                      )}
-
                       {dashboardTab === DashboardTab.FOOD_WASTE && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                           <FoodWasteIntelligence 
@@ -2729,6 +2726,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <GamificationHub />
                       )}
                     </div>
+                  </div>
+                )}
+                {activeView === PortalView.DAILY_INPUT && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <DailyInputForm user={user} onAuditLog={logAction} />
                   </div>
                 )}
                 {activeView === PortalView.IDENTITY && (
