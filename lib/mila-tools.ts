@@ -677,19 +677,35 @@ async function execLogWasteEntry(args: any, ctx: ToolExecutionContext): Promise<
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      const { error } = await supabase.from('waste_logs').insert({
-        category: entry.category,
-        sub_category: entry.subCategory,
-        product: entry.product,
-        reason: entry.reason,
-        destination: entry.destination,
-        amount: entry.amount,
-        unit: entry.unit,
-        staff_name: entry.staffName,
-        outlet_code: entry.outletCode,
-        user_id: session.user.id,
+      // Find outlet by code
+      const { data: outlet } = await supabase
+        .from('outlets')
+        .select('id, name')
+        .eq('code', entry.outletCode || ctx.user.outletCode)
+        .single();
+
+      if (outlet) {
+        const { error } = await supabase.from('food_waste_logs').insert({
+          outlet_id: outlet.id,
+          outlet_name: outlet.name,
+          mass_kg: entry.unit === 'lbs' ? entry.amount * 0.4536 : entry.amount,
+          cost_per_kg: 6.53,
+          is_mock: false,
+          user_id: session.user.id,
+          created_by: ctx.user.fullName,
+        });
+        dbSaved = !error;
+      }
+
+      // Record daily check-in
+      await supabase.rpc('record_daily_checkin', {
+        p_user_id: session.user.id,
+        p_user_name: ctx.user.fullName,
+        p_user_role: ctx.user.role,
+        p_outlet_code: entry.outletCode || ctx.user.outletCode,
+        p_entry_type: 'waste',
       });
-      dbSaved = !error;
+      window.dispatchEvent(new Event('ecometricus_checkin_updated'));
     }
   } catch {}
 
@@ -742,13 +758,34 @@ async function execLogResourceEntry(args: any, ctx: ToolExecutionContext): Promi
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      const { error } = await supabase.from('resource_logs').insert({
-        type: entry.type,
-        amount: entry.amount,
-        outlet_code: ctx.user.outletCode,
-        user_id: session.user.id,
+      // Find outlet by code
+      const { data: outlet } = await supabase
+        .from('outlets')
+        .select('id, name')
+        .eq('code', ctx.user.outletCode)
+        .single();
+
+      if (outlet) {
+        const { error } = await supabase.from('resource_logs').insert({
+          outlet_id: outlet.id,
+          outlet_name: outlet.name,
+          resource_type: entry.type,
+          amount: entry.amount,
+          user_id: session.user.id,
+          created_by: ctx.user.fullName,
+        });
+        dbSaved = !error;
+      }
+
+      // Record daily check-in
+      await supabase.rpc('record_daily_checkin', {
+        p_user_id: session.user.id,
+        p_user_name: ctx.user.fullName,
+        p_user_role: ctx.user.role,
+        p_outlet_code: ctx.user.outletCode,
+        p_entry_type: entry.type,
       });
-      dbSaved = !error;
+      window.dispatchEvent(new Event('ecometricus_checkin_updated'));
     }
   } catch {}
 

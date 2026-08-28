@@ -5,6 +5,7 @@ import {
   Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown
 } from 'lucide-react';
 import { UserProfile } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface DailyInputFormProps {
   user: UserProfile;
@@ -413,12 +414,50 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
     setShowProductDropdown(false);
   };
 
-  const handleSaveWaste = (e: React.FormEvent) => {
+  const handleSaveWaste = async (e: React.FormEvent) => {
     e.preventDefault();
     const productList = form.products.length > 0 ? form.products : (form.product ? [form.product] : []);
     if (!form.category || productList.length === 0 || !form.amount || !form.reason || !form.destination) return;
     const finalReason = form.reason === 'Other' ? form.customReason : form.reason;
     const productStr = productList.join(', ');
+    const amountNum = parseFloat(form.amount);
+
+    // ── Sync to Supabase ──
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      // Find outlet by code
+      const { data: outlet } = await supabase
+        .from('outlets')
+        .select('id, name')
+        .eq('code', user.outletCode)
+        .single();
+
+      if (outlet) {
+        await supabase.from('food_waste_logs').insert({
+          outlet_id: outlet.id,
+          outlet_name: outlet.name,
+          mass_kg: unit === 'lbs' ? amountNum * 0.4536 : amountNum,
+          cost_per_kg: 6.53,
+          is_mock: false,
+          user_id: session?.user?.id || null,
+          created_by: user.fullName,
+        });
+      }
+
+      // ── Record daily check-in (streak tracking) ──
+      if (session?.user?.id) {
+        await supabase.rpc('record_daily_checkin', {
+          p_user_id: session.user.id,
+          p_user_name: user.fullName,
+          p_user_role: user.role,
+          p_outlet_code: user.outletCode,
+          p_entry_type: 'waste',
+        });
+        window.dispatchEvent(new Event('ecometricus_checkin_updated'));
+      }
+    } catch (err) {
+      console.error('[DailyInput] Failed to sync waste entry to Supabase:', err);
+    }
 
     if (editingId) {
       setWasteEntries(prev => prev.map(entry =>
@@ -446,8 +485,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       };
       setWasteEntries([newEntry, ...wasteEntries]);
       onAuditLog?.('waste_entry_added', 'daily_input', productStr,
-        `Logged waste: ${form.category} → ${productStr} (${parseFloat(form.amount)}${unit}) — ${finalReason}`,
-        { category: form.category, product: productStr, products: productList, amount: parseFloat(form.amount), unit, reason: finalReason, destination: form.destination, outletCode: user.outletCode });
+        `Logged waste: ${form.category} → ${productStr} (${amountNum}${unit}) — ${finalReason}`,
+        { category: form.category, product: productStr, products: productList, amount: amountNum, unit, reason: finalReason, destination: form.destination, outletCode: user.outletCode });
+      window.dispatchEvent(new Event('ecometricus_waste_updated'));
     }
     handleTare();
   };
@@ -469,9 +509,46 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
     setUnit(entry.unit);
   };
 
-  const handleSaveResource = (type: 'water' | 'energy') => {
+  const handleSaveResource = async (type: 'water' | 'energy') => {
     const val = type === 'water' ? form.water : form.energy;
     if (!val) return;
+    const amountNum = parseFloat(val);
+
+    // ── Sync to Supabase ──
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: outlet } = await supabase
+        .from('outlets')
+        .select('id, name')
+        .eq('code', user.outletCode)
+        .single();
+
+      if (outlet) {
+        await supabase.from('resource_logs').insert({
+          outlet_id: outlet.id,
+          outlet_name: outlet.name,
+          resource_type: type,
+          amount: amountNum,
+          user_id: session?.user?.id || null,
+          created_by: user.fullName,
+        });
+      }
+
+      // ── Record daily check-in (streak tracking) ──
+      if (session?.user?.id) {
+        await supabase.rpc('record_daily_checkin', {
+          p_user_id: session.user.id,
+          p_user_name: user.fullName,
+          p_user_role: user.role,
+          p_outlet_code: user.outletCode,
+          p_entry_type: type,
+        });
+        window.dispatchEvent(new Event('ecometricus_checkin_updated'));
+      }
+    } catch (err) {
+      console.error('[DailyInput] Failed to sync resource entry to Supabase:', err);
+    }
+
     if (editingResourceId) {
       setResourceEntries(prev => prev.map(entry =>
         entry.id === editingResourceId ? { ...entry, amount: parseFloat(val) } : entry
@@ -488,8 +565,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       };
       setResourceEntries([newEntry, ...resourceEntries]);
       onAuditLog?.(`${type}_entry_added`, 'daily_input', type,
-        `Logged ${type}: ${parseFloat(val)}${type === 'water' ? 'L' : 'kWh'}`,
-        { type, amount: parseFloat(val), outletCode: user.outletCode });
+        `Logged ${type}: ${amountNum}${type === 'water' ? 'L' : 'kWh'}`,
+        { type, amount: amountNum, outletCode: user.outletCode });
+      window.dispatchEvent(new Event('ecometricus_resource_updated'));
     }
     setForm(prev => ({ ...prev, [type]: '' }));
   };
