@@ -1123,7 +1123,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   useEffect(() => {
     const fetchDynamicBenchmarks = async () => {
       const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
-        ? (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet')
+        ? (params.selectedManualOutlet === 'all'
+          ? 'All Outlets'
+          : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
         : 'Unknown Outlet';
         
       const { data: { session } } = await supabase.auth.getSession();
@@ -1237,7 +1239,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   // Load per-outlet settings when manual outlet selection changes
   useEffect(() => {
-    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
+    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
       const saved = manualOutletSettings[params.selectedManualOutlet];
       if (saved) {
         setParams(prev => ({ ...prev, ...saved }));
@@ -1747,7 +1749,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const userId = session.user.id;
 
     const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
-      ? (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet')
+      ? (params.selectedManualOutlet === 'all'
+        ? 'All Outlets'
+        : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
       : 'Unknown Outlet';
 
     const foodWaste = params.wasteTarget.toString();
@@ -1774,7 +1778,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       logAction('benchmarks_saved', 'benchmark', params.benchmarkRegion, `Saved benchmark parameters (${params.benchmarkRegion})`, { wasteTarget: params.wasteTarget, energyTarget: params.energyTarget, waterTarget: params.waterTarget });
     }
 
-    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
+    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
       setManualOutletSettings(prev => ({
         ...prev,
         [params.selectedManualOutlet]: {
@@ -1813,7 +1817,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         if (!session) { setAutoSaveStatus('idle'); return; }
 
         const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
-          ? (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet')
+          ? (params.selectedManualOutlet === 'all'
+            ? 'All Outlets'
+            : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
           : 'Unknown Outlet';
 
         await supabase.from('benchmarks').upsert({
@@ -1825,7 +1831,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id, outlet_name' });
 
-        if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
+        if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
           setManualOutletSettings(prev => ({
             ...prev,
             [params.selectedManualOutlet]: {
@@ -3662,11 +3668,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <div className="space-y-2">
                             <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Outlet Selection</label>
                             <CustomSelect
-                              value={outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : ''}
-                              options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                              value={params.selectedManualOutlet === 'all' ? 'All Outlets' : (outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : '')}
+                              options={['All Outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
                               onChange={v => {
-                                const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
-                                setParams({ ...params, selectedManualOutlet: code });
+                                if (v === 'All Outlets') {
+                                  setParams({ ...params, selectedManualOutlet: 'all' });
+                                } else {
+                                  const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
+                                  setParams({ ...params, selectedManualOutlet: code });
+                                }
                               }}
                               placeholder="Select Target Outlet"
                               emptyMessage="No outlets added yet — go to Company → Outlets"
