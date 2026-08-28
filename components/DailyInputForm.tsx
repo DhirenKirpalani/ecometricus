@@ -7,6 +7,7 @@ import { UserProfile } from '../types';
 
 interface DailyInputFormProps {
   user: UserProfile;
+  onAuditLog?: (action: string, entityType: string, entityName: string, description: string, metadata?: Record<string, any>) => void;
 }
 
 // Reusable dropdown component
@@ -287,7 +288,7 @@ const WASTE_DESTINATIONS: string[] = [
   'Anaerobic Digestion', 'Recycling', 'Landfill', 'Drain / Sewer', 'Other'
 ];
 
-const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
+const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => {
   const [unit, setUnit] = useState<'kg' | 'lbs' | 'L'>('kg');
   const [showAlert, setShowAlert] = useState<{ msg: string; color: string } | null>(null);
 
@@ -389,6 +390,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
           ? { ...entry, category: form.category, subCategory: form.subCategory, product: form.product, reason: finalReason, destination: form.destination, amount: parseFloat(form.amount), unit }
           : entry
       ));
+      onAuditLog?.('waste_entry_updated', 'daily_input', form.product,
+        `Updated waste entry: ${form.category} → ${form.product} (${parseFloat(form.amount)}${unit})`,
+        { category: form.category, product: form.product, amount: parseFloat(form.amount), unit, reason: finalReason, destination: form.destination, outletCode: user.outletCode });
       setEditingId(null);
     } else {
       const newEntry: WasteEntry = {
@@ -405,6 +409,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
         outletCode: user.outletCode
       };
       setWasteEntries([newEntry, ...wasteEntries]);
+      onAuditLog?.('waste_entry_added', 'daily_input', form.product,
+        `Logged waste: ${form.category} → ${form.product} (${parseFloat(form.amount)}${unit}) — ${finalReason}`,
+        { category: form.category, product: form.product, amount: parseFloat(form.amount), unit, reason: finalReason, destination: form.destination, outletCode: user.outletCode });
     }
     handleTare();
   };
@@ -431,6 +438,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
       setResourceEntries(prev => prev.map(entry =>
         entry.id === editingResourceId ? { ...entry, amount: parseFloat(val) } : entry
       ));
+      onAuditLog?.(`${type}_entry_updated`, 'daily_input', type,
+        `Updated ${type} entry: ${parseFloat(val)}${type === 'water' ? 'L' : 'kWh'}`,
+        { type, amount: parseFloat(val), outletCode: user.outletCode });
       setEditingResourceId(null);
     } else {
       const newEntry: ResourceEntry = {
@@ -439,12 +449,31 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user }) => {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setResourceEntries([newEntry, ...resourceEntries]);
+      onAuditLog?.(`${type}_entry_added`, 'daily_input', type,
+        `Logged ${type}: ${parseFloat(val)}${type === 'water' ? 'L' : 'kWh'}`,
+        { type, amount: parseFloat(val), outletCode: user.outletCode });
     }
     setForm(prev => ({ ...prev, [type]: '' }));
   };
 
-  const deleteWaste = (id: string) => setWasteEntries(prev => prev.filter(e => e.id !== id));
-  const deleteResource = (id: string) => setResourceEntries(prev => prev.filter(e => e.id !== id));
+  const deleteWaste = (id: string) => {
+    const entry = wasteEntries.find(e => e.id === id);
+    setWasteEntries(prev => prev.filter(e => e.id !== id));
+    if (entry) {
+      onAuditLog?.('waste_entry_deleted', 'daily_input', entry.product,
+        `Deleted waste entry: ${entry.category} → ${entry.product} (${entry.amount}${entry.unit})`,
+        { category: entry.category, product: entry.product, amount: entry.amount, unit: entry.unit, outletCode: entry.outletCode });
+    }
+  };
+  const deleteResource = (id: string) => {
+    const entry = resourceEntries.find(e => e.id === id);
+    setResourceEntries(prev => prev.filter(e => e.id !== id));
+    if (entry) {
+      onAuditLog?.(`${entry.type}_entry_deleted`, 'daily_input', entry.type,
+        `Deleted ${entry.type} entry: ${entry.amount}${entry.type === 'water' ? 'L' : 'kWh'}`,
+        { type: entry.type, amount: entry.amount, outletCode: user.outletCode });
+    }
+  };
 
   const showAlertCarbon = totals.carbonImpact > 180;
   const showAlertWater = totals.waterFootprint > 400;
