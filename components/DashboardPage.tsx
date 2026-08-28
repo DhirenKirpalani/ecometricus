@@ -2199,39 +2199,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       {/* Background Dashboard Container with Blur Toggle */}
       <div className={`transition-all duration-1000 flex flex-col min-h-screen ${isPendingConsent ? 'blur-2xl grayscale pointer-events-none' : ''}`}>
-        <div className="flex-grow flex flex-col bg-brand-dark text-gray-100 font-body selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
+        <div className="flex-grow flex bg-brand-dark text-gray-100 font-body selection:bg-brand-gold/30 selection:text-brand-gold overflow-hidden">
 
-      <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-8 flex-grow overflow-hidden">
-
-        {/* Greeting — below navbar, above nav tabs */}
-        {(() => {
-          const h = currentTime.getHours();
-          const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-          const firstName = user.fullName?.split(' ')[0] ?? 'there';
-          return (
-            <div className="flex items-end justify-between gap-4 shrink-0">
-              <div className="min-w-0">
-                <h2 className="text-xl sm:text-3xl font-geometric font-bold text-white leading-none tracking-tight">
-                  {greeting}, <span className="text-brand-gold font-bold">{firstName}</span>
-                </h2>
-                <p className="text-[11px] sm:text-[12px] font-medium text-white/50 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
-                  <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-                  <span className="w-1 h-1 rounded-full bg-white/15" />
-                  <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  <span className="w-1 h-1 rounded-full bg-white/15" />
-                  <span className="truncate">{company.currentOutletName || 'All Outlets'}</span>
-                </p>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Sidebar + Main Content layout */}
-        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-grow overflow-hidden">
-
-          {/* ── Sidebar — collapsible, expands on hover (IDE-style) ── */}
-          <aside className="lg:w-16 lg:hover:w-56 shrink-0 flex flex-col gap-2 transition-all duration-300 ease-out group/sidebar lg:relative lg:z-20">
-            <div className="bg-brand-dark border border-brand-gold/8 rounded-2xl p-2 lg:p-3 flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto scrollbar-hide shadow-xl lg:h-full">
+        {/* ── Sidebar — full height, from below navbar to bottom of page ── */}
+        <aside className="lg:w-16 lg:hover:w-56 shrink-0 flex flex-col transition-all duration-300 ease-out group/sidebar border-r border-brand-gold/8 bg-brand-dark/60 backdrop-blur-sm lg:relative lg:z-20">
+          <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto scrollbar-hide p-2 lg:p-3 lg:h-full">
 
               {/* Nav items */}
               <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
@@ -2278,7 +2250,32 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           </aside>
 
           {/* ── Main Content ── */}
-          <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-hidden">
+          <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-8 flex-grow">
+
+              {/* Greeting */}
+              {(() => {
+                const h = currentTime.getHours();
+                const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+                const firstName = user.fullName?.split(' ')[0] ?? 'there';
+                return (
+                  <div className="flex items-end justify-between gap-4 shrink-0">
+                    <div className="min-w-0">
+                      <h2 className="text-xl sm:text-3xl font-geometric font-bold text-white leading-none tracking-tight">
+                        {greeting}, <span className="text-brand-gold font-bold">{firstName}</span>
+                      </h2>
+                      <p className="text-[11px] sm:text-[12px] font-medium text-white/50 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
+                        <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                        <span className="w-1 h-1 rounded-full bg-white/15" />
+                        <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="w-1 h-1 rounded-full bg-white/15" />
+                        <span className="truncate">{company.currentOutletName || 'All Outlets'}</span>
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
             <div className="bg-brand-dark border border-brand-gold/8 rounded-2xl p-3 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
               {/* Main View Header */}
               <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-5 shrink-0">
@@ -4048,13 +4045,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
               </div>
             </div>
+            </div>
           </main>
         </div>
         <MilaWidget context={adminContext} />
       </div>
-    </div >
-
-    </div>
 
   {/* 🔐 Admin Legal Consent Window (Forensic Gate) */}
   {isPendingConsent && (
