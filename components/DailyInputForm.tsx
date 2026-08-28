@@ -319,19 +319,25 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
     imageUrl: string;
     water: string;
     energy: string;
-  }>({
-    category: '',
-    subCategory: '',
-    product: '',
-    products: [],
-    productSearch: '',
-    reason: '',
-    customReason: '',
-    destination: '',
-    amount: '',
-    imageUrl: '',
-    water: '',
-    energy: ''
+  }>(() => {
+    try {
+      const saved = localStorage.getItem('ecometricus_daily_form');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      category: '',
+      subCategory: '',
+      product: '',
+      products: [],
+      productSearch: '',
+      reason: '',
+      customReason: '',
+      destination: '',
+      amount: '',
+      imageUrl: '',
+      water: '',
+      energy: ''
+    };
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -346,6 +352,10 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   useEffect(() => {
     localStorage.setItem('ecometricus_resource_entries', JSON.stringify(resourceEntries));
   }, [resourceEntries]);
+
+  useEffect(() => {
+    localStorage.setItem('ecometricus_daily_form', JSON.stringify(form));
+  }, [form]);
 
   const totals = useMemo(() => {
     const wasteTotal = wasteEntries.reduce((sum, e) => sum + e.amount, 0);

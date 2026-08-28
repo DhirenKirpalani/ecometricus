@@ -624,7 +624,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   useEffect(() => {
     localStorage.setItem('eco_dashboard_tab', activeView);
   }, [activeView]);
-  const [dashboardTab, setDashboardTab] = useState<DashboardTab>(DashboardTab.SUMMARIZED);
+  const [dashboardTab, setDashboardTabState] = useState<DashboardTab>(() => {
+    try {
+      const saved = localStorage.getItem('eco_dashboard_tab_inner');
+      if (saved && Object.values(DashboardTab).includes(saved as DashboardTab)) {
+        return saved as DashboardTab;
+      }
+    } catch {}
+    return DashboardTab.SUMMARIZED;
+  });
+  const setDashboardTab = (tab: DashboardTab) => {
+    setDashboardTabState(tab);
+    try { localStorage.setItem('eco_dashboard_tab_inner', tab); } catch {}
+  };
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isHydrating, setIsHydrating] = useState(true);
 
