@@ -425,7 +425,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
         className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors
-          ${disabled ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-brand-gold/25 hover:border-brand-gold/50 cursor-pointer'}
+          ${disabled ? 'opacity-40 cursor-not-allowed border-brand-gold/8' : 'border-brand-gold/25 hover:border-brand-gold/50 cursor-pointer'}
           ${open ? 'border-brand-gold' : ''}`}
       >
         <span className={value ? 'text-white' : 'text-white/40'}>{value || placeholder || 'Select…'}</span>
@@ -605,7 +605,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-white/8">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-brand-gold/8">
         <button type="button"
           onClick={() => { onChange(''); setOpen(false); }}
           className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">
@@ -630,7 +630,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
         disabled={disabled}
         onClick={() => !disabled && setOpen(o => !o)}
         className={`w-full flex items-center gap-3 bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-left transition-colors
-          ${disabled ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40 cursor-pointer'}
+          ${disabled ? 'opacity-40 cursor-not-allowed border-brand-gold/8' : 'border-brand-gold/15 hover:border-brand-gold/40 cursor-pointer'}
           ${open ? 'border-brand-gold' : ''}`}
       >
         <Calendar size={13} className="text-brand-gold/60 shrink-0" />
@@ -2139,7 +2139,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setConfirmModal(null)}
-                className="px-4 py-2 rounded-lg border border-white/15 text-white/70 hover:text-white hover:border-white/30 text-[11px] font-semibold transition-colors"
+                className="px-4 py-2 rounded-lg border border-brand-gold/15 text-white/70 hover:text-white hover:border-brand-gold/30 text-[11px] font-semibold transition-colors"
               >Cancel</button>
               <button
                 onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
@@ -2151,7 +2151,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       )}
 
       {/* ── Navbar ── */}
-      <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-white/8 bg-brand-dark/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-[9999] pointer-events-auto shrink-0 border-b border-brand-gold/8 bg-brand-dark/95 backdrop-blur-xl">
 
         <div className="max-w-[1920px] mx-auto h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-3">
 
@@ -2186,7 +2186,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             <button
               onClick={onLogout}
               title="Log out"
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg border border-white/15 text-white/70 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg border border-brand-gold/15 text-white/70 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
             >
               <LogOut size={14} />
               <span className="hidden sm:inline text-[11px] font-semibold">Log out</span>
@@ -2226,7 +2226,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
         {/* Top navigation card */}
         {/* Section nav — pill tabs */}
-        <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 border-b border-white/6 pb-1">
+        <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 border-b border-brand-gold/6 pb-1">
 
           {/* Nav tabs */}
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide w-full sm:w-auto">
@@ -2278,7 +2278,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
         <>
           <main className="flex-grow flex flex-col min-w-0 min-h-0 overflow-hidden">
-            <div className="bg-brand-dark border border-white/8 rounded-2xl p-3 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
+            <div className="bg-brand-dark border border-brand-gold/8 rounded-2xl p-3 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
               {/* Main View Header */}
               <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-5 shrink-0">
                 <div>
@@ -2353,7 +2353,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10">
                                 {/* Carbon */}
-                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-brand-gold/25 transition-all group/card">
+                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/7 hover:border-brand-gold/25 transition-all group/card">
                                   <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
                                     <Cloud size={13} /> Carbon Lifecycle
                                   </span>
@@ -2367,7 +2367,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 </div>
 
                                 {/* Water */}
-                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-blue-500/30 transition-all group/card">
+                                <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/7 hover:border-blue-500/30 transition-all group/card">
                                   <span className="text-[11px] font-black text-brand-gold/80 uppercase tracking-widest flex items-center gap-2">
                                     <Droplets size={13} /> Water Resource
                                   </span>
@@ -2450,7 +2450,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                             return (
                               <div className="w-full max-w-full mb-8">
-                                <div className="bg-[#1c3933] border border-white/8 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
+                                <div className="bg-[#1c3933] border border-brand-gold/8 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-xl">
 
                                   {/* HEADER SECTION */}
                                   <div className="flex justify-between items-start mb-6">
@@ -2747,7 +2747,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       const completed = steps.filter(s => s.done).length;
                       const pct = Math.round((completed / steps.length) * 100);
                       return (
-                        <div className="rounded-2xl border border-white/8 bg-gradient-to-r from-brand-gold/5 to-transparent p-5">
+                        <div className="rounded-2xl border border-brand-gold/8 bg-gradient-to-r from-brand-gold/5 to-transparent p-5">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-lg bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center">
@@ -2765,7 +2765,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-3">
                             {steps.map((s, i) => (
-                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-white/3 border border-white/5'}`}>
+                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-white/3 border border-brand-gold/5'}`}>
                                 {s.done ? <CheckCircle2 size={9} /> : <div className="w-2 h-2 rounded-full border border-current" />}
                                 {s.label}
                               </span>
@@ -2853,7 +2853,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               type="text"
                               value={company.name}
                               onChange={e => setCompany({ ...company, name: e.target.value })}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/8' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
                               readOnly={!isEditingIdentity}
                             />
                           </div>
@@ -2887,7 +2887,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   const seq = String(outlets.filter(o => o.name).length + 1).padStart(2, '0');
                                   setCompany({ ...company, currentOutletName: name, currentOutletCode: prefix + seq });
                                 }}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/8' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
                                 placeholder="e.g. Skyline Lounge"
                                 readOnly={!isEditingIdentity}
                               />
@@ -2950,7 +2950,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setIsEditingAudit(!isEditingAudit)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-white/5 border border-white/10 text-white/60 hover:border-white/25 hover:text-white'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-white/5 border border-brand-gold/10 text-white/60 hover:border-brand-gold/25 hover:text-white'}`}
                           >
                             {isEditingAudit ? <Unlock size={12} /> : <Edit2 size={12} />}
                             {isEditingAudit ? 'Lock' : 'Edit'}
@@ -3041,7 +3041,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               value={auditReport.comments}
                               onChange={e => setAuditReport({ ...auditReport, comments: e.target.value })}
                               disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-white/8' : 'border-white/15 hover:border-brand-gold/40'}`}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-brand-gold/8' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
                             />
                           </div>
                         </div>
@@ -3057,14 +3057,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
 
                     {/* ── Audit Log ── */}
-                    <div className="rounded-2xl overflow-hidden border border-white/8">
+                    <div className="rounded-2xl overflow-hidden border border-brand-gold/8">
                       {/* Header */}
                       <div className="bg-gradient-to-r from-brand-gold/8 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-gold/15 flex items-center gap-3 flex-wrap">
                         <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
                           <ScrollText size={18} className="text-brand-gold" />
                         </div>
                         {auditLogs.length > 0 && (
-                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-white/8">
+                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-brand-gold/8">
                             {auditLogs.length} {auditLogs.length === 1 ? 'Entry' : 'Entries'}
                           </span>
                         )}
@@ -3102,11 +3102,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         };
                         const categories = [...new Set(actionTypes.map((a: string) => labelMap[a as string] || 'Other'))];
                         return (
-                          <div className="px-4 sm:px-8 py-3 border-b border-white/5 flex items-center gap-2 flex-wrap bg-brand-dark/20">
+                          <div className="px-4 sm:px-8 py-3 border-b border-brand-gold/5 flex items-center gap-2 flex-wrap bg-brand-dark/20">
                             <span className="text-[11px] font-black uppercase tracking-widest text-white/50 mr-1">Filter</span>
                             <button
                               onClick={() => setAuditFilter(null)}
-                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
+                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-brand-gold/8 text-white/40 hover:text-white/70'}`}
                             >
                               All
                             </button>
@@ -3114,7 +3114,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <button
                                 key={cat}
                                 onClick={() => setAuditFilter(cat)}
-                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-white/8 text-white/40 hover:text-white/70'}`}
+                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-white/3 border border-brand-gold/8 text-white/40 hover:text-white/70'}`}
                               >
                                 {cat}
                               </button>
@@ -3127,7 +3127,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[600px] overflow-y-auto scrollbar-gold">
                         {auditLogs.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="w-16 h-16 rounded-2xl bg-white/3 border border-white/8 flex items-center justify-center mb-5">
+                            <div className="w-16 h-16 rounded-2xl bg-white/3 border border-brand-gold/8 flex items-center justify-center mb-5">
                               <ScrollText size={28} className="text-white/15" />
                             </div>
                             <p className="text-sm text-white/40 font-medium">No activity recorded yet</p>
@@ -3221,7 +3221,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                           benchmarks_updated: 'Benchmarks Updated',
                                         };
                                         const Icon = iconMap[log.action] || Activity;
-                                        const color = colorMap[log.action] || 'text-white/40 bg-white/5 border-white/10';
+                                        const color = colorMap[log.action] || 'text-white/40 bg-white/5 border-brand-gold/10';
                                         const label = labelMap[log.action] || log.action.replace(/_/g, ' ');
                                         const time = new Date(log.created_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
                                         const initials = (log.actor_name || '?').split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
@@ -3233,7 +3233,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                             </div>
 
                                             {/* Content */}
-                                            <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-white/5 group-hover:border-white/10 group-hover:bg-white/5 transition-colors px-4 py-3">
+                                            <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-brand-gold/5 group-hover:border-brand-gold/10 group-hover:bg-white/5 transition-colors px-4 py-3">
                                               <div className="flex items-center justify-between gap-3 mb-1.5">
                                                 <div className="flex items-center gap-2 min-w-0">
                                                   <span className={`text-[11px] font-black uppercase tracking-widest ${color.split(' ')[0]} shrink-0`}>{label}</span>
@@ -3298,7 +3298,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               setEnrollPosition(''); setEnrollOutlet(''); setEnrollRole('');
                               setEnrollPermissions([]); setGenPassword(''); setGenLink('');
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-brand-gold/10 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-brand-gold/20 transition-colors"
                           >
                             <X size={10} /> Cancel
                           </button>
@@ -3322,12 +3322,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="space-y-1.5">
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Full Name</label>
                               <input type="text" value={enrollName} onChange={e => setEnrollName(e.target.value)} placeholder="Hotel Staff Name"
-                                className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
+                                className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Corporate Email</label>
                               <input type="email" value={enrollEmail} onChange={e => { const val = e.target.value; setEnrollEmail(val); setEnrollEmailError(validateCorporateEmail(val)); }} placeholder="staff@hotel.com"
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all ${enrollEmailError ? 'border-brand-alert' : enrollEmail && !enrollEmailError ? 'border-brand-eco/40' : 'border-white/15'}`} />
+                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all ${enrollEmailError ? 'border-brand-alert' : enrollEmail && !enrollEmailError ? 'border-brand-eco/40' : 'border-brand-gold/15'}`} />
                               {enrollEmailError ? (
                                 <p className="text-[10px] font-bold text-brand-alert ml-1">{enrollEmailError}</p>
                               ) : enrollEmail && !enrollEmailError ? (
@@ -3421,7 +3421,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       >
                                         {/* Custom themed checkbox */}
                                         <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-colors
-                                          ${checked ? 'bg-brand-gold border-brand-gold' : 'border-white/20 bg-transparent'}`}>
+                                          ${checked ? 'bg-brand-gold border-brand-gold' : 'border-brand-gold/20 bg-transparent'}`}>
                                           {checked && <Check size={10} className="text-brand-dark" strokeWidth={3} />}
                                         </span>
                                         <span className="text-[9px] font-bold uppercase tracking-tight leading-tight">{p}</span>
@@ -3430,7 +3430,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   })}
                                 </div>
                                 {/* Select all / Clear all footer */}
-                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/8">
+                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-brand-gold/8">
                                   <button type="button" onClick={() => setEnrollPermissions([])}
                                     className="text-[10px] font-bold text-white/35 hover:text-white/70 transition-colors uppercase tracking-widest">Clear all</button>
                                   <button type="button" onClick={() => setEnrollPermissions(AVAILABLE_PERMISSIONS)}
@@ -3572,10 +3572,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                                 {/* Actions */}
                                 <div className="flex gap-2 shrink-0">
-                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
                                     <Edit2 size={14} />
                                   </button>
-                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
                                     <Trash2 size={14} />
                                   </button>
                                 </div>
@@ -3599,7 +3599,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               {members.map((u) => {
                                 const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
                                 return (
-                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-white/3 rounded-2xl border border-white/8 hover:border-brand-gold/25 transition-colors gap-5">
+                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-white/3 rounded-2xl border border-brand-gold/8 hover:border-brand-gold/25 transition-colors gap-5">
                                   {/* Left: avatar + identity */}
                                   <div className="flex items-center gap-4 min-w-0 flex-1">
                                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-eco/20 to-brand-eco/5 border border-brand-eco/20 flex items-center justify-center shrink-0">
@@ -3658,10 +3658,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                                     {/* Actions */}
                                     <div className="flex gap-2 shrink-0">
-                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/8 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
                                         <Edit2 size={14} />
                                       </button>
-                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-brand-gold/8 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
                                         <Trash2 size={14} />
                                       </button>
                                     </div>
@@ -3791,11 +3791,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-3xl font-geometric font-black text-brand-gold leading-none">{effectiveParams.wasteTarget}</span>
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">{effectiveParams.wasteUnit}</span>
                           </div>
-                          <div className="flex bg-brand-dark/80 rounded-full p-0.5 border border-white/5 w-fit mb-3">
+                          <div className="flex bg-brand-dark/80 rounded-full p-0.5 border border-brand-gold/5 w-fit mb-3">
                             <button disabled={!isSustainabilityEditable} onClick={() => setParams({ ...params, wasteUnit: 'kg' })} className={`px-3 py-1 rounded-full text-[8px] font-black transition-all ${effectiveParams.wasteUnit === 'kg' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}>KG</button>
                             <button disabled={!isSustainabilityEditable} onClick={() => setParams({ ...params, wasteUnit: 'lbs' })} className={`px-3 py-1 rounded-full text-[8px] font-black transition-all ${effectiveParams.wasteUnit === 'lbs' ? 'bg-brand-eco text-brand-dark' : 'text-gray-500'}`}>LBS</button>
                           </div>
-                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.wasteTarget} onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-white/10 text-brand-gold focus:border-brand-gold' : 'border-brand-gold/30 text-brand-gold cursor-default'}`} />
+                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.wasteTarget} onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-brand-gold/10 text-brand-gold focus:border-brand-gold' : 'border-brand-gold/30 text-brand-gold cursor-default'}`} />
                           <input type="range" min="10" max="1000" disabled={!isSustainabilityEditable} value={effectiveParams.wasteTarget} onChange={e => setParams({ ...params, wasteTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-gold ${isSustainabilityEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
 
@@ -3818,7 +3818,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">L</span>
                           </div>
                           <div className="h-7 mb-3" />
-                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.waterTarget} onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-white/10 text-blue-400 focus:border-brand-gold' : 'border-brand-gold/30 text-blue-400 cursor-default'}`} />
+                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.waterTarget} onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-brand-gold/10 text-blue-400 focus:border-brand-gold' : 'border-brand-gold/30 text-blue-400 cursor-default'}`} />
                           <input type="range" min="1000" max="100000" step="500" disabled={!isSustainabilityEditable} value={effectiveParams.waterTarget} onChange={e => setParams({ ...params, waterTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-blue-500 ${isSustainabilityEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
 
@@ -3841,7 +3841,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">kWh</span>
                           </div>
                           <div className="h-7 mb-3" />
-                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.energyTarget} onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-white/10 text-brand-energy focus:border-brand-gold' : 'border-brand-gold/30 text-brand-energy cursor-default'}`} />
+                          <input type="number" disabled={!isSustainabilityEditable} value={effectiveParams.energyTarget} onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isSustainabilityEditable ? 'border-brand-gold/10 text-brand-energy focus:border-brand-gold' : 'border-brand-gold/30 text-brand-energy cursor-default'}`} />
                           <input type="range" min="100" max="10000" step="100" disabled={!isSustainabilityEditable} value={effectiveParams.energyTarget} onChange={e => setParams({ ...params, energyTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-energy ${isSustainabilityEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
                       </div>
@@ -3889,7 +3889,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.foodCostTarget}</span>
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">%</span>
                           </div>
-                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.foodCostTarget} onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-white/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.foodCostTarget} onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
                           <input type="range" min="10" max="60" step="0.5" disabled={!isFnBEditable} value={effectiveParams.foodCostTarget} onChange={e => setParams({ ...params, foodCostTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'opacity-20'}`} />
                         </div>
 
@@ -3911,7 +3911,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.laborCostTarget}</span>
                             <span className="text-xs text-white/30 font-bold uppercase mb-0.5">%</span>
                           </div>
-                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-white/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
                           <input type="range" min="5" max="50" step="0.5" disabled={!isFnBEditable} value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
                       </div>
@@ -3931,7 +3931,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-brand-dark/40">
                         {/* Deviation Alerts */}
-                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.alertsActive ? 'bg-brand-gold/8 border-brand-gold/25' : 'bg-brand-dark/60 border-white/8'}`}>
+                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.alertsActive ? 'bg-brand-gold/8 border-brand-gold/25' : 'bg-brand-dark/60 border-brand-gold/8'}`}>
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-xl transition-all ${params.alertsActive ? 'bg-brand-gold/15' : 'bg-white/5'}`}>
                               <AlertCircle size={18} className={params.alertsActive ? 'text-brand-gold' : 'text-white/30'} />
@@ -3947,7 +3947,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
 
                         {/* Suggestion Engine */}
-                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.milaLogic ? 'bg-brand-eco/8 border-brand-eco/25' : 'bg-brand-dark/60 border-white/8'}`}>
+                        <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${params.milaLogic ? 'bg-brand-eco/8 border-brand-eco/25' : 'bg-brand-dark/60 border-brand-gold/8'}`}>
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-xl transition-all ${params.milaLogic ? 'bg-brand-eco/15' : 'bg-white/5'}`}>
                               <Lightbulb size={18} className={params.milaLogic ? 'text-brand-eco' : 'text-white/30'} />
@@ -4008,7 +4008,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">POS API Key</label>
                             </div>
-                            <input type="password" disabled={!isEditingApis} value={params.posApiKey} onChange={e => setParams({ ...params, posApiKey: e.target.value })} placeholder="Connect POS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
+                            <input type="password" disabled={!isEditingApis} value={params.posApiKey} onChange={e => setParams({ ...params, posApiKey: e.target.value })} placeholder="Connect POS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-brand-gold/10'}`} />
                             <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Sales & Covers</p>
                           </div>
 
@@ -4020,7 +4020,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">CRM API Key</label>
                             </div>
-                            <input type="password" disabled={!isEditingApis} value={params.crmApiKey} onChange={e => setParams({ ...params, crmApiKey: e.target.value })} placeholder="Connect CRM..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
+                            <input type="password" disabled={!isEditingApis} value={params.crmApiKey} onChange={e => setParams({ ...params, crmApiKey: e.target.value })} placeholder="Connect CRM..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-brand-gold/10'}`} />
                             <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Guest Loyalty Data</p>
                           </div>
 
@@ -4032,7 +4032,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">PMS API Key</label>
                             </div>
-                            <input type="password" disabled={!isEditingApis} value={params.pmsApiKey} onChange={e => setParams({ ...params, pmsApiKey: e.target.value })} placeholder="Connect PMS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-white/10'}`} />
+                            <input type="password" disabled={!isEditingApis} value={params.pmsApiKey} onChange={e => setParams({ ...params, pmsApiKey: e.target.value })} placeholder="Connect PMS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-brand-gold/10'}`} />
                             <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Occupancy & Forecast</p>
                           </div>
                         </div>

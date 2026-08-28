@@ -298,7 +298,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
   const KpiCard = ({ id, label, value, unit, icon: Icon, color, trend, tooltipText }: any) => (
     <div className={`bg-[#0f2420] border-2 border-brand-gold/40 p-6 rounded-[30px] shadow-2xl space-y-4 group hover:border-brand-gold/70 transition-all relative ${activeCommentCard === id ? 'ring-2 ring-brand-gold/50' : ''}`}>
       <div className="flex items-center justify-between">
-        <div className={`p-3 bg-brand-dark/60 rounded-xl border-2 border-white/10 group-hover:border-brand-gold/30 transition-all`}>
+        <div className={`p-3 bg-brand-dark/60 rounded-xl border-2 border-brand-gold/10 group-hover:border-brand-gold/30 transition-all`}>
           <Icon className={color || 'text-brand-gold'} size={20} />
         </div>
         <div className="flex items-center gap-2">
@@ -325,9 +325,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
         )}
       </div>
       {activeCommentCard === id && (
-        <div className="mt-4 pt-4 border-t border-white/10 animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="mt-4 pt-4 border-t border-brand-gold/10 animate-in fade-in slide-in-from-top-2 duration-300">
           <textarea
-            className="w-full bg-brand-dark/80 border border-white/10 rounded-xl p-3 text-[10px] text-white outline-none focus:border-brand-gold resize-none h-20"
+            className="w-full bg-brand-dark/80 border border-brand-gold/10 rounded-xl p-3 text-[10px] text-white outline-none focus:border-brand-gold resize-none h-20"
             placeholder="Add operational feedback for staff..."
             value={comments[id] || ""}
             onChange={(e) => setComments({ ...comments, [id]: e.target.value })}
@@ -353,7 +353,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
     <div className="min-h-screen bg-brand-dark flex flex-col font-body selection:bg-brand-gold/20 selection:text-brand-gold antialiased overflow-x-hidden" onClick={() => { setShowTooltip(null); setSelectedFoodCostDay(null); setSelectedLaborCostDay(null); }}>
 
       {/* ── Navbar ── */}
-      <header className="sticky top-0 z-50 shrink-0 border-b border-white/8 bg-brand-dark/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 shrink-0 border-b border-brand-gold/8 bg-brand-dark/95 backdrop-blur-xl">
 
         <div className="max-w-[1920px] mx-auto h-14 px-4 sm:px-6 flex items-center justify-between gap-3">
 
@@ -425,7 +425,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10">
             {/* Carbon */}
-            <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-brand-gold/25 transition-all">
+            <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/7 hover:border-brand-gold/25 transition-all">
               <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest flex items-center gap-2">
                 <Cloud size={13} /> Carbon Lifecycle
               </span>
@@ -448,7 +448,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
             </div>
 
             {/* Water */}
-            <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-white/7 hover:border-blue-500/30 transition-all">
+            <div className="flex flex-col gap-2 p-5 bg-white/3 rounded-xl border border-brand-gold/7 hover:border-blue-500/30 transition-all">
               <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest flex items-center gap-2">
                 <Droplets size={13} /> Water Resource
               </span>
@@ -593,7 +593,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
 
 
         {/* Weekly Performance Cycle — compact action bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#1c3933] border border-white/8 rounded-2xl p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#1c3933] border border-brand-gold/8 rounded-2xl p-4 sm:p-6">
           <div className="flex items-center gap-3">
             <Calendar className="text-brand-gold/60 shrink-0" size={18} />
             <div>
@@ -610,7 +610,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
             </button>
             <button
               onClick={() => setShowAuditModal(true)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 border border-white/15 text-white/60 rounded-xl text-[11px] font-bold tracking-wide hover:border-brand-gold/40 hover:text-brand-gold transition-all"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 border border-brand-gold/15 text-white/60 rounded-xl text-[11px] font-bold tracking-wide hover:border-brand-gold/40 hover:text-brand-gold transition-all"
             >
               <ClipboardList size={14} /> Audit Entries
             </button>
@@ -631,7 +631,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
             <div className="overflow-x-auto scrollbar-gold">
               <table className="w-full text-left min-w-[500px]">
                 <thead>
-                  <tr className="border-b border-white/10">
+                  <tr className="border-b border-brand-gold/10">
                     <th className="py-3 text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest">Entry Date/Time</th>
                     <th className="py-3 text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest">Staff</th>
                     <th className="py-3 text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest">Category / Item</th>

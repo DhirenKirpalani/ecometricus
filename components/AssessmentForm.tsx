@@ -206,7 +206,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
   return (
     <div id="assessment-top" className="min-h-screen bg-brand-dark text-white">
       {/* Sticky progress bar */}
-      <div className="sticky top-0 z-30 bg-brand-dark/95 backdrop-blur-md border-b border-white/5">
+      <div className="sticky top-0 z-30 bg-brand-dark/95 backdrop-blur-md border-b border-brand-gold/5">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => onNavigate(Page.HOME)}

@@ -75,7 +75,7 @@ const ProfitMarginTemplateChart: React.FC<ProfitMarginTemplateChartProps> = ({ d
                 {/* Grid Lines */}
                 <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
                     {[30, 25, 20, 15, 10].map((val) => (
-                        <div key={val} className="w-full border-t border-white/5 h-0"></div>
+                        <div key={val} className="w-full border-t border-brand-gold/5 h-0"></div>
                     ))}
                 </div>
 
@@ -143,7 +143,7 @@ const ProfitMarginTemplateChart: React.FC<ProfitMarginTemplateChartProps> = ({ d
                                     maxWidth: '140px'
                                 }}
                             >
-                                <div className="flex justify-between items-center mb-1 border-b border-white/10 pb-1">
+                                <div className="flex justify-between items-center mb-1 border-b border-brand-gold/10 pb-1">
                                     <span className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{selectedDay.day} Status</span>
                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="pointer-events-auto">
                                         <XIcon size={8} className="text-gray-500 hover:text-white transition-colors" />

@@ -31,7 +31,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
             {/* Header Section - Exactly as shown in the reference image, but now dynamic */}
             <div className="flex justify-between items-start z-20 relative">
                 <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-brand-gold/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
                         <Cloud size={22} className="text-white/60" />
                     </div>
                     <div>
@@ -49,7 +49,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
                 </div>
 
                 <div className={`animate-in fade-in zoom-in duration-500 ${hasAlert ? 'opacity-100' : 'opacity-40'}`}>
-                    <div className={`bg-[#3D1414] border px-6 py-2.5 rounded-xl flex items-center gap-3 shadow-[0_0_20px_rgba(255,77,77,0.15)] cursor-pointer group/alert ${hasAlert ? 'border-[#FF4D4D]/40' : 'border-white/10'}`}>
+                    <div className={`bg-[#3D1414] border px-6 py-2.5 rounded-xl flex items-center gap-3 shadow-[0_0_20px_rgba(255,77,77,0.15)] cursor-pointer group/alert ${hasAlert ? 'border-[#FF4D4D]/40' : 'border-brand-gold/10'}`}>
                         <Info size={14} className={hasAlert ? "text-[#FF4D4D]" : "text-white/40"} />
                         <span className={`text-[11px] font-black uppercase tracking-widest transition-colors ${hasAlert ? "text-[#FF4D4D] group-hover/alert:text-white" : "text-white/40"}`}>
                             {hasAlert ? 'ATTENTION' : 'OPTIMAL'}
@@ -73,7 +73,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
                 {/* Grid Lines */}
                 <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
                     {[Math.round(maxVal), Math.round(maxVal * 0.75), Math.round(maxVal * 0.5), Math.round(maxVal * 0.25), 0].map((val) => (
-                        <div key={val} className="w-full border-t border-white/5 h-0"></div>
+                        <div key={val} className="w-full border-t border-brand-gold/5 h-0"></div>
                     ))}
                 </div>
 
@@ -151,7 +151,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
                                     zIndex: 100
                                 }}
                             >
-                                <div className="flex justify-between items-center mb-1 border-b border-white/10 pb-1">
+                                <div className="flex justify-between items-center mb-1 border-b border-brand-gold/10 pb-1">
                                     <span className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{selectedDay.date} Detail</span>
                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="pointer-events-auto">
                                         <XIcon size={8} className="text-gray-500 hover:text-white transition-colors" />
@@ -199,7 +199,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
             </div>
             
             {/* Horizontal Legend - As shown in Image 2 */}
-            <div className="flex justify-center gap-8 pt-4 border-t border-white/5">
+            <div className="flex justify-center gap-8 pt-4 border-t border-brand-gold/5">
                 {[
                     { label: 'ROYAL', color: '#d4af37' },
                     { label: "FISHER'S", color: '#77B139' },

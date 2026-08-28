@@ -240,7 +240,7 @@ const GamificationHub: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex gap-4">
-                    <button onClick={fetchData} className="p-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all text-white/50 hover:text-white">
+                    <button onClick={fetchData} className="p-3 bg-white/5 border border-brand-gold/10 rounded-full hover:bg-white/10 transition-all text-white/50 hover:text-white">
                         <RefreshCw size={16} />
                     </button>
                     <button onClick={handleResetAndCalibrate} className="px-6 py-2 border border-brand-gold/20 rounded-full text-[10px] font-black text-brand-gold/50 hover:border-brand-gold hover:text-brand-gold transition-all">
@@ -331,7 +331,7 @@ const GamificationHub: React.FC = () => {
                             {/* Filter Tabs (Refined Colors) */}
                             <div className="flex justify-center gap-2 mb-6">
                                 {['All Time', 'This Month', 'This Week'].map((tab, i) => (
-                                    <button key={tab} className={`px-3 py-1 rounded-full text-[8px] font-bold border transition-all ${i === 0 ? 'bg-brand-gold/10 border-brand-gold text-brand-gold' : 'border-white/10 text-white/30'}`}>
+                                    <button key={tab} className={`px-3 py-1 rounded-full text-[8px] font-bold border transition-all ${i === 0 ? 'bg-brand-gold/10 border-brand-gold text-brand-gold' : 'border-brand-gold/10 text-white/30'}`}>
                                         {tab}
                                     </button>
                                 ))}
@@ -360,8 +360,8 @@ const GamificationHub: React.FC = () => {
                                                 ) : (
                                                     <Medal size={14} className="text-[#cd7f32] absolute -top-5 left-1/2 -translate-x-1/2" />
                                                 )}
-                                                <div className={`w-14 h-14 rounded-full border-2 p-1 ${isFirst ? 'border-brand-gold shadow-[0_0_15px_rgba(212,175,55,0.4)]' : 'border-white/10'}`}>
-                                                    <div className="w-full h-full rounded-full bg-white/5 flex items-center justify-center overflow-hidden border border-white/5">
+                                                <div className={`w-14 h-14 rounded-full border-2 p-1 ${isFirst ? 'border-brand-gold shadow-[0_0_15px_rgba(212,175,55,0.4)]' : 'border-brand-gold/10'}`}>
+                                                    <div className="w-full h-full rounded-full bg-white/5 flex items-center justify-center overflow-hidden border border-brand-gold/5">
                                                         <span className="text-white text-xs font-black">{s.name.charAt(0)}</span>
                                                     </div>
                                                 </div>
@@ -379,7 +379,7 @@ const GamificationHub: React.FC = () => {
 
                         {/* Global Ranking List (Table Format) */}
                         <div className="flex-grow relative z-10 overflow-hidden">
-                            <div className="flex justify-between items-center px-4 py-2 border-b border-white/5 mb-4">
+                            <div className="flex justify-between items-center px-4 py-2 border-b border-brand-gold/5 mb-4">
                                 <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Rank</span>
                                 <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">User Name</span>
                                 <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Points</span>
@@ -391,7 +391,7 @@ const GamificationHub: React.FC = () => {
                                         <div className="flex items-center gap-4">
                                             <span className={`text-[10px] font-black w-4 ${idx < 3 ? 'text-brand-gold' : 'text-white/20'}`}>{idx + 1}</span>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/5 overflow-hidden group-hover:border-brand-gold/30 transition-colors">
+                                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-brand-gold/5 overflow-hidden group-hover:border-brand-gold/30 transition-colors">
                                                     <span className="text-white text-[9px] font-black">{s.name.charAt(0)}</span>
                                                 </div>
                                                 <div>
@@ -412,7 +412,7 @@ const GamificationHub: React.FC = () => {
                         </div>
 
                         {/* Social Interaction Bar (Mockup) */}
-                        <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between px-4">
+                        <div className="mt-6 pt-6 border-t border-brand-gold/5 flex items-center justify-between px-4">
                             <div className="flex gap-4 opacity-30">
                                 <Sparkles size={14} className="text-white" />
                                 <Trophy size={14} className="text-white" />
@@ -433,7 +433,7 @@ const GamificationHub: React.FC = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                             {logs.map(log => (
-                                <div key={log.id} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-start gap-4 hover:border-brand-gold/30 transition-all">
+                                <div key={log.id} className="bg-white/5 border border-brand-gold/5 rounded-2xl p-4 flex items-start gap-4 hover:border-brand-gold/30 transition-all">
                                     <div className="mt-1 w-6 h-6 bg-brand-eco/10 border border-brand-eco/40 rounded-full flex items-center justify-center shrink-0">
                                         <CheckCircle2 size={12} className="text-brand-eco" />
                                     </div>

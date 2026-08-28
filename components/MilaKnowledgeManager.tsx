@@ -346,7 +346,7 @@ const MilaKnowledgeManager: React.FC = () => {
       {/* ── Stat Cards Row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Documents */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-4 hover:border-brand-gold/20 transition-all group">
+        <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-4 hover:border-brand-gold/20 transition-all group">
           <div className="flex items-center justify-between mb-3">
             <div className="w-9 h-9 rounded-xl bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center group-hover:scale-110 transition-transform">
               <FileText size={16} className="text-brand-gold" />
@@ -358,7 +358,7 @@ const MilaKnowledgeManager: React.FC = () => {
         </div>
 
         {/* Categories */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-4 hover:border-brand-gold/20 transition-all group">
+        <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-4 hover:border-brand-gold/20 transition-all group">
           <div className="flex items-center justify-between mb-3">
             <div className="w-9 h-9 rounded-xl bg-[#3B82F6]/10 border border-[#3B82F6]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Layers size={16} className="text-[#3B82F6]" />
@@ -369,7 +369,7 @@ const MilaKnowledgeManager: React.FC = () => {
         </div>
 
         {/* Words Indexed */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-4 hover:border-brand-gold/20 transition-all group">
+        <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-4 hover:border-brand-gold/20 transition-all group">
           <div className="flex items-center justify-between mb-3">
             <div className="w-9 h-9 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Database size={16} className="text-[#22C55E]" />
@@ -382,7 +382,7 @@ const MilaKnowledgeManager: React.FC = () => {
         </div>
 
         {/* Sources */}
-        <div className="bg-[#1c3933] border border-white/10 rounded-2xl p-4 hover:border-brand-gold/20 transition-all group">
+        <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-4 hover:border-brand-gold/20 transition-all group">
           <div className="flex items-center justify-between mb-3">
             <div className="w-9 h-9 rounded-xl bg-[#A855F7]/10 border border-[#A855F7]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Globe size={16} className="text-[#A855F7]" />
@@ -400,7 +400,7 @@ const MilaKnowledgeManager: React.FC = () => {
           className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
             !activeCategory
               ? 'bg-brand-gold/20 border-brand-gold/50 text-brand-gold'
-              : 'bg-brand-dark/40 border-white/8 text-white/40 hover:text-white/70 hover:border-white/15'
+              : 'bg-brand-dark/40 border-brand-gold/8 text-white/40 hover:text-white/70 hover:border-brand-gold/15'
           }`}
         >
           All ({stats.total})
@@ -417,7 +417,7 @@ const MilaKnowledgeManager: React.FC = () => {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
                 activeCategory === cat
                   ? 'border-transparent text-white'
-                  : 'bg-brand-dark/40 border-white/8 text-white/40 hover:text-white/70 hover:border-white/15'
+                  : 'bg-brand-dark/40 border-brand-gold/8 text-white/40 hover:text-white/70 hover:border-brand-gold/15'
               }`}
               style={activeCategory === cat ? { background: `${meta.color}25`, borderColor: `${meta.color}50`, color: meta.color } : {}}
             >
@@ -435,17 +435,17 @@ const MilaKnowledgeManager: React.FC = () => {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
           <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search knowledge base..."
-            className="w-full bg-brand-dark/80 border border-white/15 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
+            className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
         </div>
 
         <div className="flex items-center gap-2">
           {documents.length > 0 && (
             <button onClick={handleClearAll}
-              className="p-2.5 rounded-xl bg-brand-dark/60 border border-white/10 text-white/30 hover:text-brand-alert hover:border-brand-alert/30 transition-all">
+              className="p-2.5 rounded-xl bg-brand-dark/60 border border-brand-gold/10 text-white/30 hover:text-brand-alert hover:border-brand-alert/30 transition-all">
               <Trash2 size={16} />
             </button>
           )}
-          <button onClick={loadDocs} className="p-2.5 rounded-xl bg-brand-dark/60 border border-white/10 text-white/50 hover:text-brand-gold hover:border-brand-gold/30 transition-all">
+          <button onClick={loadDocs} className="p-2.5 rounded-xl bg-brand-dark/60 border border-brand-gold/10 text-white/50 hover:text-brand-gold hover:border-brand-gold/30 transition-all">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
           <button onClick={() => setShowUpload(!showUpload)}
@@ -483,7 +483,7 @@ const MilaKnowledgeManager: React.FC = () => {
 
           {/* File drop zone — multi-file */}
           <label className="block">
-            <div className="relative border-2 border-dashed border-white/15 rounded-xl py-6 px-4 text-center hover:border-brand-gold/40 transition-all cursor-pointer">
+            <div className="relative border-2 border-dashed border-brand-gold/15 rounded-xl py-6 px-4 text-center hover:border-brand-gold/40 transition-all cursor-pointer">
               <input type="file" accept=".txt,.md,.csv,.docx,.pdf" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" multiple />
               <Upload size={22} className="mx-auto mb-2 text-white/30" />
               <p className="text-sm text-white/50 font-medium">Drop files here or click to browse</p>
@@ -503,7 +503,7 @@ const MilaKnowledgeManager: React.FC = () => {
                   item.status === 'error' ? 'bg-brand-alert/10 border-brand-alert/30' :
                   item.status === 'extracting' ? 'bg-brand-gold/10 border-brand-gold/30' :
                   item.status === 'uploading' ? 'bg-brand-gold/15 border-brand-gold/40' :
-                  'bg-brand-dark/60 border-white/10'
+                  'bg-brand-dark/60 border-brand-gold/10'
                 }`}>
                 {/* Status icon */}
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
@@ -554,7 +554,7 @@ const MilaKnowledgeManager: React.FC = () => {
                 return (
                   <button key={cat} type="button" onClick={() => setUploadForm({ ...uploadForm, category: cat })}
                     className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${
-                      active ? 'border-transparent' : 'bg-brand-dark/60 border-white/8 text-white/40 hover:text-white/60'
+                      active ? 'border-transparent' : 'bg-brand-dark/60 border-brand-gold/8 text-white/40 hover:text-white/60'
                     }`}
                     style={active ? { background: `${meta.color}20`, borderColor: `${meta.color}50`, color: meta.color } : {}}>
                     <Icon size={10} style={{ color: active ? meta.color : `${meta.color}80` }} />
@@ -584,7 +584,7 @@ const MilaKnowledgeManager: React.FC = () => {
               )}
             </button>
             <button onClick={() => { setShowUpload(false); setFileQueue([]); }}
-              className="px-5 py-3.5 rounded-xl bg-brand-dark/60 border border-white/10 text-white/60 font-bold text-sm uppercase tracking-wider hover:text-white transition-all">
+              className="px-5 py-3.5 rounded-xl bg-brand-dark/60 border border-brand-gold/10 text-white/60 font-bold text-sm uppercase tracking-wider hover:text-white transition-all">
               Cancel
             </button>
           </div>
@@ -600,8 +600,8 @@ const MilaKnowledgeManager: React.FC = () => {
           <p className="text-sm text-white/40 font-medium">Loading knowledge base...</p>
         </div>
       ) : filteredDocs.length === 0 ? (
-        <div className="text-center py-16 bg-[#1c3933]/50 border border-white/5 rounded-2xl">
-          <div className="inline-flex w-14 h-14 rounded-2xl bg-white/5 border border-white/10 items-center justify-center mb-4">
+        <div className="text-center py-16 bg-[#1c3933]/50 border border-brand-gold/5 rounded-2xl">
+          <div className="inline-flex w-14 h-14 rounded-2xl bg-white/5 border border-brand-gold/10 items-center justify-center mb-4">
             <FileText size={24} className="text-white/20" />
           </div>
           <p className="text-sm text-white/40 font-medium mb-1">
@@ -621,7 +621,7 @@ const MilaKnowledgeManager: React.FC = () => {
             return (
               <div
                 key={doc.baseTitle}
-                className="group relative bg-[#1c3933] border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-all overflow-hidden animate-in fade-in slide-in-from-bottom-2"
+                className="group relative bg-[#1c3933] border border-brand-gold/8 rounded-2xl p-4 hover:border-brand-gold/15 transition-all overflow-hidden animate-in fade-in slide-in-from-bottom-2"
                 style={{ animationDelay: `${idx * 40}ms`, animationDuration: '400ms' }}
               >
                 {/* Category accent bar */}
@@ -679,7 +679,7 @@ const MilaKnowledgeManager: React.FC = () => {
                     )}
 
                     {/* Footer: word count + delete */}
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-brand-gold/5">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-white/20">
                         {doc.totalWords.toLocaleString()} words · +{doc.chunks.length * XP_PER_DOC} XP
                       </span>

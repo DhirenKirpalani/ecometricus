@@ -79,7 +79,7 @@ const WaterUsageChart = () => {
             </div>
 
             {/* Summary Stat */}
-            <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center relative z-10">
+            <div className="mt-8 pt-6 border-t border-brand-gold/5 flex justify-between items-center relative z-10">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-[#3b82f6]/20 rounded-lg text-[#3b82f6]">
                         <Droplets size={16} />

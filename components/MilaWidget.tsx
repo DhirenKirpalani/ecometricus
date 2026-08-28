@@ -422,14 +422,14 @@ INSTRUCTIONS:
             {/* Proactive Insights Panel */}
             {showInsightsPanel && proactiveInsights.length > 0 && (
                 <div className="border-b border-brand-gold/20 bg-brand-dark/60 max-h-[280px] overflow-y-auto custom-scrollbar">
-                    <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between sticky top-0 bg-brand-dark/80 backdrop-blur-sm">
+                    <div className="px-4 py-2 border-b border-brand-gold/5 flex items-center justify-between sticky top-0 bg-brand-dark/80 backdrop-blur-sm">
                         <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Proactive Insights</span>
                         <button onClick={() => setShowInsightsPanel(false)} className="text-white/30 hover:text-white transition-colors">
                             <X size={12} />
                         </button>
                     </div>
                     {proactiveInsights.map((insight) => (
-                        <div key={insight.id} className="px-4 py-3 border-b border-white/5 hover:bg-white/3 transition-colors">
+                        <div key={insight.id} className="px-4 py-3 border-b border-brand-gold/5 hover:bg-white/3 transition-colors">
                             <div className="flex items-start gap-2 mb-1.5">
                                 {insight.severity === 'critical' ? (
                                     <AlertTriangle size={13} className="text-brand-alert shrink-0 mt-0.5" />
@@ -480,7 +480,7 @@ INSTRUCTIONS:
                                 ) : (
                                     <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${msg.sender === 'user'
                                         ? 'bg-brand-gold/10 border border-brand-gold/30 text-white rounded-br-none'
-                                        : 'bg-white/5 border border-white/10 text-gray-200 rounded-bl-none'
+                                        : 'bg-white/5 border border-brand-gold/10 text-gray-200 rounded-bl-none'
                                         }`}>
                                         {msg.sender === 'mila' ? (
                                             <ReactMarkdown
@@ -502,7 +502,7 @@ INSTRUCTIONS:
                         ))}
                         {isLoading && !activeTool && (
                             <div className="flex justify-start">
-                                <div className="bg-white/5 border border-white/10 p-3 rounded-2xl rounded-bl-none flex items-center gap-2">
+                                <div className="bg-white/5 border border-brand-gold/10 p-3 rounded-2xl rounded-bl-none flex items-center gap-2">
                                     <Loader2 className="animate-spin text-brand-gold" size={14} />
                                     <span className="text-[10px] text-gray-400 uppercase tracking-wider">Thinking...</span>
                                 </div>
@@ -521,7 +521,7 @@ INSTRUCTIONS:
                                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                                 disabled={isLoading}
                                 placeholder="Ask me to log data, query KPIs, generate reports..."
-                                className="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors disabled:opacity-50"
+                                className="flex-grow bg-white/5 border border-brand-gold/10 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors disabled:opacity-50"
                             />
                             <button
                                 onClick={handleSendMessage}

@@ -72,7 +72,7 @@ const FoodWasteChart = () => {
             </div>
 
             {/* Summary Stat */}
-            <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center relative z-10">
+            <div className="mt-8 pt-6 border-t border-brand-gold/5 flex justify-between items-center relative z-10">
                 <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-[#facc15]"></div>
                     <span className="text-white/60 text-sm font-medium">Total Waste</span>

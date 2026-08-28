@@ -606,7 +606,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                       <button
                         type="button"
                         onClick={() => setAcceptTerms(!acceptTerms)}
-                        className={`shrink-0 w-4 h-4 rounded border mt-0.5 flex items-center justify-center transition-all ${acceptTerms ? 'bg-brand-eco border-brand-eco' : 'border-white/20 hover:border-brand-eco'}`}
+                        className={`shrink-0 w-4 h-4 rounded border mt-0.5 flex items-center justify-center transition-all ${acceptTerms ? 'bg-brand-eco border-brand-eco' : 'border-brand-gold/20 hover:border-brand-eco'}`}
                       >
                         {acceptTerms && <CheckCircle2 size={10} className="text-brand-dark" />}
                       </button>

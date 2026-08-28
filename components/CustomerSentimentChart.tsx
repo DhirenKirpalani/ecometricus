@@ -105,7 +105,7 @@ const CustomerSentimentChart: React.FC<CustomerSentimentChartProps> = ({ data, b
                 {/* Grid Lines */}
                 <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
                     {[5.0, 4.5, 4.0, 3.5, 3.0].map((val) => (
-                        <div key={val} className="w-full border-t border-white/5 h-0"></div>
+                        <div key={val} className="w-full border-t border-brand-gold/5 h-0"></div>
                     ))}
                 </div>
 
@@ -210,7 +210,7 @@ const CustomerSentimentChart: React.FC<CustomerSentimentChartProps> = ({ data, b
                                     maxWidth: '180px'
                                 }}
                             >
-                                <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-1">
+                                <div className="flex justify-between items-center mb-2 border-b border-brand-gold/10 pb-1">
                                     <span className="text-[9px] font-black text-brand-gold uppercase tracking-wider">{selectedDay.day} Status</span>
                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="pointer-events-auto">
                                         <XIcon size={10} className="text-gray-500 hover:text-white transition-colors" />
@@ -265,9 +265,9 @@ const CustomerSentimentChart: React.FC<CustomerSentimentChartProps> = ({ data, b
 
             {/* Admin Legend */}
             {outlets.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center gap-4 mt-2 pt-4 border-t border-white/5 z-20">
+                <div className="flex flex-wrap items-center justify-center gap-4 mt-2 pt-4 border-t border-brand-gold/5 z-20">
                     {outlets.map(outlet => (
-                        <div key={outlet.code} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/5 border border-white/5">
+                        <div key={outlet.code} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/5 border border-brand-gold/5">
                             <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.2)]" style={{ backgroundColor: outlet.color_hex || '#fff' }} />
                             <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">{outlet.name}</span>
                         </div>

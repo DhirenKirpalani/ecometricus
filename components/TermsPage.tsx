@@ -77,7 +77,7 @@ const TermsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-brand-dark">
       {/* Hero header */}
-      <div className="relative overflow-hidden border-b border-white/5">
+      <div className="relative overflow-hidden border-b border-brand-gold/5">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 100%, rgba(119,177,57,0.06), transparent 55%)' }} />
         <div className="max-w-4xl mx-auto px-5 sm:px-6 py-14 sm:py-28 text-center relative">
           <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-brand-eco/10 border border-brand-eco/30 mb-5 sm:mb-6">

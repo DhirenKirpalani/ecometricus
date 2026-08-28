@@ -82,7 +82,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
             <div className="w-px h-5 bg-white/10" />
 
             {/* Language toggle — segmented pill */}
-            <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-full p-0.5">
+            <div className="flex items-center gap-0.5 bg-white/5 border border-brand-gold/10 rounded-full p-0.5">
               <button
                 onClick={() => changeLang('en')}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all duration-200 ${lang === 'en' ? 'bg-brand-gold text-brand-dark shadow-sm' : 'text-white/35 hover:text-white/70'}`}
@@ -114,7 +114,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                 <button
                   onClick={onLogout}
                   title="Log out"
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-white/15 text-white/60 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-brand-gold/15 text-white/60 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
                 >
                   <LogOut size={14} />
                   <span className="text-[11px] font-semibold">Log out</span>
@@ -124,7 +124,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
               <>
                 <button
                   onClick={() => handleNavigate(Page.SIGN_IN)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-gray-300 hover:text-white border border-white/10 hover:border-white/25 transition-all duration-200"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-gray-300 hover:text-white border border-brand-gold/10 hover:border-brand-gold/25 transition-all duration-200"
                 >
                   <LogIn size={13} /> {t('navbar.logIn')}
                 </button>
@@ -187,7 +187,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
           <div className="px-4 py-3 flex items-center justify-between gap-3">
 
             {/* Language toggle */}
-            <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-full p-0.5">
+            <div className="flex items-center gap-0.5 bg-white/5 border border-brand-gold/10 rounded-full p-0.5">
               <button
                 onClick={() => changeLang('en')}
                 className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${lang === 'en' ? 'bg-brand-gold text-brand-dark' : 'text-white/30 hover:text-white/60'}`}
@@ -212,7 +212,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                 </button>
                 <button
                   onClick={onLogout}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 text-white/40 hover:text-brand-alert hover:border-brand-alert/40 transition-all"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-brand-gold/10 text-white/40 hover:text-brand-alert hover:border-brand-alert/40 transition-all"
                 >
                   <LogOut size={13} />
                 </button>
@@ -221,7 +221,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleNavigate(Page.SIGN_IN)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest text-white/60 border border-white/10 hover:border-white/25 hover:text-white transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest text-white/60 border border-brand-gold/10 hover:border-brand-gold/25 hover:text-white transition-all"
                 >
                   <LogIn size={13} /> {t('navbar.logIn')}
                 </button>

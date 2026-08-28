@@ -253,7 +253,7 @@ const ContactPage: React.FC = () => {
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       {/* Hero header */}
-      <div className="relative overflow-hidden border-b border-white/5">
+      <div className="relative overflow-hidden border-b border-brand-gold/5">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 100%, rgba(200,164,19,0.07), transparent 55%)' }} />
         <div className="max-w-4xl mx-auto px-5 sm:px-6 py-14 sm:py-28 text-center relative">
           <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-brand-gold/10 border border-brand-gold/30 mb-5 sm:mb-6">
@@ -275,7 +275,7 @@ const ContactPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5 mb-10 sm:mb-16">
           {channels.map((ch, i) => (
             <div key={i} className="bg-[#1c3933] border border-brand-gold/15 rounded-2xl p-6 hover:border-brand-gold/35 transition-all duration-300 flex flex-col gap-3 shadow-[inset_0_1px_0_rgba(200,164,19,0.04)]">
-              <div className="w-12 h-12 rounded-xl bg-white/8 border border-white/8 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-white/8 border border-brand-gold/8 flex items-center justify-center">
                 {ch.icon}
               </div>
               <div>

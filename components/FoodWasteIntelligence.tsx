@@ -69,7 +69,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         {/* Total Volume */}
-        <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${showAlertMass ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+        <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${showAlertMass ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <Scale size={16} className="text-brand-gold" />
@@ -91,7 +91,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
         </div>
 
         {/* Carbon Impact */}
-        <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${showAlertCarbon ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+        <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${showAlertCarbon ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <Cloud size={16} className="text-brand-gold" />
@@ -113,7 +113,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
         </div>
 
         {/* Net Financial Loss */}
-        <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${showAlertFinance ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+        <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${showAlertFinance ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <DollarSign size={16} className="text-brand-gold" />
@@ -135,10 +135,10 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
       </div>
 
       {/* CO2 Emissions Chart */}
-      <div className="pt-4 border-t border-white/5">
+      <div className="pt-4 border-t border-brand-gold/5">
         <div className="h-[440px] sm:h-[480px] w-full">
           {isLoadingCumulative ? (
-            <div className="flex items-center justify-center h-full bg-[#1c3933] border border-white/10 rounded-2xl">
+            <div className="flex items-center justify-center h-full bg-[#1c3933] border border-brand-gold/10 rounded-2xl">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold"></div>
             </div>
           ) : (
@@ -171,7 +171,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
           {outletDetails.filter(o => o.mass > 0).map((outlet, id) => {
             const isAttention = outlet.mass > massTarget / Math.max(outletDetails.filter(o => o.mass > 0).length, 1);
             return (
-              <div key={id} className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${isAttention ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-white/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+              <div key={id} className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${isAttention ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
                 {/* Outlet name + status badge */}
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <span className="text-sm font-black text-white uppercase tracking-wider truncate">{outlet.name}</span>
@@ -192,7 +192,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
                 </div>
 
                 {/* Cost metric */}
-                <div className="pt-3 border-t border-white/8">
+                <div className="pt-3 border-t border-brand-gold/8">
                   <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">Cost</p>
                   <p className="text-lg font-geometric font-bold text-brand-gold leading-none">
                     $ {outlet.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}

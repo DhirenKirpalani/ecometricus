@@ -117,7 +117,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                 {/* Grid Lines */}
                 <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
                     {yAxisLabels.map((_, i) => (
-                        <div key={i} className="w-full border-t border-white/5 h-0"></div>
+                        <div key={i} className="w-full border-t border-brand-gold/5 h-0"></div>
                     ))}
                 </div>
 
@@ -172,13 +172,13 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                     {selectedDay && (
                         <div className="absolute bg-[#152E2A] border border-brand-gold/60 rounded-lg p-3 shadow-2xl z-50 text-[8px] font-bold uppercase pointer-events-none"
                              style={{ left: `${getX(data.findIndex(d => d.day === selectedDay.day), data.length)}%`, top: '10%' }}>
-                            <div className="text-brand-gold mb-2 border-b border-white/10 pb-1">{selectedDay.day} BREAKDOWN</div>
+                            <div className="text-brand-gold mb-2 border-b border-brand-gold/10 pb-1">{selectedDay.day} BREAKDOWN</div>
                             <div className="space-y-1">
                                 <div className="flex justify-between gap-4 text-[#FF914D]"><span>ROYAL</span><span>{selectedDay["ROYAL"].toFixed(1)}</span></div>
                                 <div className="flex justify-between gap-4 text-[#D3AF37]"><span>FISHER'S</span><span>{selectedDay["FISHER'S"].toFixed(1)}</span></div>
                                 <div className="flex justify-between gap-4 text-[#77B139]"><span>RALPH'S</span><span>{selectedDay["RALPH'S"].toFixed(1)}</span></div>
                                 <div className="flex justify-between gap-4 text-[#718096]"><span>GUSTO</span><span>{selectedDay["GUSTO"].toFixed(1)}</span></div>
-                                <div className="border-t border-white/10 pt-1 mt-1 flex justify-between text-white"><span>TOTAL</span><span>{(selectedDay["ROYAL"] + selectedDay["FISHER'S"] + selectedDay["RALPH'S"] + selectedDay["GUSTO"]).toFixed(1)}</span></div>
+                                <div className="border-t border-brand-gold/10 pt-1 mt-1 flex justify-between text-white"><span>TOTAL</span><span>{(selectedDay["ROYAL"] + selectedDay["FISHER'S"] + selectedDay["RALPH'S"] + selectedDay["GUSTO"]).toFixed(1)}</span></div>
                             </div>
                         </div>
                     )}
@@ -195,7 +195,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
             </div>
 
             {/* Bottom Legend */}
-            <div className="flex flex-wrap items-center justify-center gap-6 pt-2 border-t border-white/5 bg-black/10 rounded-b-[20px] py-4">
+            <div className="flex flex-wrap items-center justify-center gap-6 pt-2 border-t border-brand-gold/5 bg-black/10 rounded-b-[20px] py-4">
                 {Object.entries(COLORS).map(([name, color]) => (
                     <div key={name} className="flex items-center gap-2">
                         <div className="w-2.5 h-1.5 rounded-full" style={{ backgroundColor: color }}></div>

@@ -18,7 +18,7 @@ const ReportAlertBox: React.FC<ReportAlertBoxProps> = ({ title, issue, suggestio
         <div className={`mt-8 bg-[#0f2420] border-l-4 ${borderColor} rounded-r-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden font-body animate-in fade-in slide-in-from-bottom-6 duration-700`}>
 
             {/* Header / Flashing Attention */}
-            <div className="flex items-center gap-3 p-4 border-b border-white/5 bg-brand-alert/10">
+            <div className="flex items-center gap-3 p-4 border-b border-brand-gold/5 bg-brand-alert/10">
                 <div className="flex items-center gap-2 animate-pulse">
                     <AlertTriangle className="text-brand-alert" size={18} />
                     <span className="text-xs font-black text-brand-alert uppercase tracking-[0.2em]">ATTENTION</span>
@@ -51,7 +51,7 @@ const ReportAlertBox: React.FC<ReportAlertBoxProps> = ({ title, issue, suggestio
             </div>
 
             {/* Mila Call-to-Action Footer */}
-            <div className="bg-brand-dark/50 p-3 flex items-center justify-center border-t border-white/5">
+            <div className="bg-brand-dark/50 p-3 flex items-center justify-center border-t border-brand-gold/5">
                 <p className="text-[10px] text-gray-500 font-medium italic flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse"></span>
                     Need a deeper regional strategy? Ask Mila for regional competitive solutions.
