@@ -712,13 +712,21 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
             </div>
           )}
 
-          {/* Submit */}
+          {/* Submit / Cancel */}
           {(form.products.length > 0 || form.product) && form.reason && form.amount && form.destination && (
-            <button type="submit"
-              className="w-full px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
-              {editingId ? <CheckCircle2 size={16} /> : <Plus size={16} />}
-              {editingId ? 'Update Entry' : 'Log Entry'}
-            </button>
+            <div className="flex gap-3">
+              <button type="submit"
+                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                {editingId ? <CheckCircle2 size={16} /> : <Plus size={16} />}
+                {editingId ? 'Update Entry' : 'Log Entry'}
+              </button>
+              {editingId && (
+                <button type="button" onClick={handleTare}
+                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                  <RotateCcw size={14} /> Cancel
+                </button>
+              )}
+            </div>
           )}
 
           {/* Tare / Reset */}
@@ -757,10 +765,18 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#3b82f6]/60 uppercase tracking-wider">L</span>
               </div>
             </div>
-            <button type="button" onClick={() => handleSaveResource('water')} disabled={!form.water}
-              className="w-full px-5 py-3.5 rounded-xl bg-[#3b82f6] text-white font-black text-sm uppercase tracking-wider hover:bg-[#3b82f6]/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
-              <Plus size={16} /> Log Water Reading
-            </button>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => handleSaveResource('water')} disabled={!form.water}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-[#3b82f6] text-white font-black text-sm uppercase tracking-wider hover:bg-[#3b82f6]/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
+                <Plus size={16} /> {editingResourceId && form.water ? 'Update' : 'Log Water Reading'}
+              </button>
+              {editingResourceId && form.water && (
+                <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, water: '' })); }}
+                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
+                  <RotateCcw size={14} /> Cancel
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -788,10 +804,18 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-brand-gold/60 uppercase tracking-wider">kWh</span>
               </div>
             </div>
-            <button type="button" onClick={() => handleSaveResource('energy')} disabled={!form.energy}
-              className="w-full px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
-              <Plus size={16} /> Log Energy Reading
-            </button>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => handleSaveResource('energy')} disabled={!form.energy}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
+                <Plus size={16} /> {editingResourceId && form.energy ? 'Update' : 'Log Energy Reading'}
+              </button>
+              {editingResourceId && form.energy && (
+                <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, energy: '' })); }}
+                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
+                  <RotateCcw size={14} /> Cancel
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
