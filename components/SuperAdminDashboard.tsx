@@ -438,7 +438,6 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
               <div className="space-y-6 animate-in fade-in duration-500">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   <StatCard icon={Server} label="Supabase Status" value="Online" sublabel="Edge functions active" color="brand-eco" trend="up" />
-                  <StatCard icon={Cpu} label="Mila AI Engine" value="Active" sublabel="Agent + RAG running" color="brand-gold" trend="up" />
                   <StatCard icon={Webhook} label="Webhooks" value="0" sublabel="No integrations" color="brand-gold" />
                   <StatCard icon={Globe} label="API Endpoints" value="12" sublabel="REST routes" color="brand-gold" />
                   <StatCard icon={Bell} label="Alert System" value="Active" sublabel="Anomaly detection on" color="brand-eco" trend="up" />
@@ -468,15 +467,6 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                       <div>
                         <p className="text-sm font-bold text-white">Refresh All Data</p>
                         <p className="text-[10px] text-white/40 uppercase tracking-wider">Reload platform metrics</p>
-                      </div>
-                    </button>
-                    <button className="flex items-center gap-3 p-5 rounded-2xl border border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/40 transition-all text-left">
-                      <div className="w-10 h-10 rounded-xl bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
-                        <Cpu size={18} className="text-brand-eco" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-white">Mila AI Status</p>
-                        <p className="text-[10px] text-white/40 uppercase tracking-wider">Check agent health</p>
                       </div>
                     </button>
                     <button className="flex items-center gap-3 p-5 rounded-2xl border border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/40 transition-all text-left">
