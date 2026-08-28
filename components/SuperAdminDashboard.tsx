@@ -44,7 +44,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'users' | 'system' | 'knowledge' | 'superadmins'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'users' | 'system'>('overview');
 
   // Super admin user management
   const [superAdminEmails, setSuperAdminEmails] = useState<string[]>([
@@ -52,6 +52,12 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   ]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [addingAdmin, setAddingAdmin] = useState(false);
+
+  // Announcement banner config
+  const [bannerEnabled, setBannerEnabled] = useState(false);
+  const [bannerText, setBannerText] = useState('');
+  const [bannerType, setBannerType] = useState<'info' | 'warning' | 'success'>('info');
+  const [bannerSaved, setBannerSaved] = useState(false);
 
   const fetchPlatformData = useCallback(async () => {
     setIsLoading(true);
@@ -226,8 +232,6 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
         <TabButton id="companies" label="Companies" icon={Building2} />
         <TabButton id="users" label="Users" icon={Users} />
         <TabButton id="system" label="System" icon={Server} />
-        <TabButton id="knowledge" label="Mila KB" icon={BookOpen} />
-        <TabButton id="superadmins" label="Super Admins" icon={ShieldCheck} />
       </div>
 
       {isLoading ? (
@@ -507,65 +511,120 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     </button>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* ── Mila Knowledge Base Tab ── */}
-            {activeTab === 'knowledge' && (
-              <div className="animate-in fade-in duration-500">
-                <MilaKnowledgeManager />
-              </div>
-            )}
-
-            {/* ── Super Admins Tab ── */}
-            {activeTab === 'superadmins' && (
-              <div className="space-y-6 animate-in fade-in duration-500">
-                {/* Add super admin */}
-                <div className="rounded-2xl border border-brand-alert/20 bg-brand-alert/5 p-5 sm:p-6">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-10 h-10 rounded-xl bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center shrink-0">
-                      <UserPlus size={18} className="text-brand-alert" />
+                {/* ── Announcement Banner Config ── */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-10 h-10 border border-brand-gold/50 rounded-xl bg-brand-gold/5 flex items-center justify-center shrink-0">
+                      <Bell size={18} className="text-brand-gold" />
                     </div>
                     <div>
                       <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                        Add Super Admin
+                        Announcement Banner
                       </h4>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-alert/80">
-                        Grant Platform Control Access
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
+                        Platform-wide User Notifications
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <input
-                      type="email"
-                      value={newAdminEmail}
-                      onChange={e => setNewAdminEmail(e.target.value)}
-                      placeholder="user@email.com"
-                      className="flex-grow bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all"
-                    />
-                    <button
-                      onClick={() => {
-                        const email = newAdminEmail.trim().toLowerCase();
-                        if (!email || !email.includes('@')) return;
-                        if (superAdminEmails.includes(email)) return;
-                        setSuperAdminEmails(prev => [...prev, email]);
-                        setNewAdminEmail('');
-                        setAddingAdmin(true);
-                        setTimeout(() => setAddingAdmin(false), 1000);
-                      }}
-                      disabled={!newAdminEmail.trim() || !newAdminEmail.includes('@')}
-                      className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-alert/15 border border-brand-alert/40 text-brand-alert text-sm font-bold hover:bg-brand-alert/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-                    >
-                      {addingAdmin ? <CheckCircle2 size={16} /> : <UserPlus size={16} />}
-                      {addingAdmin ? 'Added!' : 'Add Super Admin'}
-                    </button>
+                  <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5 sm:p-6 space-y-5">
+                    {/* Enable / Disable */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-white">Enable Banner</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider">Show announcement to all users</p>
+                      </div>
+                      <button
+                        onClick={() => setBannerEnabled(!bannerEnabled)}
+                        className={`relative w-12 h-6 rounded-full transition-all duration-300 shrink-0 ${bannerEnabled ? 'bg-brand-eco/40' : 'bg-brand-dark/80 border border-brand-gold/20'}`}
+                      >
+                        <span className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-300 ${bannerEnabled ? 'left-6 bg-brand-eco' : 'left-0.5 bg-white/40'}`} />
+                      </button>
+                    </div>
+
+                    {/* Banner Type */}
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-brand-gold/80 mb-2 block">Banner Type</label>
+                      <div className="flex gap-2">
+                        {(['info', 'warning', 'success'] as const).map(t => (
+                          <button
+                            key={t}
+                            onClick={() => setBannerType(t)}
+                            className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all border ${
+                              bannerType === t
+                                ? t === 'warning' ? 'bg-brand-alert/15 border-brand-alert/40 text-brand-alert'
+                                  : t === 'success' ? 'bg-brand-eco/15 border-brand-eco/40 text-brand-eco'
+                                  : 'bg-brand-gold/15 border-brand-gold/40 text-brand-gold'
+                                : 'border-brand-gold/15 text-white/40 hover:text-white/70'
+                            }`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Banner Text */}
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-brand-gold/80 mb-2 block">Message</label>
+                      <textarea
+                        value={bannerText}
+                        onChange={e => setBannerText(e.target.value)}
+                        placeholder="Enter announcement message..."
+                        rows={3}
+                        className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all resize-none"
+                      />
+                    </div>
+
+                    {/* Preview */}
+                    {bannerEnabled && bannerText.trim() && (
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-brand-gold/80 mb-2 block">Preview</label>
+                        <div className={`rounded-xl px-4 py-3 text-sm font-bold border ${
+                          bannerType === 'warning' ? 'bg-brand-alert/10 border-brand-alert/30 text-brand-alert'
+                            : bannerType === 'success' ? 'bg-brand-eco/10 border-brand-eco/30 text-brand-eco'
+                            : 'bg-brand-gold/10 border-brand-gold/30 text-brand-gold'
+                        }`}>
+                          {bannerText}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Save */}
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => {
+                          setBannerSaved(true);
+                          setTimeout(() => setBannerSaved(false), 1500);
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-gold/15 border border-brand-gold/40 text-brand-gold text-sm font-bold hover:bg-brand-gold/25 transition-all"
+                      >
+                        {bannerSaved ? <CheckCircle2 size={16} /> : <Bell size={16} />}
+                        {bannerSaved ? 'Saved!' : 'Save Banner'}
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-white/30 mt-3">
-                    Note: This email will get super_admin privileges on next login. The override is hardcoded in App.tsx and AuthPage.tsx — add the email there too for persistence.
-                  </p>
                 </div>
 
-                {/* Super admin list */}
+                {/* ── Mila Knowledge Base ── */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-10 h-10 border border-brand-gold/50 rounded-xl bg-brand-gold/5 flex items-center justify-center shrink-0">
+                      <BookOpen size={18} className="text-brand-gold" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                        Mila Knowledge Base
+                      </h4>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
+                        AI Training Documents
+                      </p>
+                    </div>
+                  </div>
+                  <MilaKnowledgeManager />
+                </div>
+
+                {/* ── Super Admin User Management ── */}
                 <div>
                   <div className="flex items-center gap-4 mb-6">
                     <div className="w-10 h-10 border border-brand-alert/50 rounded-xl bg-brand-alert/5 flex items-center justify-center shrink-0">
@@ -576,10 +635,44 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         Super Admin Users
                       </h4>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-alert/80">
-                        {superAdminEmails.length} Registered
+                        Platform Control Access
                       </p>
                     </div>
                   </div>
+
+                  {/* Add super admin */}
+                  <div className="rounded-2xl border border-brand-alert/20 bg-brand-alert/5 p-5 sm:p-6 mb-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <input
+                        type="email"
+                        value={newAdminEmail}
+                        onChange={e => setNewAdminEmail(e.target.value)}
+                        placeholder="user@email.com"
+                        className="flex-grow bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all"
+                      />
+                      <button
+                        onClick={() => {
+                          const email = newAdminEmail.trim().toLowerCase();
+                          if (!email || !email.includes('@')) return;
+                          if (superAdminEmails.includes(email)) return;
+                          setSuperAdminEmails(prev => [...prev, email]);
+                          setNewAdminEmail('');
+                          setAddingAdmin(true);
+                          setTimeout(() => setAddingAdmin(false), 1000);
+                        }}
+                        disabled={!newAdminEmail.trim() || !newAdminEmail.includes('@')}
+                        className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-alert/15 border border-brand-alert/40 text-brand-alert text-sm font-bold hover:bg-brand-alert/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        {addingAdmin ? <CheckCircle2 size={16} /> : <UserPlus size={16} />}
+                        {addingAdmin ? 'Added!' : 'Add Super Admin'}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-white/30 mt-3">
+                      Note: Add the email to the hardcoded override in App.tsx and AuthPage.tsx for persistence.
+                    </p>
+                  </div>
+
+                  {/* Super admin list */}
                   <div className="space-y-3">
                     {superAdminEmails.map((email, i) => (
                       <div key={i} className="flex items-center justify-between gap-3 p-4 rounded-xl border border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/30 transition-all">
