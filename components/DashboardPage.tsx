@@ -132,13 +132,27 @@ const PATH_TO_PORTAL_VIEW: Record<string, PortalView> = Object.fromEntries(
 );
 
 enum DashboardTab {
-  SUMMARIZED = 'summarized',
-  DAILY_INPUT = 'daily_input',
-  FOOD_WASTE = 'food_waste',
-  ENERGY_WATER = 'energy_water',
-  MILA_AI = 'mila_ai',
+  SUMMARIZED = 'overview',
+  DAILY_INPUT = 'daily-input',
+  FOOD_WASTE = 'food-waste',
+  ENERGY_WATER = 'energy-water',
+  MILA_AI = 'mila-ai',
   GAMIFICATION = 'gamification'
 }
+
+// URL path mapping for dashboard inner tabs (nested under /dashboard)
+const DASHBOARD_TAB_PATHS: Record<DashboardTab, string> = {
+  [DashboardTab.SUMMARIZED]: '/dashboard/overview',
+  [DashboardTab.DAILY_INPUT]: '/dashboard/daily-input',
+  [DashboardTab.FOOD_WASTE]: '/dashboard/food-waste',
+  [DashboardTab.ENERGY_WATER]: '/dashboard/energy-water',
+  [DashboardTab.MILA_AI]: '/dashboard/mila-ai',
+  [DashboardTab.GAMIFICATION]: '/dashboard/gamification',
+};
+
+const PATH_TO_DASHBOARD_TAB: Record<string, DashboardTab> = Object.fromEntries(
+  Object.entries(DASHBOARD_TAB_PATHS).map(([tab, path]) => [path, tab as DashboardTab])
+);
 
 const REGION_DATA: Record<string, string[]> = {
   'Asia': [
@@ -632,28 +646,41 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const location = useLocation();
 
   // Derive active view from URL path
-  const activeView = PATH_TO_PORTAL_VIEW[location.pathname] || PortalView.DASHBOARD;
+  // Inner tab paths (/dashboard/overview, /dashboard/daily-input, etc.) map to DASHBOARD portal view
+  const activeView = PATH_TO_PORTAL_VIEW[location.pathname]
+    || (PATH_TO_DASHBOARD_TAB[location.pathname] ? PortalView.DASHBOARD : null)
+    || (location.pathname === '/dashboard' ? PortalView.DASHBOARD : null)
+    || PortalView.DASHBOARD;
 
   // Navigate to the URL for the selected view
   const setActiveView = (view: PortalView) => {
-    const path = PORTAL_VIEW_PATHS[view] || '/dashboard';
-    routerNavigate(path);
+    if (view === PortalView.DASHBOARD) {
+      // Going to dashboard overview — keep current inner tab or default to overview
+      const currentTab = PATH_TO_DASHBOARD_TAB[location.pathname] || DashboardTab.SUMMARIZED;
+      routerNavigate(DASHBOARD_TAB_PATHS[currentTab]);
+    } else {
+      const path = PORTAL_VIEW_PATHS[view] || '/dashboard';
+      routerNavigate(path);
+    }
   };
-  const [dashboardTab, setDashboardTabState] = useState<DashboardTab>(() => {
-    try {
-      const saved = localStorage.getItem('eco_dashboard_tab_inner');
-      if (saved && Object.values(DashboardTab).includes(saved as DashboardTab)) {
-        return saved as DashboardTab;
-      }
-    } catch {}
-    return DashboardTab.SUMMARIZED;
-  });
+
+  // Derive inner dashboard tab from URL path
+  const dashboardTab = PATH_TO_DASHBOARD_TAB[location.pathname] || DashboardTab.SUMMARIZED;
+
+  // Navigate to the URL for the selected inner tab
   const setDashboardTab = (tab: DashboardTab) => {
-    setDashboardTabState(tab);
-    try { localStorage.setItem('eco_dashboard_tab_inner', tab); } catch {}
+    const path = DASHBOARD_TAB_PATHS[tab] || '/dashboard/overview';
+    routerNavigate(path);
   };
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isHydrating, setIsHydrating] = useState(true);
+
+  // Redirect bare /dashboard to /dashboard/overview
+  useEffect(() => {
+    if (location.pathname === '/dashboard') {
+      routerNavigate('/dashboard/overview', { replace: true });
+    }
+  }, [location.pathname, routerNavigate]);
 
   // ── Toast + Confirm modal ──────────────────────────────────────────────────
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'error' | 'info' } | null>(null);
