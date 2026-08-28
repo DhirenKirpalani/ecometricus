@@ -2011,6 +2011,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // Aggregate Context for Admin Intelligence
   const adminContext = {
     user: { name: user.fullName || 'Admin', role: 'administrator', firstName: user.fullName?.split(' ')[0] ?? 'Admin' },
+    userProfile: user, // Full profile for Mila agent tools
     company: {
       name: company.name || 'Your Hotel',
       outlet: company.currentOutletName || 'All Outlets',
