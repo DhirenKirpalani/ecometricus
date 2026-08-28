@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Trash2, Edit2, Plus, RotateCcw, CheckCircle2, AlertTriangle,
   Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown
@@ -344,6 +345,15 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const productInputRef = useRef<HTMLInputElement>(null);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const showConfirm = (message: string, onConfirm: () => void) => setConfirmModal({ message, onConfirm });
+
+  useEffect(() => {
+    if (confirmModal) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [confirmModal]);
 
   useEffect(() => {
     localStorage.setItem('ecometricus_waste_entries', JSON.stringify(wasteEntries));
@@ -486,21 +496,24 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
 
   const deleteWaste = (id: string) => {
     const entry = wasteEntries.find(e => e.id === id);
-    setWasteEntries(prev => prev.filter(e => e.id !== id));
-    if (entry) {
+    if (!entry) return;
+    showConfirm(`Delete waste entry "${entry.product}" (${entry.amount}${entry.unit})? This cannot be undone.`, () => {
+      setWasteEntries(prev => prev.filter(e => e.id !== id));
       onAuditLog?.('waste_entry_deleted', 'daily_input', entry.product,
         `Deleted waste entry: ${entry.category} → ${entry.product} (${entry.amount}${entry.unit})`,
         { category: entry.category, product: entry.product, amount: entry.amount, unit: entry.unit, outletCode: entry.outletCode });
-    }
+    });
   };
   const deleteResource = (id: string) => {
     const entry = resourceEntries.find(e => e.id === id);
-    setResourceEntries(prev => prev.filter(e => e.id !== id));
-    if (entry) {
+    if (!entry) return;
+    const label = entry.type === 'water' ? 'Water Reading' : 'Energy Reading';
+    showConfirm(`Delete ${label} of ${entry.amount}${entry.type === 'water' ? 'L' : 'kWh'}? This cannot be undone.`, () => {
+      setResourceEntries(prev => prev.filter(e => e.id !== id));
       onAuditLog?.(`${entry.type}_entry_deleted`, 'daily_input', entry.type,
         `Deleted ${entry.type} entry: ${entry.amount}${entry.type === 'water' ? 'L' : 'kWh'}`,
         { type: entry.type, amount: entry.amount, outletCode: user.outletCode });
-    }
+    });
   };
 
   const showAlertCarbon = totals.carbonImpact > 180;
@@ -1007,6 +1020,49 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
           </div>
         </div>
       </div>
+
+      {/* ── CONFIRMATION MODAL ── */}
+      {confirmModal && createPortal(
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-brand-dark/90 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setConfirmModal(null)}
+        >
+          <div
+            className="relative bg-gradient-to-br from-[#1c3933] to-[#152e2a] border border-brand-alert/30 rounded-3xl p-8 shadow-[0_24px_80px_rgba(0,0,0,0.8)] max-w-[400px] w-[calc(100%-2rem)] animate-in zoom-in-95 fade-in slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="flex justify-center mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-brand-alert/15 border border-brand-alert/40 flex items-center justify-center shadow-[0_0_24px_rgba(239,68,68,0.2)]">
+                <Trash2 size={28} className="text-brand-alert" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-center text-lg font-geometric font-bold text-white uppercase tracking-tight mb-2">Confirm Deletion</h3>
+
+            {/* Message */}
+            <p className="text-center text-sm text-white/60 leading-relaxed mb-7">{confirmModal.message}</p>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white/70 font-black text-xs uppercase tracking-widest hover:bg-white/10 hover:text-white hover:border-white/30 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-alert/20 border border-brand-alert/50 text-brand-alert font-black text-xs uppercase tracking-widest hover:bg-brand-alert/30 hover:border-brand-alert/70 transition-all flex items-center justify-center gap-2"
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
