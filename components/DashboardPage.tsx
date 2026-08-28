@@ -340,8 +340,8 @@ const AVAILABLE_PERMISSIONS = [
 ];
 
 const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
-  'Admin': AVAILABLE_PERMISSIONS,
-  'Supervisor': [
+  'admin': AVAILABLE_PERMISSIONS,
+  'manager': [
     'Daily Dashboard Review',
     'Review Alerts and Suggestion',
     'Print report',
@@ -351,7 +351,17 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'Receive notifications',
     'AI Mila full Interaction'
   ],
-  'Basic': [
+  'supervisor': [
+    'Daily Dashboard Review',
+    'Review Alerts and Suggestion',
+    'Print report',
+    'Entry input data',
+    'Review Basic users input data',
+    'Add comments',
+    'Receive notifications',
+    'AI Mila full Interaction'
+  ],
+  'basic': [
     'Entry input data',
     'Access photo library',
     'Add comments',
@@ -361,20 +371,24 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'Receive notifications',
     'AI Mila Limited Interaction'
   ],
-  'View': [
-    'Full Dashboard Review',
-    'Print report',
-    'Sustainability Insights',
+  'chef': [
+    'Entry input data',
+    'Access photo library',
+    'Add comments',
+    'Snapshot images',
+    'Input data reminders',
+    'Alert missing data',
+    'Receive notifications',
     'AI Mila Limited Interaction'
-  ]
+  ],
 };
 
 const POSITION_TO_ROLE: Record<string, string> = {
-  'Admin': 'Admin',
-  'Exec Chef': 'Supervisor',
-  'Outlet Manager': 'Supervisor',
-  'Chef Prep': 'Basic',
-  'GM': 'View'
+  'Admin': 'admin',
+  'GM': 'admin',
+  'Exec Chef': 'supervisor',
+  'Outlet Manager': 'manager',
+  'Chef Prep': 'basic',
 };
 
 // Mock Data for KPI Charts (Duplicated from SupervisorDashboard)
@@ -1439,7 +1453,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     setEnrollEmail(user.email);
     setEnrollPosition(user.position);
     setEnrollOutlet(user.outletCode);
-    const roleKey = Object.keys(ROLE_DEFAULT_PERMISSIONS).find(k => k.toLowerCase() === user.role.toLowerCase()) || 'View';
+    const roleKey = Object.keys(ROLE_DEFAULT_PERMISSIONS).find(k => k.toLowerCase() === user.role.toLowerCase()) || 'basic';
     setEnrollRole(roleKey);
     setEnrollPermissions(user.permissions?.length ? user.permissions : ROLE_DEFAULT_PERMISSIONS[roleKey]);
     setGenPassword(user.password || '');
