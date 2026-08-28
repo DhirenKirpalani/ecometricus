@@ -2213,41 +2213,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
               <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
               <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
-
-              {/* Divider */}
-              <div className="hidden lg:block h-px bg-brand-gold/8 my-1 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300" />
-
-              {/* Status indicators in sidebar — visible only when expanded */}
-              {activeView === PortalView.PARAMETERS && (
-                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all opacity-0 group-hover/sidebar:opacity-100 ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
-                  {autoSaveStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={10} /> : <Save size={10} />}
-                  {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? 'Saved' : 'Auto-save'}
-                </div>
-              )}
-              {activeView === PortalView.IDENTITY && (
-                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all opacity-0 group-hover/sidebar:opacity-100 ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
-                  {saveStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : saveStatus === 'success' ? <Check size={10} /> : <Save size={10} />}
-                  {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save'}
-                </div>
-              )}
-              {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
-                <div className={`hidden lg:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
-                  {saveStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : <Check size={10} />}
-                  {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
-                </div>
-              )}
-
-              {/* Save button — not shown on Team, Audit Log, Dashboard, Benchmarks or Company */}
-              {activeView !== PortalView.DASHBOARD && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && (
-                <button
-                  onClick={handleSaveAll}
-                  disabled={saveStatus !== 'idle'}
-                  className={`hidden lg:flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-bold tracking-wide transition-all opacity-0 group-hover/sidebar:opacity-100 ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
-                >
-                  {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
-                  {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
-                </button>
-              )}
             </div>
           </aside>
 
@@ -2298,6 +2263,42 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
                     {activeView === PortalView.AUDIT_LOG && "Audit Log"}
                   </h3>
+                </div>
+
+                {/* Save button & status indicators — in content header */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Benchmarks: auto-save indicator */}
+                  {activeView === PortalView.PARAMETERS && (
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
+                      {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
+                      {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : 'Auto-save on'}
+                    </div>
+                  )}
+                  {/* Company: auto-save indicator */}
+                  {activeView === PortalView.IDENTITY && (
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
+                      {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
+                      {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
+                    </div>
+                  )}
+                  {/* Team: auto-save indicator */}
+                  {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold tracking-wide ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
+                      {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : <Check size={12} />}
+                      {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
+                    </div>
+                  )}
+                  {/* Save button — not shown on Dashboard, Daily Input, Audit Log, Team, Benchmarks or Company */}
+                  {activeView !== PortalView.DASHBOARD && activeView !== PortalView.DAILY_INPUT && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && (
+                    <button
+                      onClick={handleSaveAll}
+                      disabled={saveStatus !== 'idle'}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
+                    >
+                      {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
+                      {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
+                    </button>
+                  )}
                 </div>
               </div>
 
