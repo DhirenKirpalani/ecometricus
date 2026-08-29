@@ -2319,14 +2319,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
-                    {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
                     {activeView === PortalView.AUDIT_LOG && "System Activity & Change Tracking"}
                     {activeView === PortalView.CONTACT && "Get Help & Share Feedback"}
                     {activeView === PortalView.SUPER_ADMIN && "Platform Control Center"}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
-                    {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
                     {activeView === PortalView.AUDIT_LOG && "Audit Log"}
                     {activeView === PortalView.CONTACT && "Contact Support"}
                     {activeView === PortalView.SUPER_ADMIN && "Super Admin"}
@@ -2335,13 +2333,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                 {/* Save button & status indicators — in content header */}
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* Benchmarks: auto-save indicator */}
-                  {activeView === PortalView.PARAMETERS && (
-                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
-                      {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
-                      {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : 'Auto-save on'}
-                    </div>
-                  )}
                   {/* Company: auto-save indicator */}
                   {activeView === PortalView.IDENTITY && (
                     <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
@@ -3925,6 +3916,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                 {activeView === PortalView.PARAMETERS && (
                   <div className="space-y-6 sm:space-y-10 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide">
+
+                    {/* Heading */}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                          <Settings2 className="text-brand-eco" size={24} />
+                        </div>
+                        <div>
+                          <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                            Benchmarking Engine
+                          </h2>
+                          <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
+                            Metric Units & KPI Thresholds
+                          </p>
+                        </div>
+                      </div>
+                      {/* Auto-save indicator */}
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
+                        {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
+                        {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : 'Auto-save on'}
+                      </div>
+                    </div>
 
                     {/* ── STEP 1: Industry Benchmarking ── */}
                     <div className="rounded-2xl border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
