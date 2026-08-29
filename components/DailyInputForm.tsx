@@ -656,18 +656,23 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-          <ClipboardListIcon className="text-brand-gold" size={24} />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+            <ClipboardListIcon className="text-brand-gold" size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+              Daily Input
+            </h2>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-            Daily Input Data
-          </h2>
-          <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
-            Log food waste, water, and energy entries for your shift.
-          </p>
-        </div>
+        {(form.category || form.amount) && (
+          <button type="button" onClick={handleTare}
+            className="flex items-center gap-2 text-[11px] font-bold text-white/40 hover:text-white/60 uppercase tracking-widest transition-colors">
+            <RotateCcw size={12} /> Reset Form
+          </button>
+        )}
       </div>
 
       {/* Alert Banner */}
@@ -833,7 +838,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 <div className="flex gap-1 bg-brand-dark/80 border border-brand-gold/15 rounded-xl p-1">
                   {(['kg', 'lbs', 'L'] as const).map(u => (
                     <button key={u} type="button" onClick={() => setUnit(u)}
-                      className={`px-3 py-2 rounded-lg text-[11px] font-bold uppercase transition-all ${unit === u ? 'bg-brand-gold text-brand-dark' : 'text-white/50 hover:text-white'}`}>
+                      className={`px-3 py-2 rounded-lg text-[11px] font-bold uppercase transition-all ${unit === u ? 'bg-brand-eco text-brand-dark' : 'text-white/50 hover:text-white'}`}>
                       {u}
                     </button>
                   ))}
@@ -934,7 +939,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
           {(form.products.length > 0 || form.product) && form.reason && form.amount && form.destination && (
             <div className="flex gap-3">
               <button type="submit"
-                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-eco text-brand-dark font-black text-sm uppercase tracking-wider hover:brightness-110 transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
                 {editingId ? <CheckCircle2 size={16} /> : <Plus size={16} />}
                 {editingId ? 'Update Entry' : 'Log Entry'}
               </button>
@@ -945,14 +950,6 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 </button>
               )}
             </div>
-          )}
-
-          {/* Tare / Reset */}
-          {(form.category || form.amount) && (
-            <button type="button" onClick={handleTare}
-              className="flex items-center gap-2 text-[11px] font-bold text-white/40 hover:text-white/60 uppercase tracking-widest transition-colors">
-              <RotateCcw size={12} /> Reset Form
-            </button>
           )}
         </form>
       </div>
