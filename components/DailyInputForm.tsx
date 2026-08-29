@@ -970,31 +970,25 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               <p className="text-[10px] text-white/40 font-medium mt-0.5">Log daily water consumption</p>
             </div>
           </div>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-[#3b82f6]">
-                <span className="w-5 h-5 rounded-full bg-[#3b82f6]/15 border border-[#3b82f6]/30 flex items-center justify-center text-[9px]">1</span>
-                Consumption Volume
-              </label>
-              <div className="relative">
-                <input type="number" value={form.water} onChange={e => setForm({ ...form, water: e.target.value })}
-                  placeholder="Enter volume in liters" min="0"
-                  className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#3b82f6]/60 uppercase tracking-wider">L</span>
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input type="number" value={form.water} onChange={e => setForm({ ...form, water: e.target.value })}
+                placeholder="Enter volume in liters" min="0"
+                className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#3b82f6]/60 uppercase tracking-wider">L</span>
             </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => handleSaveResource('water')} disabled={!form.water}
-                className="flex-1 px-5 py-3.5 rounded-xl bg-[#3b82f6] text-white font-black text-sm uppercase tracking-wider hover:bg-[#3b82f6]/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
-                <Plus size={16} /> {editingResourceId && form.water ? 'Update' : 'Log Water Reading'}
+            <button type="button" onClick={() => handleSaveResource('water')} disabled={!form.water}
+              className="shrink-0 w-12 h-12 rounded-xl bg-brand-eco text-brand-dark font-black flex items-center justify-center hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              title={editingResourceId && form.water ? 'Update' : 'Log Water Reading'}>
+              {editingResourceId && form.water ? <CheckCircle2 size={18} /> : <Plus size={18} />}
+            </button>
+            {editingResourceId && form.water && (
+              <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, water: '' })); }}
+                className="shrink-0 w-12 h-12 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 flex items-center justify-center hover:bg-white/10 hover:text-white transition-all"
+                title="Cancel">
+                <RotateCcw size={16} />
               </button>
-              {editingResourceId && form.water && (
-                <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, water: '' })); }}
-                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
-                  <RotateCcw size={14} /> Cancel
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
@@ -1009,31 +1003,25 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               <p className="text-[10px] text-white/40 font-medium mt-0.5">Log daily energy consumption</p>
             </div>
           </div>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
-                <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">1</span>
-                Consumption Volume
-              </label>
-              <div className="relative">
-                <input type="number" value={form.energy} onChange={e => setForm({ ...form, energy: e.target.value })}
-                  placeholder="Enter volume in kilowatt-hours" min="0"
-                  className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-brand-gold/60 uppercase tracking-wider">kWh</span>
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input type="number" value={form.energy} onChange={e => setForm({ ...form, energy: e.target.value })}
+                placeholder="Enter volume in kilowatt-hours" min="0"
+                className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-brand-gold/60 uppercase tracking-wider">kWh</span>
             </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => handleSaveResource('energy')} disabled={!form.energy}
-                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
-                <Plus size={16} /> {editingResourceId && form.energy ? 'Update' : 'Log Energy Reading'}
+            <button type="button" onClick={() => handleSaveResource('energy')} disabled={!form.energy}
+              className="shrink-0 w-12 h-12 rounded-xl bg-brand-eco text-brand-dark font-black flex items-center justify-center hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              title={editingResourceId && form.energy ? 'Update' : 'Log Energy Reading'}>
+              {editingResourceId && form.energy ? <CheckCircle2 size={18} /> : <Plus size={18} />}
+            </button>
+            {editingResourceId && form.energy && (
+              <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, energy: '' })); }}
+                className="shrink-0 w-12 h-12 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 flex items-center justify-center hover:bg-white/10 hover:text-white transition-all"
+                title="Cancel">
+                <RotateCcw size={16} />
               </button>
-              {editingResourceId && form.energy && (
-                <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, energy: '' })); }}
-                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
-                  <RotateCcw size={14} /> Cancel
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
