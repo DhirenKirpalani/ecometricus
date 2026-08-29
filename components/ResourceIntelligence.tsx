@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, Droplets, Zap, AlertTriangle, CheckCircle2, Info, TrendingDown, Store } from 'lucide-react';
+import { Cpu, Droplets, Zap, AlertTriangle, ShieldCheck, TrendingDown, Store } from 'lucide-react';
 import { useResourceChartData } from '../hooks/useResourceChartData';
 import ResourceTemplateChart from './ResourceTemplateChart';
 import { Outlet } from '../types';
@@ -24,7 +24,6 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
   const showAlertWater = waterWeeklyTotal > waterTarget;
   const showAlertEnergy = energyWeeklyTotal > energyTarget;
 
-  // Compute per-outlet totals from chart data
   const OUTLET_KEYS = ['ROYAL', "FISHER'S", "RALPH'S", 'GUSTO'] as const;
   const outletBreakdown = OUTLET_KEYS.map(key => {
     const water = waterData.reduce((acc, d) => acc + (d[key] || 0), 0);
@@ -41,172 +40,163 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      {/* Mila Actionable Intelligence Header */}
-      <div className="flex items-center gap-6 mb-10">
-        <div className="p-4 bg-brand-gold rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.4)]">
-          <Cpu className="text-[#0B221E]" size={32} />
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
+
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+          <Cpu className="text-brand-gold" size={24} />
         </div>
-        <div className="space-y-1">
-          <h2 className="text-2xl font-black text-white tracking-tight uppercase leading-tight">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
             Resource Portfolio Intelligence
           </h2>
-          <div className="flex items-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold">
-              Cumulative Utility Load & Baseline Analysis
-            </p>
-          </div>
+          <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
+            Cumulative Utility Load & Baseline Analysis
+          </p>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Total Water Card */}
-        <div className="bg-[#0B221E] border border-brand-gold/10 rounded-[32px] p-8 flex flex-col justify-between h-[230px] relative overflow-hidden group hover:border-[#3b82f6]/30 transition-all">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#3b82f6]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-[#3b82f6]/10 transition-colors"></div>
-          <div>
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-3">
-                <Droplets size={16} className="text-[#3b82f6]" />
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#3b82f6]">Total Water Usage</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Total Water */}
+        <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-6 shadow-xl">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-400/10 border border-blue-400/20 flex items-center justify-center shrink-0">
+                <Droplets size={18} className="text-blue-400" />
               </div>
-              {showAlertWater && (
-                <div className="bg-[#FF4D4D]/10 text-[#FF4D4D] border border-[#FF4D4D]/30 px-3 py-1 rounded-lg flex items-center gap-2 animate-pulse">
-                  <AlertTriangle size={12} />
-                  <span className="text-[9px] font-black uppercase tracking-widest">Attention</span>
-                </div>
-              )}
+              <div>
+                <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">Total Water Usage</h3>
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">Weekly cumulative</p>
+              </div>
             </div>
-            <p className="text-5xl font-black text-white tracking-tighter tabular-nums">
-              {waterWeeklyTotal.toLocaleString()} <span className="text-xs font-medium text-white/30 uppercase ml-1">Litres</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {!showAlertWater ? (
-              <>
-                <CheckCircle2 size={14} className="text-[#77B139]" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Standard Consumption Pattern.</span>
-              </>
+            {showAlertWater ? (
+              <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg shrink-0">
+                <AlertTriangle size={11} className="text-brand-alert" />
+                <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Alert</span>
+              </div>
             ) : (
-              <>
-                <Info size={14} className="text-[#FF4D4D]" />
-                <span className="text-[10px] font-bold text-[#FF4D4D] uppercase tracking-widest font-black">Benchmark Overload Detected.</span>
-              </>
+              <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg shrink-0">
+                <ShieldCheck size={11} className="text-brand-eco" />
+                <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">On Target</span>
+              </div>
             )}
           </div>
+          <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+            {waterWeeklyTotal.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">Litres</span>
+          </p>
+          <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+            {showAlertWater ? 'Benchmark overload detected' : 'Standard consumption pattern'}
+          </p>
         </div>
 
-        {/* Total Energy Card */}
-        <div className="bg-[#0B221E] border border-brand-gold/10 rounded-[32px] p-8 flex flex-col justify-between h-[230px] relative overflow-hidden group hover:border-brand-gold/30 transition-all">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-brand-gold/10 transition-colors"></div>
-          <div>
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-3">
-                <Zap size={16} className="text-brand-gold" />
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-gold">Total Energy Load</h4>
+        {/* Total Energy */}
+        <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-6 shadow-xl">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                <Zap size={18} className="text-brand-gold" />
               </div>
-              {showAlertEnergy && (
-                <div className="bg-[#FF4D4D]/10 text-[#FF4D4D] border border-[#FF4D4D]/30 px-3 py-1 rounded-lg flex items-center gap-2 animate-pulse">
-                  <AlertTriangle size={12} />
-                  <span className="text-[9px] font-black uppercase tracking-widest">Attention</span>
-                </div>
-              )}
+              <div>
+                <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">Total Energy Load</h3>
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">Weekly cumulative</p>
+              </div>
             </div>
-            <p className="text-5xl font-black text-white tracking-tighter tabular-nums">
-              {energyWeeklyTotal.toLocaleString()} <span className="text-xs font-medium text-white/30 uppercase ml-1">kWh</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {!showAlertEnergy ? (
-              <>
-                <CheckCircle2 size={14} className="text-[#77B139]" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Load Within Tolerance Range.</span>
-              </>
+            {showAlertEnergy ? (
+              <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg shrink-0">
+                <AlertTriangle size={11} className="text-brand-alert" />
+                <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Alert</span>
+              </div>
             ) : (
-              <>
-                <Info size={14} className="text-[#FF4D4D]" />
-                <span className="text-[10px] font-bold text-[#FF4D4D] uppercase tracking-widest font-black">Critical Energy Spike Logged.</span>
-              </>
+              <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg shrink-0">
+                <ShieldCheck size={11} className="text-brand-eco" />
+                <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">On Target</span>
+              </div>
             )}
           </div>
+          <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+            {energyWeeklyTotal.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">kWh</span>
+          </p>
+          <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+            {showAlertEnergy ? 'Critical energy spike logged' : 'Load within tolerance range'}
+          </p>
         </div>
       </div>
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[500px]">
-        <ResourceTemplateChart 
-          data={waterData} 
-          benchmark={waterDailyBenchmark} 
-          title="WATER USAGE" 
-          subtitle="Cumulative Flow Analysis" 
-          unit="L" 
-          maxVal={5000} 
-          icon={<Droplets size={18} className="text-[#3b82f6]" />} 
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[440px]">
+        <ResourceTemplateChart
+          data={waterData}
+          benchmark={waterDailyBenchmark}
+          title="Water Usage"
+          subtitle="Cumulative Flow Analysis"
+          unit="L"
+          maxVal={5000}
+          icon={<Droplets size={18} className="text-blue-400" />}
           allOutlets={allOutlets}
         />
-        <ResourceTemplateChart 
-          data={energyData} 
-          benchmark={energyDailyBenchmark} 
-          title="ENERGY LOAD" 
-          subtitle="Real-time Power Distribution" 
-          unit="kWh" 
-          maxVal={250} 
-          icon={<Zap size={18} className="text-brand-gold" />} 
+        <ResourceTemplateChart
+          data={energyData}
+          benchmark={energyDailyBenchmark}
+          title="Energy Load"
+          subtitle="Real-time Power Distribution"
+          unit="kWh"
+          maxVal={250}
+          icon={<Zap size={18} className="text-brand-gold" />}
           allOutlets={allOutlets}
         />
       </div>
 
-      {/* Outlet Performance Breakdown — Card Grid */}
+      {/* Outlet Performance */}
       <div>
-        <div className="flex items-center gap-6 mb-6">
-          <div className="p-3 border border-brand-gold/50 rounded-full bg-brand-gold/5">
-            <TrendingDown size={20} className="text-brand-gold" />
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+            <TrendingDown className="text-brand-gold" size={24} />
           </div>
-          <div className="space-y-1">
-            <h4 className="text-xl font-black text-white tracking-tight uppercase leading-tight">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
               Outlet Performance
-            </h4>
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold">
+            </h2>
+            <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
               Resource Breakdown Analytics
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {outletBreakdown.map((outlet, id) => {
             const isWaterAttention = outlet.water > waterTarget / OUTLET_KEYS.length;
             const isEnergyAttention = outlet.energy > energyTarget / OUTLET_KEYS.length;
             const isAttention = isWaterAttention || isEnergyAttention;
             return (
-              <div key={id} className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${isAttention ? 'border-[#FF4D4D]/40 bg-[#FF4D4D]/5' : 'border-brand-gold/10 bg-[#0B221E] hover:border-brand-gold/20'}`}>
-                {/* Outlet name + status badge */}
+              <div key={id} className={`rounded-2xl border p-5 shadow-xl transition-all duration-300 ${isAttention ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/30'}`}>
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <div className="flex items-center gap-2">
                     <Store size={14} className="text-brand-gold/50" />
-                    <span className="text-sm font-black text-white uppercase tracking-wider truncate">{outlet.name}</span>
+                    <span className="text-sm font-bold text-white uppercase tracking-wider truncate">{outlet.name}</span>
                   </div>
                   {isAttention && (
-                    <div className="flex items-center gap-1.5 bg-[#FF4D4D]/20 text-[#FF4D4D] border border-[#FF4D4D]/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
-                      <AlertTriangle size={9} /> Attention
+                    <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2 py-0.5 rounded-lg shrink-0">
+                      <AlertTriangle size={9} className="text-brand-alert" />
+                      <span className="text-[8px] font-black text-brand-alert uppercase tracking-widest">Alert</span>
                     </div>
                   )}
                 </div>
 
-                {/* Water metric */}
+                {/* Water */}
                 <div className="mb-3">
-                  <p className="text-[10px] font-bold text-[#3b82f6]/60 uppercase tracking-widest mb-1">Water Usage</p>
+                  <p className="text-[8px] font-black text-blue-400/60 uppercase tracking-widest mb-1">Water Usage</p>
                   <p className="text-xl font-geometric font-black text-white leading-none">
-                    {outlet.water.toLocaleString()}
-                    <span className="text-xs font-medium text-white/40 uppercase ml-1.5">L</span>
+                    {outlet.water.toLocaleString()}<span className="text-xs font-medium text-white/40 uppercase ml-1">L</span>
                   </p>
                 </div>
 
-                {/* Energy metric */}
-                <div className="pt-3 border-t border-brand-gold/8">
-                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">Energy Load</p>
-                  <p className="text-xl font-geometric font-bold text-brand-gold leading-none">
-                    {outlet.energy.toLocaleString()}
-                    <span className="text-xs font-medium text-white/40 uppercase ml-1.5">kWh</span>
+                {/* Energy */}
+                <div className="pt-3 border-t border-white/5">
+                  <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest mb-1">Energy Load</p>
+                  <p className="text-xl font-geometric font-black text-brand-gold leading-none">
+                    {outlet.energy.toLocaleString()}<span className="text-xs font-medium text-white/40 uppercase ml-1">kWh</span>
                   </p>
                 </div>
               </div>

@@ -2536,7 +2536,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
                                           Earth Keeper
                                         </h2>
-                                        <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+                                        <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
                                           Cumulative Engagement — outlet performance & staff leaderboard.
                                         </p>
                                       </div>
@@ -2605,7 +2605,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
                                   Sustainability Report
                                 </h2>
-                                <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+                                <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
                                   Environmental impact tracking — waste, water & carbon footprint analysis.
                                 </p>
                               </div>
@@ -2650,7 +2650,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
                                   KPI Report
                                 </h2>
-                                <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+                                <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
                                   Key performance indicators — food cost, labor & profit margin trends.
                                 </p>
                               </div>
