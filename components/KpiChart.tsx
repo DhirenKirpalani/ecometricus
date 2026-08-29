@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
   AreaChart, Area, ComposedChart,
 } from 'recharts';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, ShieldCheck } from 'lucide-react';
 import { Outlet } from '../types';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -50,12 +50,12 @@ const SERIES_COLORS = ['#C8A413', '#77B139', '#3B82F6', '#FF914D', '#A855F7', '#
 const CustomTooltip = ({ active, payload, label, unit, unitPrefix }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#0a1815] border border-brand-gold/25 rounded-lg px-3 py-2 shadow-2xl">
-      <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-wide mb-1.5">{label}</p>
+    <div className="bg-brand-dark border border-brand-gold/30 rounded-lg px-3 py-2 shadow-2xl">
+      <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider mb-1.5 text-center">{label}</p>
       {payload.map((p: any, i: number) => (
-        <div key={i} className="flex items-center gap-2 text-[11px] py-0.5">
+        <div key={i} className="flex items-center gap-2 text-[10px] py-0.5">
           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-          <span className="text-white/40">{p.name}:</span>
+          <span className="text-white/50">{p.name}:</span>
           <span className="text-white font-bold ml-auto">
             {unitPrefix || ''}{typeof p.value === 'number' ? p.value.toFixed(1) : p.value}{unit || ''}
           </span>
@@ -88,13 +88,11 @@ const KpiChart: React.FC<KpiChartProps> = ({
   stackKeys = [],
   rollingAverageKey,
 }) => {
-  // Check if any value exceeds benchmark
   const hasAlert = useMemo(() => {
     if (!benchmark || !alertIfAbove) return false;
     return data.some(d => Number(d[dataKey]) > benchmark);
   }, [data, dataKey, benchmark, alertIfAbove]);
 
-  // Transform data for multi-series
   const chartData = useMemo(() => {
     if (!multiSeries) return data;
     const days = [...new Set(data.map(d => d.day))];
@@ -115,7 +113,6 @@ const KpiChart: React.FC<KpiChartProps> = ({
     );
   }, [multiSeries, outlets, chartData]);
 
-  // Compute summary: latest value + trend vs first
   const summary = useMemo(() => {
     if (!data.length) return null;
     const values = data.map(d => Number(d[dataKey])).filter(v => !isNaN(v));
@@ -127,7 +124,6 @@ const KpiChart: React.FC<KpiChartProps> = ({
     return { latest, delta, pctChange };
   }, [data, dataKey]);
 
-  // For stacked charts, compute total of latest day
   const stackTotal = useMemo(() => {
     if (!stacked || !stackKeys.length || !data.length) return null;
     const last = data[data.length - 1];
@@ -141,10 +137,9 @@ const KpiChart: React.FC<KpiChartProps> = ({
   const trendDown = trendDelta !== undefined && trendDelta < 0;
   const trendFlat = trendDelta === 0;
 
-  // Shared axis props
   const axisProps = {
     stroke: COLORS.axis,
-    tick: { fontSize: 10, fill: COLORS.text },
+    tick: { fontSize: 9, fill: COLORS.text },
     axisLine: false,
     tickLine: false,
   };
@@ -240,7 +235,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
               dataKey={name}
               stroke={outlets.find(o => o.name === name)?.color_hex || SERIES_COLORS[i % SERIES_COLORS.length]}
               strokeWidth={2}
-              dot={{ r: 2.5, fill: '#0e1f1c', strokeWidth: 1.5 }}
+              dot={{ r: 2.5, fill: '#1c3933', strokeWidth: 1.5 }}
               activeDot={{ r: 4 }}
             />
           ))
@@ -250,7 +245,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
             dataKey={dataKey}
             stroke={COLORS.eco}
             strokeWidth={2}
-            dot={{ r: 2.5, fill: '#0e1f1c', strokeWidth: 1.5, stroke: COLORS.eco }}
+            dot={{ r: 2.5, fill: '#1c3933', strokeWidth: 1.5, stroke: COLORS.eco }}
             activeDot={{ r: 4 }}
           />
         )}
@@ -259,68 +254,81 @@ const KpiChart: React.FC<KpiChartProps> = ({
     );
   };
 
+  // Format benchmark display
+  const formatBenchmark = (val: number) => {
+    if (unitPrefix === '$') return `$${val.toLocaleString()}`;
+    if (unit === '%') return `${val}%`;
+    return `${val}${unit}`;
+  };
+
   return (
-    <div className="bg-[#0e1f1c] border border-brand-gold/6 rounded-xl p-4 sm:p-5 flex flex-col h-full hover:border-brand-gold/10 transition-colors">
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        {/* Left: icon + title */}
-        <div className="flex items-center gap-2.5 min-w-0">
+    <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-6 shadow-xl w-full h-full flex flex-col transition-all duration-300 hover:border-brand-gold/30">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-3 min-w-0">
           {Icon && (
-            <div className="w-8 h-8 rounded-lg bg-white/3 border border-brand-gold/6 flex items-center justify-center shrink-0">
-              <Icon size={14} className={iconColor} />
+            <div className={`w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0`}>
+              <Icon size={18} className={iconColor} />
             </div>
           )}
           <div className="min-w-0">
-            <h3 className="text-[13px] font-geometric font-black text-white leading-tight truncate">{title}</h3>
-            {subtitle && <p className="text-[10px] text-white/25 mt-0.5 truncate">{subtitle}</p>}
+            <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none truncate">{title}</h3>
+            {subtitle && <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1 truncate">{subtitle}</p>}
           </div>
         </div>
-
-        {/* Right: current value + trend */}
-        {displayValue !== null && displayValue !== undefined && (
-          <div className="flex flex-col items-end shrink-0">
-            <span className="text-lg font-geometric font-black text-white leading-none">
-              {unitPrefix}{displayValue.toFixed(1)}{unit}
-            </span>
-            {trendDelta !== undefined && !stacked && (
-              <div className="flex items-center gap-0.5 mt-1">
-                {trendUp ? (
-                  <TrendingUp size={10} className="text-brand-alert" />
-                ) : trendDown ? (
-                  <TrendingDown size={10} className="text-brand-eco" />
-                ) : (
-                  <Minus size={10} className="text-white/20" />
-                )}
-                <span className={`text-[9px] font-bold ${trendUp ? 'text-brand-alert/70' : trendDown ? 'text-brand-eco/70' : 'text-white/20'}`}>
-                  {Math.abs(summary!.pctChange).toFixed(1)}%
-                </span>
-              </div>
-            )}
+        {hasAlert ? (
+          <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg shrink-0">
+            <AlertTriangle size={11} className="text-brand-alert" />
+            <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Alert</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg shrink-0">
+            <ShieldCheck size={11} className="text-brand-eco" />
+            <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">On Target</span>
           </div>
         )}
       </div>
 
-      {/* Benchmark + Alert badges row */}
-      {(benchmark !== undefined || hasAlert) && (
-        <div className="flex items-center gap-2 mb-2">
-          {benchmark !== undefined && (
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-brand-gold/6 border border-brand-gold/15">
-              <span className="text-[9px] font-bold text-brand-gold/60 uppercase tracking-wide">
-                {benchmarkLabel || 'Bench'}
-              </span>
-              <span className="text-[9px] font-bold text-white/50">
-                {unitPrefix}{benchmark}{unit}
+      {/* Stats Row */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {benchmark !== undefined && (
+          <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
+            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{benchmarkLabel || 'Bench'}</p>
+            <p className="text-sm font-geometric font-black text-white leading-none mt-1">{formatBenchmark(benchmark)}</p>
+          </div>
+        )}
+        {displayValue !== null && displayValue !== undefined && (
+          <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
+            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Current</p>
+            <p className="text-sm font-geometric font-black text-white leading-none mt-1">
+              {unitPrefix}{displayValue.toFixed(1)}{unit}
+            </p>
+          </div>
+        )}
+        {trendDelta !== undefined && !stacked && (
+          <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
+            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Trend</p>
+            <div className="flex items-center gap-1 mt-1">
+              {trendUp ? (
+                <TrendingUp size={12} className="text-brand-alert" />
+              ) : trendDown ? (
+                <TrendingDown size={12} className="text-brand-eco" />
+              ) : (
+                <Minus size={12} className="text-white/20" />
+              )}
+              <span className={`text-sm font-geometric font-black leading-none ${trendUp ? 'text-brand-alert' : trendDown ? 'text-brand-eco' : 'text-white/40'}`}>
+                {Math.abs(summary!.pctChange).toFixed(1)}%
               </span>
             </div>
-          )}
-          {hasAlert && (
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-brand-alert/8 border border-brand-alert/20">
-              <AlertTriangle size={9} className="text-brand-alert" />
-              <span className="text-[9px] font-bold text-brand-alert/80 uppercase tracking-wide">Alert</span>
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+        {stacked && stackKeys.length > 0 && (
+          <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
+            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Segments</p>
+            <p className="text-sm font-geometric font-black text-white leading-none mt-1">{stackKeys.length}</p>
+          </div>
+        )}
+      </div>
 
       {/* Chart */}
       <div className="flex-grow min-h-0 -mx-1">
@@ -329,14 +337,14 @@ const KpiChart: React.FC<KpiChartProps> = ({
         </ResponsiveContainer>
       </div>
 
-      {/* Legend for multi-series / stacked */}
-      <div className="mt-2 pt-2 border-t border-brand-gold/4">
+      {/* Legend */}
+      <div className="mt-3 pt-3 border-t border-white/5">
         {multiSeries && seriesNames.length > 0 ? (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {seriesNames.map((name, i) => (
               <div key={name} className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: outlets.find(o => o.name === name)?.color_hex || SERIES_COLORS[i % SERIES_COLORS.length] }} />
-                <span className="text-[9px] text-white/35 font-medium">{name}</span>
+                <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">{name}</span>
               </div>
             ))}
           </div>
@@ -345,13 +353,13 @@ const KpiChart: React.FC<KpiChartProps> = ({
             {stackKeys.map((s) => (
               <div key={s.key} className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                <span className="text-[9px] text-white/35 font-medium">{s.name}</span>
+                <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">{s.name}</span>
               </div>
             ))}
             {rollingAverageKey && (
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-[2px] rounded-full bg-brand-gold" />
-                <span className="text-[9px] text-white/35 font-medium">Rolling Avg</span>
+                <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">Rolling Avg</span>
               </div>
             )}
           </div>

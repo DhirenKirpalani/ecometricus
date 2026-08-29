@@ -56,7 +56,7 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Benchmark</p>
-                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{benchmark}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{benchmark.toFixed(2)}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Weekly</p>
@@ -92,7 +92,7 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
                     <div className="absolute inset-0 pointer-events-none">
                         <div className="absolute w-full border-t border-dashed border-brand-gold/50" style={{ top: `${getY(benchmark)}%` }} />
                         <div className="absolute right-0 -translate-y-1/2 bg-brand-gold/20 border border-brand-gold/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-gold uppercase tracking-wider" style={{ top: `${getY(benchmark)}%` }}>
-                            {benchmark}kg
+                            {benchmark.toFixed(2)}kg
                         </div>
                     </div>
 
