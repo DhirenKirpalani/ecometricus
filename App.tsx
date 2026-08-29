@@ -150,9 +150,9 @@ const App: React.FC = () => {
           if (event === 'SIGNED_IN' && hasAuthHash) {
             const rl = role.toLowerCase();
             const targetPath =
-              rl === 'super_admin' ? PAGE_TO_PATH[Page.DASHBOARD] :
-              rl === 'admin' ? PAGE_TO_PATH[Page.DASHBOARD] :
-              rl === 'supervisor' ? PAGE_TO_PATH[Page.DASHBOARD] :
+              rl === 'super_admin' ? (PAGE_TO_PATH[Page.DASHBOARD] ?? '/dashboard') :
+              rl === 'admin' ? (PAGE_TO_PATH[Page.DASHBOARD] ?? '/dashboard') :
+              rl === 'supervisor' ? (PAGE_TO_PATH[Page.DASHBOARD] ?? '/dashboard') :
               '/dashboard/daily-input';
             navigate(targetPath);
             setCurrentPageState(Page.DASHBOARD);
