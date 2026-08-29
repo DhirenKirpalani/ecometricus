@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Trash2, Edit2, Plus, RotateCcw, CheckCircle2, AlertTriangle,
-  Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown
+  Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown,
+  ImagePlus, X, Loader2
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
@@ -76,6 +77,7 @@ interface WasteEntry {
   unit: 'kg' | 'lbs' | 'L';
   timestamp: string;
   imageUrl?: string;
+  images?: string[];
   staffName?: string;
   outletCode?: string;
 }
@@ -319,12 +321,13 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
     destination: string;
     amount: string;
     imageUrl: string;
+    images: string[];
     water: string;
     energy: string;
   }>(() => {
     try {
       const saved = localStorage.getItem('ecometricus_daily_form');
-      if (saved) return JSON.parse(saved);
+      if (saved) return { ...{ images: [] }, ...JSON.parse(saved) };
     } catch {}
     return {
       category: '',
@@ -337,6 +340,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       destination: '',
       amount: '',
       imageUrl: '',
+      images: [],
       water: '',
       energy: ''
     };
@@ -348,6 +352,54 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   const productInputRef = useRef<HTMLInputElement>(null);
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const showConfirm = (message: string, onConfirm: () => void) => setConfirmModal({ message, onConfirm });
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Upload images to Supabase Storage
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadingImages(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const uploadedUrls: string[] = [];
+      for (const file of Array.from(files)) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) continue;
+        // Max 5MB
+        if (file.size > 5 * 1024 * 1024) continue;
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${session.user.id}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('waste-images')
+          .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('waste-images')
+          .getPublicUrl(fileName);
+
+        if (urlData?.publicUrl) uploadedUrls.push(urlData.publicUrl);
+      }
+
+      if (uploadedUrls.length > 0) {
+        setForm(prev => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
+      }
+    } catch (err) {
+      console.error('[DailyInput] Image upload failed:', err);
+    } finally {
+      setUploadingImages(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = (idx: number) => {
+    setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));
+  };
 
   useEffect(() => {
     if (confirmModal) {
@@ -407,7 +459,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   const handleTare = () => {
     setForm({
       category: '', subCategory: '', product: '', products: [], productSearch: '',
-      reason: '', customReason: '', destination: '', amount: '', imageUrl: '', water: '', energy: ''
+      reason: '', customReason: '', destination: '', amount: '', imageUrl: '', images: [], water: '', energy: ''
     });
     setEditingId(null);
     setEditingResourceId(null);
@@ -437,10 +489,12 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
           outlet_id: outlet.id,
           outlet_name: outlet.name,
           mass_kg: unit === 'lbs' ? amountNum * 0.4536 : amountNum,
-          cost_per_kg: 6.53,
+          cost_per_kg: 6.50,
           is_mock: false,
           user_id: session?.user?.id || null,
           created_by: user.fullName,
+          image_url: form.images.length > 0 ? form.images[0] : null,
+          images: form.images.length > 0 ? form.images : null,
         });
       }
 
@@ -462,7 +516,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
     if (editingId) {
       setWasteEntries(prev => prev.map(entry =>
         entry.id === editingId
-          ? { ...entry, category: form.category, subCategory: form.subCategory, product: productStr, reason: finalReason, destination: form.destination, amount: parseFloat(form.amount), unit }
+          ? { ...entry, category: form.category, subCategory: form.subCategory, product: productStr, reason: finalReason, destination: form.destination, amount: parseFloat(form.amount), unit, images: form.images }
           : entry
       ));
       onAuditLog?.('waste_entry_updated', 'daily_input', productStr,
@@ -481,7 +535,8 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
         unit,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         staffName: user.fullName,
-        outletCode: user.outletCode
+        outletCode: user.outletCode,
+        images: form.images,
       };
       setWasteEntries([newEntry, ...wasteEntries]);
       onAuditLog?.('waste_entry_added', 'daily_input', productStr,
@@ -504,7 +559,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       reason: isCustom ? 'Other' : entry.reason,
       customReason: isCustom ? entry.reason : '',
       destination: entry.destination,
-      amount: entry.amount.toString(), imageUrl: entry.imageUrl || ''
+      amount: entry.amount.toString(), imageUrl: entry.imageUrl || '', images: entry.images || []
     });
     setUnit(entry.unit);
   };
@@ -601,18 +656,26 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-          <ClipboardListIcon className="text-brand-gold" size={24} />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+            <ClipboardListIcon className="text-brand-gold" size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+              Daily Input
+            </h2>
+            <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
+              Log Waste & Resource Data
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-            Daily Input Data
-          </h2>
-          <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
-            Log food waste, water, and energy entries for your shift.
-          </p>
-        </div>
+        {(form.category || form.amount) && (
+          <button type="button" onClick={handleTare}
+            className="flex items-center gap-2 text-[11px] font-bold text-white/40 hover:text-white/60 uppercase tracking-widest transition-colors">
+            <RotateCcw size={12} /> Reset Form
+          </button>
+        )}
       </div>
 
       {/* Alert Banner */}
@@ -672,24 +735,19 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 )}
               </label>
 
-              {/* Selected product chips */}
-              {form.products.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {form.products.map(prod => (
-                    <span key={prod} className="inline-flex items-center gap-1.5 bg-brand-gold/15 border border-brand-gold/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-brand-gold">
-                      {prod}
-                      <button type="button" onClick={() => setForm({ ...form, products: form.products.filter(p => p !== prod) })} className="hover:text-white transition-colors">
-                        <Trash2 size={11} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
               <div className="relative">
                 <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 z-10" />
+                  <div className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl pl-10 pr-4 py-2.5 flex flex-wrap items-center gap-1.5 focus-within:border-brand-gold transition-all min-h-[48px]">
+                    {form.products.map(prod => (
+                      <span key={prod} className="inline-flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-brand-eco">
+                        {prod}
+                        <button type="button" onClick={() => setForm({ ...form, products: form.products.filter(p => p !== prod) })} className="hover:text-white transition-colors">
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                    <input
                     ref={productInputRef}
                     type="text"
                     value={form.productSearch}
@@ -708,9 +766,10 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                         setShowProductDropdown(false);
                       }
                     }}
-                    placeholder="Search, select, or type then press Enter..."
-                    className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all"
+                    placeholder={form.products.length === 0 ? "Search, select, or type then press Enter..." : ""}
+                    className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm text-white placeholder:text-white/35 py-1"
                   />
+                  </div>
                 </div>
                 {showProductDropdown && form.subCategory && INVENTORY_LOGIC[form.category]?.[form.subCategory] && (
                   <div className="relative bg-brand-dark border border-brand-gold/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-h-48 overflow-y-auto scrollbar-gold mt-1">
@@ -778,7 +837,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 <div className="flex gap-1 bg-brand-dark/80 border border-brand-gold/15 rounded-xl p-1">
                   {(['kg', 'lbs', 'L'] as const).map(u => (
                     <button key={u} type="button" onClick={() => setUnit(u)}
-                      className={`px-3 py-2 rounded-lg text-[11px] font-bold uppercase transition-all ${unit === u ? 'bg-brand-gold text-brand-dark' : 'text-white/50 hover:text-white'}`}>
+                      className={`px-3 py-2 rounded-lg text-[11px] font-bold uppercase transition-all ${unit === u ? 'bg-brand-eco text-brand-dark' : 'text-white/50 hover:text-white'}`}>
                       {u}
                     </button>
                   ))}
@@ -803,11 +862,83 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
             </div>
           )}
 
+          {/* Step 7: Visual Verification */}
+          {(form.products.length > 0 || form.product) && form.reason && form.amount && form.destination && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
+                <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">7</span>
+                Visual Verification
+                <span className="text-white/30 font-medium normal-case tracking-normal text-[10px] ml-1">(optional)</span>
+              </label>
+
+              {/* Upload area */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={e => handleImageUpload(e.target.files)}
+                className="hidden"
+              />
+
+              {form.images.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImages}
+                  className="w-full border-2 border-dashed border-brand-gold/20 rounded-xl py-8 flex flex-col items-center gap-2 text-white/40 hover:border-brand-gold/40 hover:text-white/60 transition-all"
+                >
+                  {uploadingImages ? (
+                    <Loader2 size={24} className="animate-spin text-brand-gold" />
+                  ) : (
+                    <ImagePlus size={24} className="text-brand-gold/60" />
+                  )}
+                  <span className="text-[11px] font-bold uppercase tracking-widest">
+                    {uploadingImages ? 'Uploading…' : 'Upload Photos'}
+                  </span>
+                  <span className="text-[9px] text-white/30">Click to select images (max 5MB each)</span>
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  {/* Image thumbnails */}
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {form.images.map((url, idx) => (
+                      <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-brand-gold/20">
+                        <img src={url} alt={`Waste ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-1 right-1 w-5 h-5 bg-brand-dark/80 border border-brand-alert/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={10} className="text-brand-alert" />
+                        </button>
+                      </div>
+                    ))}
+                    {/* Add more button */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImages}
+                      className="aspect-square border-2 border-dashed border-brand-gold/20 rounded-lg flex flex-col items-center justify-center gap-1 text-white/30 hover:border-brand-gold/40 hover:text-white/50 transition-all"
+                    >
+                      {uploadingImages ? (
+                        <Loader2 size={18} className="animate-spin text-brand-gold" />
+                      ) : (
+                        <Plus size={18} />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-white/30 font-medium">{form.images.length} image{form.images.length !== 1 ? 's' : ''} attached</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Submit / Cancel */}
           {(form.products.length > 0 || form.product) && form.reason && form.amount && form.destination && (
             <div className="flex gap-3">
               <button type="submit"
-                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-eco text-brand-dark font-black text-sm uppercase tracking-wider hover:brightness-110 transition-all flex items-center justify-center gap-2 animate-in fade-in duration-300">
                 {editingId ? <CheckCircle2 size={16} /> : <Plus size={16} />}
                 {editingId ? 'Update Entry' : 'Log Entry'}
               </button>
@@ -818,14 +949,6 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 </button>
               )}
             </div>
-          )}
-
-          {/* Tare / Reset */}
-          {(form.category || form.amount) && (
-            <button type="button" onClick={handleTare}
-              className="flex items-center gap-2 text-[11px] font-bold text-white/40 hover:text-white/60 uppercase tracking-widest transition-colors">
-              <RotateCcw size={12} /> Reset Form
-            </button>
           )}
         </form>
       </div>
@@ -843,31 +966,25 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               <p className="text-[10px] text-white/40 font-medium mt-0.5">Log daily water consumption</p>
             </div>
           </div>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-[#3b82f6]">
-                <span className="w-5 h-5 rounded-full bg-[#3b82f6]/15 border border-[#3b82f6]/30 flex items-center justify-center text-[9px]">1</span>
-                Consumption Volume
-              </label>
-              <div className="relative">
-                <input type="number" value={form.water} onChange={e => setForm({ ...form, water: e.target.value })}
-                  placeholder="Enter volume in liters" min="0"
-                  className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#3b82f6]/60 uppercase tracking-wider">L</span>
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input type="number" value={form.water} onChange={e => setForm({ ...form, water: e.target.value })}
+                placeholder="Enter volume in liters" min="0"
+                className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-[#3b82f6] placeholder:text-white/35 transition-all" />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#3b82f6]/60 uppercase tracking-wider">L</span>
             </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => handleSaveResource('water')} disabled={!form.water}
-                className="flex-1 px-5 py-3.5 rounded-xl bg-[#3b82f6] text-white font-black text-sm uppercase tracking-wider hover:bg-[#3b82f6]/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
-                <Plus size={16} /> {editingResourceId && form.water ? 'Update' : 'Log Water Reading'}
+            <button type="button" onClick={() => handleSaveResource('water')} disabled={!form.water}
+              className="shrink-0 w-12 h-12 rounded-xl bg-brand-eco text-brand-dark font-black flex items-center justify-center hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              title={editingResourceId && form.water ? 'Update' : 'Log Water Reading'}>
+              {editingResourceId && form.water ? <CheckCircle2 size={18} /> : <Plus size={18} />}
+            </button>
+            {editingResourceId && form.water && (
+              <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, water: '' })); }}
+                className="shrink-0 w-12 h-12 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 flex items-center justify-center hover:bg-white/10 hover:text-white transition-all"
+                title="Cancel">
+                <RotateCcw size={16} />
               </button>
-              {editingResourceId && form.water && (
-                <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, water: '' })); }}
-                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
-                  <RotateCcw size={14} /> Cancel
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
@@ -882,31 +999,25 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
               <p className="text-[10px] text-white/40 font-medium mt-0.5">Log daily energy consumption</p>
             </div>
           </div>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
-                <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">1</span>
-                Consumption Volume
-              </label>
-              <div className="relative">
-                <input type="number" value={form.energy} onChange={e => setForm({ ...form, energy: e.target.value })}
-                  placeholder="Enter volume in kilowatt-hours" min="0"
-                  className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-brand-gold/60 uppercase tracking-wider">kWh</span>
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input type="number" value={form.energy} onChange={e => setForm({ ...form, energy: e.target.value })}
+                placeholder="Enter volume in kilowatt-hours" min="0"
+                className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-4 pr-12 text-sm font-geometric font-bold text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-brand-gold/60 uppercase tracking-wider">kWh</span>
             </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => handleSaveResource('energy')} disabled={!form.energy}
-                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed">
-                <Plus size={16} /> {editingResourceId && form.energy ? 'Update' : 'Log Energy Reading'}
+            <button type="button" onClick={() => handleSaveResource('energy')} disabled={!form.energy}
+              className="shrink-0 w-12 h-12 rounded-xl bg-brand-eco text-brand-dark font-black flex items-center justify-center hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              title={editingResourceId && form.energy ? 'Update' : 'Log Energy Reading'}>
+              {editingResourceId && form.energy ? <CheckCircle2 size={18} /> : <Plus size={18} />}
+            </button>
+            {editingResourceId && form.energy && (
+              <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, energy: '' })); }}
+                className="shrink-0 w-12 h-12 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 flex items-center justify-center hover:bg-white/10 hover:text-white transition-all"
+                title="Cancel">
+                <RotateCcw size={16} />
               </button>
-              {editingResourceId && form.energy && (
-                <button type="button" onClick={() => { setEditingResourceId(null); setForm(prev => ({ ...prev, energy: '' })); }}
-                  className="px-5 py-3.5 rounded-xl bg-white/5 border border-brand-gold/15 text-white/60 font-black text-sm uppercase tracking-wider hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2">
-                  <RotateCcw size={14} /> Cancel
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -935,7 +1046,19 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 {wasteEntries.map((entry) => (
                   <tr key={entry.id} className="border-b border-brand-gold/5 hover:bg-white/3 transition-colors">
                     <td className="py-3 px-4">
-                      <span className="text-xs font-black text-white uppercase tracking-wider">{entry.product}</span>
+                      <div className="flex items-center gap-2">
+                        {entry.images && entry.images.length > 0 && (
+                          <div className="flex -space-x-1 shrink-0">
+                            {entry.images.slice(0, 2).map((url, idx) => (
+                              <img key={idx} src={url} alt="" className="w-7 h-7 rounded-md object-cover border border-brand-gold/20" />
+                            ))}
+                            {entry.images.length > 2 && (
+                              <div className="w-7 h-7 rounded-md bg-brand-dark border border-brand-gold/20 flex items-center justify-center text-[8px] font-bold text-white/50">+{entry.images.length - 2}</div>
+                            )}
+                          </div>
+                        )}
+                        <span className="text-xs font-black text-white uppercase tracking-wider">{entry.product}</span>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{entry.category}</span>

@@ -1,1 +1,0 @@
-id, food_waste_target_kg, water_usage_target_l, energy_limit_kwh, has_consented

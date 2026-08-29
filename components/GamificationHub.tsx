@@ -44,7 +44,11 @@ interface CheckinData {
     checkin_date: string;
 }
 
-const GamificationHub: React.FC = () => {
+interface GamificationHubProps {
+    goal?: number;
+}
+
+const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
     const [outlets, setOutlets] = useState<OutletData[]>([]);
     const [leaderboard, setLeaderboard] = useState<LeaderboardData[]>([]);
     const [logs, setLogs] = useState<ActionLogEntry[]>([]);
@@ -52,7 +56,7 @@ const GamificationHub: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'outlets' | 'leaderboard' | 'streaks' | 'activity'>('outlets');
 
-    const OUTLET_GOAL = 3000;
+    const OUTLET_GOAL = goal;
 
     const fetchData = useCallback(async () => {
         try {
@@ -183,7 +187,7 @@ const GamificationHub: React.FC = () => {
                             Earth Keeper
                         </h1>
                         <div className="flex items-center gap-3 mt-1">
-                            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Performance Hub</p>
+                            <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em]">Performance Hub</p>
                             <div className="h-1 w-1 rounded-full bg-brand-gold/30"></div>
                             <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em]">
                                 Engagement: {outlets.length > 0 ? Math.round(outlets.reduce((sum, o) => sum + o.engagement_pct, 0) / outlets.length) : 0}%

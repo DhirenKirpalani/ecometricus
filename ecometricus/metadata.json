@@ -1,7 +1,0 @@
-{
-  "name": "Ecometricus - Luxury F&B Sustainability Intelligence",
-  "description": "A sophisticated platform for real-time sustainability metrics, focusing on operational profit and ESG reporting for luxury hotels.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}
