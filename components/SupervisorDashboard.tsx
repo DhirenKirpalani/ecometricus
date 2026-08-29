@@ -73,21 +73,23 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
   const [selectedLaborCostDay, setSelectedLaborCostDay] = useState<any | null>(null);
 
   // Real chart data from hooks
-  const { chartData: wasteChartData, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData();
-  const { waterData, energyData, waterDailyBenchmark, energyDailyBenchmark } = useResourceChartData();
+  const { chartData: wasteChartData, outletKeys: wasteOutletKeys, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData();
+  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark, energyDailyBenchmark } = useResourceChartData();
 
-  // Transform hook data for template charts (aggregate all outlets per day)
+  // Transform hook data for template charts (aggregate all outlets per day dynamically)
+  const sumOutletKeys = (row: Record<string, any>, keys: string[]) => keys.reduce((s, k) => s + (Number(row[k]) || 0), 0);
+
   const foodWasteTemplateData = wasteChartData.map(d => ({
     day: d.date.charAt(0) + d.date.slice(1).toLowerCase(),
-    waste: (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0)
+    waste: sumOutletKeys(d, wasteOutletKeys)
   }));
   const waterTemplateData = waterData.map(d => ({
     day: d.day.charAt(0) + d.day.slice(1).toLowerCase(),
-    usage: (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0)
+    usage: sumOutletKeys(d, resourceOutletKeys)
   }));
   const energyTemplateData = energyData.map(d => ({
     day: d.day.charAt(0) + d.day.slice(1).toLowerCase(),
-    usage: (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0)
+    usage: sumOutletKeys(d, resourceOutletKeys)
   }));
 
   // Dynamic Data Linkage - Same session persistence
@@ -568,6 +570,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ user, onLogou
                 data={wasteChartData}
                 benchmark={wasteDailyBenchmark}
                 weeklyTotal={wasteWeeklyTotal}
+                outletKeys={wasteOutletKeys}
+                outletColors={sessionOutlets.reduce((acc, o) => { acc[o.name.toUpperCase()] = o.color_hex || '#d4af37'; return acc; }, {} as Record<string, string>)}
+                outletLabels={sessionOutlets.reduce((acc, o) => { acc[o.name.toUpperCase()] = o.name; return acc; }, {} as Record<string, string>)}
               />
             </div>
           </div>

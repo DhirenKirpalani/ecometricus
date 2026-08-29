@@ -4,20 +4,14 @@ import { Outlet } from '../types';
 
 export interface ResourceData {
     day: string;
-    "ROYAL": number;
-    "FISHER'S": number;
-    "RALPH'S": number;
-    "GUSTO": number;
+    [outletKey: string]: number | string;
 }
 
-const OUTLET_KEYS = ['ROYAL', "FISHER'S", "RALPH'S", 'GUSTO'] as const;
-
-const OUTLET_META = [
-    { key: 'ROYAL', label: 'Royal', color: '#d4af37' },
-    { key: "FISHER'S", label: "Fisher's", color: '#77B139' },
-    { key: "RALPH'S", label: "Ralph's", color: '#F97316' },
-    { key: 'GUSTO', label: 'Gusto', color: '#60A5FA' },
-];
+interface OutletMeta {
+    key: string;
+    label: string;
+    color: string;
+}
 
 interface ResourceTemplateChartProps {
     data: ResourceData[];
@@ -28,7 +22,11 @@ interface ResourceTemplateChartProps {
     maxVal: number;
     icon: React.ReactNode;
     allOutlets?: Outlet[];
+    /** Dynamic outlet keys from the hook */
+    outletKeys?: string[];
 }
+
+const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
 
 const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
     data,
@@ -38,7 +36,8 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
     unit,
     maxVal,
     icon,
-    allOutlets
+    allOutlets,
+    outletKeys = [],
 }) => {
     const [selectedDay, setSelectedDay] = useState<ResourceData | null>(null);
 
@@ -48,31 +47,28 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
     const getY = (val: number) => 100 - ((val - minVal) / (range || 1)) * 100;
     const getX = (index: number, total: number) => 10 + (index / (total - 1)) * 80;
 
-    const hasAlert = data.some(d => OUTLET_KEYS.reduce((sum, k) => sum + (d[k] || 0), 0) > benchmark);
+    // Build outlet metadata from dynamic keys + allOutlets
+    const outletMeta: OutletMeta[] = useMemo(() => {
+        if (outletKeys.length === 0) return [];
+        return outletKeys.map((key, i) => {
+            const outlet = allOutlets?.find(o => o.name.toUpperCase() === key);
+            const label = outlet?.name || key.charAt(0) + key.slice(1).toLowerCase();
+            const color = outlet?.color_hex || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+            return { key, label, color };
+        });
+    }, [outletKeys, allOutlets]);
+
+    const hasAlert = data.some(d => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0) > benchmark);
 
     const weeklyTotal = useMemo(() =>
-        data.reduce((acc, curr) => acc + OUTLET_KEYS.reduce((s, k) => s + (curr[k] || 0), 0), 0).toLocaleString(),
-        [data]
+        data.reduce((acc, curr) => acc + outletMeta.reduce((s, o) => s + (Number(curr[o.key]) || 0), 0), 0).toLocaleString(),
+        [data, outletMeta]
     );
 
     const avgDaily = useMemo(() =>
-        Math.round(data.reduce((acc, curr) => acc + OUTLET_KEYS.reduce((s, k) => s + (curr[k] || 0), 0), 0) / (data.length || 1)).toLocaleString(),
-        [data]
+        Math.round(data.reduce((acc, curr) => acc + outletMeta.reduce((s, o) => s + (Number(curr[o.key]) || 0), 0), 0) / (data.length || 1)).toLocaleString(),
+        [data, outletMeta]
     );
-
-    const colors = useMemo(() => {
-        const map: Record<string, string> = {};
-        OUTLET_META.forEach(o => { map[o.key] = o.color; });
-        if (allOutlets) {
-            allOutlets.forEach(o => {
-                const clean = o.name.toUpperCase();
-                OUTLET_META.forEach(m => {
-                    if (clean.includes(m.key)) map[m.key] = o.color_hex || m.color;
-                });
-            });
-        }
-        return map;
-    }, [allOutlets]);
 
     const yAxisLabels = useMemo(() => {
         const steps = 5;
@@ -154,46 +150,48 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                     </div>
 
                     {/* SVG Stacked Bars */}
-                    <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-                        <defs>
-                            {OUTLET_KEYS.map(k => (
-                                <linearGradient key={k} id={`res-${k}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor={colors[k]} stopOpacity="0.9" />
-                                    <stop offset="100%" stopColor={colors[k]} stopOpacity="0.65" />
-                                </linearGradient>
-                            ))}
-                        </defs>
-                        {data.map((t, i) => {
-                            const x = getX(i, data.length);
-                            let cumulative = 0;
-                            const segments = OUTLET_KEYS.map(k => {
-                                const val = t[k] || 0;
-                                const start = cumulative;
-                                cumulative += val;
-                                const end = cumulative;
-                                if (end <= minVal || start >= maxVal) return null;
-                                const yTop = getY(Math.min(end, maxVal));
-                                const yBottom = getY(Math.max(start, minVal));
-                                return { yTop, h: yBottom - yTop, key: k };
-                            }).filter(Boolean);
+                    {outletMeta.length > 0 && (
+                        <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                            <defs>
+                                {outletMeta.map(o => (
+                                    <linearGradient key={o.key} id={`res-${title}-${o.key}`} x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor={o.color} stopOpacity="0.9" />
+                                        <stop offset="100%" stopColor={o.color} stopOpacity="0.65" />
+                                    </linearGradient>
+                                ))}
+                            </defs>
+                            {data.map((t, i) => {
+                                const x = getX(i, data.length);
+                                let cumulative = 0;
+                                const segments = outletMeta.map(o => {
+                                    const val = Number(t[o.key]) || 0;
+                                    const start = cumulative;
+                                    cumulative += val;
+                                    const end = cumulative;
+                                    if (end <= minVal || start >= maxVal) return null;
+                                    const yTop = getY(Math.min(end, maxVal));
+                                    const yBottom = getY(Math.max(start, minVal));
+                                    return { yTop, h: yBottom - yTop, key: o.key };
+                                }).filter(Boolean);
 
-                            return (
-                                <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
-                                    {segments.map((s, si) => (
-                                        <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h} fill={`url(#res-${s.key})`} rx={si === 0 ? "3" : "0"}
-                                            className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.day !== t.day ? 0.4 : 0.85 }} />
-                                    ))}
-                                    <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
-                                </g>
-                            );
-                        })}
-                    </svg>
+                                return (
+                                    <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
+                                        {segments.map((s, si) => (
+                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h} fill={`url(#res-${title}-${s.key})`} rx={si === 0 ? "3" : "0"}
+                                                className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.day !== t.day ? 0.4 : 0.85 }} />
+                                        ))}
+                                        <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
+                                    </g>
+                                );
+                            })}
+                        </svg>
+                    )}
 
                     {/* Tooltip */}
                     {selectedDay && (() => {
                         const index = data.findIndex(d => d.day === selectedDay.day);
                         const xPct = getX(index, data.length);
-                        const total = OUTLET_KEYS.reduce((sum, k) => sum + (selectedDay[k] || 0), 0);
+                        const total = outletMeta.reduce((sum, o) => sum + (Number(selectedDay[o.key]) || 0), 0);
                         const yPct = getY(Math.min(maxVal, total));
                         const isTop = yPct < 30;
                         return (
@@ -207,8 +205,8 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                                     <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1.5">{selectedDay.day}</p>
                                     <p className="text-base font-geometric font-black text-white text-center mb-1.5">{Math.round(total).toLocaleString()}{unit}</p>
                                     <div className="space-y-0.5">
-                                        {OUTLET_META.map(o => {
-                                            const val = Math.round(selectedDay[o.key] || 0);
+                                        {outletMeta.map(o => {
+                                            const val = Math.round(Number(selectedDay[o.key]) || 0);
                                             if (val === 0) return null;
                                             return (
                                                 <div key={o.key} className="flex justify-between items-center text-[8px] font-bold">
@@ -238,14 +236,16 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap justify-center gap-3 pt-3 border-t border-white/5 mt-2">
-                {OUTLET_META.map(o => (
-                    <div key={o.key} className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: o.color }} />
-                        <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">{o.label}</span>
-                    </div>
-                ))}
-            </div>
+            {outletMeta.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-3 pt-3 border-t border-white/5 mt-2">
+                    {outletMeta.map(o => (
+                        <div key={o.key} className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: o.color }} />
+                            <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">{o.label}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

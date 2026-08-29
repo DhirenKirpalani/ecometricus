@@ -10,56 +10,42 @@ export interface Co2Data {
 }
 
 export const useCo2ChartData = () => {
-    const { chartData: wasteData, isLoading: wasteLoading } = useFoodWasteChartData();
-    const { waterData, energyData, isLoading: resourceLoading } = useResourceChartData();
+    const { chartData: wasteData, outletKeys: wasteKeys, isLoading: wasteLoading } = useFoodWasteChartData();
+    const { waterData, energyData, outletKeys: resourceKeys, isLoading: resourceLoading } = useResourceChartData();
     const [co2Data, setCo2Data] = useState<Co2Data[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const DAY_MAP = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const DAY_DISPLAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    // 🏗️ [DESIGN RESTORE] Original Hybrid Logic Baselines 
-    // To ensure chart visibility (1,200 - 2,200 range)
-    const BASELINES = {
-        'SUN': { food: 500, water: 9, energy: 1428 },
-        'MON': { food: 375, water: 7, energy: 1092 },
-        'TUE': { food: 400, water: 7, energy: 1134 },
-        'WED': { food: 425, water: 7, energy: 1176 },
-        'THU': { food: 450, water: 8, energy: 1260 },
-        'FRI': { food: 550, water: 10, energy: 1470 },
-        'SAT': { food: 600, water: 10, energy: 1554 }
-    } as Record<string, { food: number, water: number, energy: number }>;
-
     useEffect(() => {
         if (!wasteLoading && !resourceLoading) {
-            // Aggregate daily CO2 segments: Hybrid Baseline + LIVE ROYAL
+            // Aggregate daily CO2 segments from live data across all outlets
             const aggregated = DAY_MAP.map((dayKey, index) => {
-                const base = BASELINES[dayKey];
-                
-                // 1. Live ROYAL Food Waste Contribution (mass * 1.8)
-                const royalWaste = wasteData.find(d => (d as any).day === dayKey || d.date === dayKey);
-                const liveRoyalFoodCo2 = royalWaste ? (Number(royalWaste["ROYAL"]) || 0) : 0;
+                // 1. Food Waste CO2 (already in CO2e from hook: mass * 2.85)
+                const wasteDay = wasteData.find(d => (d as any).date === dayKey || (d as any).day === dayKey);
+                const foodCo2 = wasteDay ? wasteKeys.reduce((s, k) => s + (Number((wasteDay as any)[k]) || 0), 0) : 0;
 
-                // 2. Live ROYAL Water/Energy (if available in segments)
-                const royalWater = waterData.find(d => (d as any).day === dayKey);
-                const liveRoyalWaterCo2 = royalWater ? (Number(royalWater["ROYAL"]) || 0) * 0.0003 : 0;
+                // 2. Water CO2 (conversion factor: 0.0003 kg CO2 per litre)
+                const waterDay = waterData.find(d => (d as any).day === dayKey);
+                const waterCo2 = waterDay ? resourceKeys.reduce((s, k) => s + (Number((waterDay as any)[k]) || 0) * 0.0003, 0) : 0;
 
-                const royalEnergy = energyData.find(d => (d as any).day === dayKey);
-                const liveRoyalEnergyCo2 = royalEnergy ? (Number(royalEnergy["ROYAL"]) || 0) * 0.45 : 0;
+                // 3. Energy CO2 (conversion factor: 0.45 kg CO2 per kWh)
+                const energyDay = energyData.find(d => (d as any).day === dayKey);
+                const energyCo2 = energyDay ? resourceKeys.reduce((s, k) => s + (Number((energyDay as any)[k]) || 0) * 0.45, 0) : 0;
 
                 return {
                     day: DAY_DISPLAY[index],
-                    // Hybrid Sum: Baseline (Fisher/Ralph/Gusto) + Live Royal
-                    foodWaste: base.food + liveRoyalFoodCo2,
-                    water: base.water + liveRoyalWaterCo2,
-                    energy: base.energy + liveRoyalEnergyCo2
+                    foodWaste: foodCo2,
+                    water: waterCo2,
+                    energy: energyCo2
                 };
             });
 
             setCo2Data(aggregated);
             setIsLoading(false);
         }
-    }, [wasteData, wasteLoading, waterData, energyData, resourceLoading]);
+    }, [wasteData, wasteKeys, wasteLoading, waterData, energyData, resourceKeys, resourceLoading]);
 
     return { co2Data, isLoading };
 };

@@ -2,24 +2,46 @@ import React, { useState, useMemo } from 'react';
 import { Info, Cloud, ShieldCheck, X as XIcon } from 'lucide-react';
 import { DailyWaste } from '../hooks/useFoodWasteChartData';
 
+const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
+
+interface OutletMeta {
+    key: string;
+    label: string;
+    color: string;
+}
+
 interface Co2EmissionsTemplateChartProps {
     data: DailyWaste[];
     benchmark: number;
     weeklyTotal: number;
+    /** Dynamic outlet keys from the hook */
+    outletKeys?: string[];
+    /** Outlet color mapping */
+    outletColors?: Record<string, string>;
+    /** Outlet display names */
+    outletLabels?: Record<string, string>;
 }
 
-const OUTLET_COLORS = [
-    { key: 'ROYAL', label: 'Royal', color: '#d4af37' },
-    { key: "FISHER'S", label: "Fisher's", color: '#77B139' },
-    { key: "RALPH'S", label: "Ralph's", color: '#F97316' },
-    { key: 'GUSTO', label: 'Gusto', color: '#60A5FA' },
-];
-
-const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ data, benchmark, weeklyTotal }) => {
+const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
+    data,
+    benchmark,
+    weeklyTotal,
+    outletKeys = [],
+    outletColors = {},
+    outletLabels = {},
+}) => {
     const [selectedDay, setSelectedDay] = useState<DailyWaste | null>(null);
 
+    const outletMeta: OutletMeta[] = useMemo(() => {
+        return outletKeys.map((key, i) => ({
+            key,
+            label: outletLabels[key] || key.charAt(0) + key.slice(1).toLowerCase(),
+            color: outletColors[key] || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+        }));
+    }, [outletKeys, outletColors, outletLabels]);
+
     const minVal = 0;
-    const totals = data.map(d => OUTLET_COLORS.reduce((sum, o) => sum + ((d as any)[o.key] || 0), 0));
+    const totals = data.map(d => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0));
     const maxVal = Math.max(benchmark * 1.5, ...totals, 100);
     const range = maxVal - minVal;
 
@@ -44,12 +66,12 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
                     </div>
                 </div>
                 {hasAlert ? (
-                    <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg">
+                    <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg shrink-0">
                         <Info size={11} className="text-brand-alert" />
                         <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Attention</span>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg">
+                    <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg shrink-0">
                         <ShieldCheck size={11} className="text-brand-eco" />
                         <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">Optimal</span>
                     </div>
@@ -101,47 +123,48 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
                     </div>
 
                     {/* SVG Stacked Bars */}
-                    <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-                        <defs>
-                            {OUTLET_COLORS.map(o => (
-                                <linearGradient key={o.key} id={`co2-${o.key}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor={o.color} stopOpacity="0.9" />
-                                    <stop offset="100%" stopColor={o.color} stopOpacity="0.65" />
-                                </linearGradient>
-                            ))}
-                        </defs>
-                        {data.map((t, i) => {
-                            const x = getX(i, data.length);
-                            let cumulative = 0;
-                            const segments = OUTLET_COLORS.map(o => {
-                                const val = (t as any)[o.key] || 0;
-                                const start = cumulative;
-                                cumulative += val;
-                                const end = cumulative;
-                                if (end <= minVal || start >= maxVal) return null;
-                                const yTop = getY(Math.min(end, maxVal));
-                                const yBottom = getY(Math.max(start, minVal));
-                                const h = yBottom - yTop;
-                                return { yTop, h, color: o.color, key: o.key };
-                            }).filter(Boolean);
+                    {outletMeta.length > 0 && (
+                        <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                            <defs>
+                                {outletMeta.map(o => (
+                                    <linearGradient key={o.key} id={`co2-${o.key}`} x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor={o.color} stopOpacity="0.9" />
+                                        <stop offset="100%" stopColor={o.color} stopOpacity="0.65" />
+                                    </linearGradient>
+                                ))}
+                            </defs>
+                            {data.map((t, i) => {
+                                const x = getX(i, data.length);
+                                let cumulative = 0;
+                                const segments = outletMeta.map(o => {
+                                    const val = Number(t[o.key]) || 0;
+                                    const start = cumulative;
+                                    cumulative += val;
+                                    const end = cumulative;
+                                    if (end <= minVal || start >= maxVal) return null;
+                                    const yTop = getY(Math.min(end, maxVal));
+                                    const yBottom = getY(Math.max(start, minVal));
+                                    return { yTop, h: yBottom - yTop, key: o.key };
+                                }).filter(Boolean);
 
-                            return (
-                                <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
-                                    {segments.map((s, si) => (
-                                        <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h} fill={`url(#co2-${s.key})`} rx={si === 0 ? "3" : "0"}
-                                            className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.date !== t.date ? 0.4 : 0.85 }} />
-                                    ))}
-                                    <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
-                                </g>
-                            );
-                        })}
-                    </svg>
+                                return (
+                                    <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
+                                        {segments.map((s, si) => (
+                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h} fill={`url(#co2-${s.key})`} rx={si === 0 ? "3" : "0"}
+                                                className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.date !== t.date ? 0.4 : 0.85 }} />
+                                        ))}
+                                        <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
+                                    </g>
+                                );
+                            })}
+                        </svg>
+                    )}
 
                     {/* Tooltip */}
                     {selectedDay && (() => {
                         const index = data.findIndex(d => d.date === selectedDay.date);
                         const xPct = getX(index, data.length);
-                        const total = OUTLET_COLORS.reduce((sum, o) => sum + ((selectedDay as any)[o.key] || 0), 0);
+                        const total = outletMeta.reduce((sum, o) => sum + (Number(selectedDay[o.key]) || 0), 0);
                         const yPct = getY(Math.min(maxVal, total));
                         const isTop = yPct < 30;
                         return (
@@ -155,8 +178,8 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
                                     <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1.5">{selectedDay.date}</p>
                                     <p className="text-base font-geometric font-black text-white text-center mb-1.5">{Math.round(total)}kg</p>
                                     <div className="space-y-0.5">
-                                        {OUTLET_COLORS.map(o => {
-                                            const val = Math.round((selectedDay as any)[o.key] || 0);
+                                        {outletMeta.map(o => {
+                                            const val = Math.round(Number(selectedDay[o.key]) || 0);
                                             if (val === 0) return null;
                                             return (
                                                 <div key={o.key} className="flex justify-between items-center text-[8px] font-bold">
@@ -186,14 +209,16 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap justify-center gap-3 pt-3 border-t border-white/5 mt-2">
-                {OUTLET_COLORS.map(o => (
-                    <div key={o.key} className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: o.color }} />
-                        <span className="text-[8px] font-bold text-white/50 uppercase tracking-wider">{o.label}</span>
-                    </div>
-                ))}
-            </div>
+            {outletMeta.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-3 pt-3 border-t border-white/5 mt-2">
+                    {outletMeta.map(o => (
+                        <div key={o.key} className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: o.color }} />
+                            <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">{o.label}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
