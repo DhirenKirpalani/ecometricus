@@ -2392,10 +2392,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <div>
                                 <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                                  Mila Intelligence
+                                  Mila Actionable Intelligence: Sustainability Performance
                                 </h2>
                                 <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
-                                  ESG Performance Snapshot — real-time carbon, water & financial impact tracking.
+                                  Proportional Scaling Operational ESG Strategy Hub
                                 </p>
                               </div>
                             </div>
