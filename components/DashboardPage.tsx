@@ -1984,20 +1984,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         title={label}
         className={`relative flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300 whitespace-nowrap group/item lg:w-full justify-center lg:justify-start ${
           active
-            ? 'bg-brand-gold/20 text-white shadow-[0_0_15px_rgba(200,164,19,0.15)]'
+            ? 'bg-brand-eco/20 text-white shadow-[0_0_15px_rgba(74,222,128,0.15)]'
             : 'text-white/60 hover:text-white/90 hover:bg-brand-dark/60'
         }`}
       >
         <Icon
           size={22}
-          className={`shrink-0 ${active ? 'text-brand-gold' : 'text-white/40 group-hover/item:text-white/70'}`}
+          className={`shrink-0 ${active ? 'text-brand-eco' : 'text-white/40 group-hover/item:text-white/70'}`}
         />
         {/* Label — hidden on desktop collapsed, shown on sidebar hover via group-hover */}
         <span className={`text-[14px] font-bold tracking-tight ${active ? 'text-white' : ''} hidden lg:block opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] transition-all duration-300`}>
           {label}
         </span>
         {/* Left bar indicator for active item */}
-        <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-8 rounded-r-full bg-brand-gold transition-opacity duration-200 ${active ? 'opacity-100' : 'opacity-0'}`} />
+        <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-8 rounded-r-full bg-brand-eco transition-opacity duration-200 ${active ? 'opacity-100' : 'opacity-0'}`} />
       </button>
     );
   };
