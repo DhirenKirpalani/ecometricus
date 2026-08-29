@@ -2839,17 +2839,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </p>
                         </div>
                       </div>
-                      {/* Auto-save indicator */}
-                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
-                        {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
-                        {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
-                      </div>
-                    </div>
-
-                    {/* ── Company Identity Card ── */}
-                    <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.05)]">
-                      {/* Card header */}
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-end border-b border-brand-gold/15 gap-3">
+                      {/* Auto-save indicator + Edit button */}
+                      <div className="flex items-center gap-3">
                         <button
                           onClick={() => setIsEditingIdentity(!isEditingIdentity)}
                           className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
@@ -2857,8 +2848,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {isEditingIdentity ? <Unlock size={12} /> : <Edit2 size={12} />}
                           {isEditingIdentity ? 'Lock' : 'Edit'}
                         </button>
+                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
+                          {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
+                          {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
+                        </div>
                       </div>
+                    </div>
 
+                    {/* ── Company Identity Card ── */}
+                    <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.05)]">
                       <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 bg-brand-dark/40">
                         {/* ── Step 1: Location ── */}
                         <div className="space-y-4">
