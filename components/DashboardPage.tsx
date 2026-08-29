@@ -51,6 +51,7 @@ import {
   FileText,
   ScrollText,
   LifeBuoy,
+  Headphones,
   Mail,
   Send,
   ImageIcon,
@@ -2250,7 +2251,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
           {/* Contact — frozen at bottom, always visible */}
           <div className="hidden lg:block p-2 lg:p-3 border-t border-brand-gold/15 shrink-0">
-            <SidebarItem view={PortalView.CONTACT} icon={LifeBuoy} label="Contact" />
+            <SidebarItem view={PortalView.CONTACT} icon={Headphones} label="Contact" />
           </div>
         </aside>
 
