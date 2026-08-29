@@ -2314,39 +2314,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               })()}
 
             <div className="bg-brand-dark border border-brand-gold/30 rounded-2xl p-3 sm:p-7 shadow-xl backdrop-blur-sm flex-grow flex flex-col overflow-hidden">
-              {/* Main View Header */}
+              {/* Main View Header — only for views that still use it */}
+              {(() => {
+                const v = activeView as PortalView;
+                if (v !== PortalView.DASHBOARD && v !== PortalView.CONTACT && v !== PortalView.SUPER_ADMIN) return null;
               <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-5 shrink-0">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
-                    {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
-                    {activeView === PortalView.CONTACT && "Get Help & Share Feedback"}
-                    {activeView === PortalView.SUPER_ADMIN && "Platform Control Center"}
+                    {v === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
+                    {v === PortalView.CONTACT && "Get Help & Share Feedback"}
+                    {v === PortalView.SUPER_ADMIN && "Platform Control Center"}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
-                    {activeView === PortalView.DASHBOARD && "Operational Insights"}
-                    {activeView === PortalView.CONTACT && "Contact Support"}
-                    {activeView === PortalView.SUPER_ADMIN && "Super Admin"}
+                    {v === PortalView.DASHBOARD && "Operational Insights"}
+                    {v === PortalView.CONTACT && "Contact Support"}
+                    {v === PortalView.SUPER_ADMIN && "Super Admin"}
                   </h3>
                 </div>
 
                 {/* Save button & status indicators — in content header */}
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* Company: auto-save indicator */}
-                  {activeView === PortalView.IDENTITY && (
-                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
-                      {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
-                      {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
-                    </div>
-                  )}
-                  {/* Team: auto-save indicator */}
-                  {activeView === PortalView.TEAM && enrollId?.includes('-') && saveStatus !== 'idle' && (
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold tracking-wide ${saveStatus === 'success' ? 'text-brand-eco' : 'text-white/50'}`}>
-                      {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : <Check size={12} />}
-                      {saveStatus === 'saving' ? 'Auto-saving…' : 'Saved'}
-                    </div>
-                  )}
                   {/* Save button — not shown on Dashboard, Daily Input, Audit Log, Team, Benchmarks or Company */}
-                  {activeView !== PortalView.DASHBOARD && activeView !== PortalView.DAILY_INPUT && activeView !== PortalView.AUDIT_LOG && activeView !== PortalView.TEAM && activeView !== PortalView.PARAMETERS && activeView !== PortalView.IDENTITY && activeView !== PortalView.CONTACT && activeView !== PortalView.SUPER_ADMIN && (
+                  {v !== PortalView.DASHBOARD && v !== PortalView.CONTACT && v !== PortalView.SUPER_ADMIN && (
                     <button
                       onClick={handleSaveAll}
                       disabled={saveStatus !== 'idle'}
@@ -2358,6 +2347,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   )}
                 </div>
               </div>
+              })()}
 
               <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
                 {activeView === PortalView.DASHBOARD && (
@@ -2835,17 +2825,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
 
                     {/* Heading */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
-                        <Building2 className="text-brand-eco" size={24} />
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                          <Building2 className="text-brand-eco" size={24} />
+                        </div>
+                        <div>
+                          <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                            Company Identity
+                          </h2>
+                          <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
+                            Manage Profile & Audit Protocols
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                          Company Identity
-                        </h2>
-                        <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                          Manage Profile & Audit Protocols
-                        </p>
+                      {/* Auto-save indicator */}
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
+                        {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
+                        {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
                       </div>
                     </div>
 
