@@ -44,7 +44,11 @@ interface CheckinData {
     checkin_date: string;
 }
 
-const GamificationHub: React.FC = () => {
+interface GamificationHubProps {
+    goal?: number;
+}
+
+const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
     const [outlets, setOutlets] = useState<OutletData[]>([]);
     const [leaderboard, setLeaderboard] = useState<LeaderboardData[]>([]);
     const [logs, setLogs] = useState<ActionLogEntry[]>([]);
@@ -52,7 +56,7 @@ const GamificationHub: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'outlets' | 'leaderboard' | 'streaks' | 'activity'>('outlets');
 
-    const OUTLET_GOAL = 3000;
+    const OUTLET_GOAL = goal;
 
     const fetchData = useCallback(async () => {
         try {

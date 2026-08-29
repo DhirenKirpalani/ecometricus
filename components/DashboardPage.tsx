@@ -916,7 +916,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             waterTarget: parametersRes.data.water_usage_liters || parametersRes.data.water_usage_target_l || prev.waterTarget,
             energyTarget: parametersRes.data.energy_limit_kwh || prev.energyTarget,
             foodCostTarget: parametersRes.data.food_cost_cap_percent || prev.foodCostTarget,
-            laborCostTarget: parametersRes.data.labor_cost_cap_percent || prev.laborCostTarget
+            laborCostTarget: parametersRes.data.labor_cost_cap_percent || prev.laborCostTarget,
+            profitMarginTarget: parametersRes.data.profit_margin_target || prev.profitMarginTarget,
+            totalSalesTarget: parametersRes.data.total_sales_target || prev.totalSalesTarget,
+            sentimentTarget: parametersRes.data.sentiment_target || prev.sentimentTarget,
+            avgCheckTarget: parametersRes.data.avg_check_target || prev.avgCheckTarget,
+            gamificationGoal: parametersRes.data.gamification_goal || prev.gamificationGoal
           }));
           
           if (parametersRes.data.updated_at || parametersRes.data.created_at) {
@@ -1148,6 +1153,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     energyTarget: 1200,
     foodCostTarget: 28.5,
     laborCostTarget: 15,
+    profitMarginTarget: 25,
+    totalSalesTarget: 16500,
+    sentimentTarget: 4.5,
+    avgCheckTarget: 47,
+    gamificationGoal: 3000,
     benchmarkRegion: 'ASEAN Luxury Hotels',
     selectedManualOutlet: '',
     alertsActive: true,
@@ -1165,7 +1175,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     params.wasteTarget,
     outlets.length || 1
   );
-  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData();
+  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget);
 
   // Transform hook data for template charts (aggregate all outlets per day dynamically)
   const sumOutletKeys = (row: Record<string, any>, keys: string[]) => keys.reduce((s, k) => s + (Number(row[k]) || 0), 0);
@@ -1834,6 +1844,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         food_waste_target_kg: parseFloat(foodWaste),
         energy_limit_kwh: parseFloat(energyLimit),
         water_usage_liters: parseFloat(waterUsage),
+        food_cost_cap_percent: params.foodCostTarget,
+        labor_cost_cap_percent: params.laborCostTarget,
+        profit_margin_target: params.profitMarginTarget,
+        total_sales_target: params.totalSalesTarget,
+        sentiment_target: params.sentimentTarget,
+        avg_check_target: params.avgCheckTarget,
+        gamification_goal: params.gamificationGoal,
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id, outlet_name' });
 
@@ -1896,6 +1913,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           food_waste_target_kg: params.wasteTarget,
           energy_limit_kwh: params.energyTarget,
           water_usage_liters: params.waterTarget,
+          food_cost_cap_percent: params.foodCostTarget,
+          labor_cost_cap_percent: params.laborCostTarget,
+          profit_margin_target: params.profitMarginTarget,
+          total_sales_target: params.totalSalesTarget,
+          sentiment_target: params.sentimentTarget,
+          avg_check_target: params.avgCheckTarget,
+          gamification_goal: params.gamificationGoal,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id, outlet_name' });
 
@@ -2683,7 +2707,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
-                                benchmark={28}
+                                benchmark={effectiveParams.laborCostTarget}
                                 unit="%"
                                 yDomain={[15, 45]}
                                 yTicks={[20, 25, 30, 35, 40]}
@@ -2705,7 +2729,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
-                                benchmark={25}
+                                benchmark={effectiveParams.profitMarginTarget}
                                 unit="%"
                                 yDomain={[0, 40]}
                                 yTicks={[0, 10, 20, 30, 40]}
@@ -2721,7 +2745,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={[]}
                                 dataKey="total"
-                                benchmark={16500}
+                                benchmark={effectiveParams.totalSalesTarget}
                                 unitPrefix="$"
                                 chartType="bar"
                                 stacked
@@ -2749,7 +2773,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 multiSeries={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'}
                                 seriesKey="outlet_code"
                                 outlets={outlets}
-                                benchmark={4.5}
+                                benchmark={effectiveParams.sentimentTarget}
                                 yDomain={[3, 5]}
                                 yTicks={[3, 3.5, 4, 4.5, 5]}
                                 chartType="line"
@@ -2764,7 +2788,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 iconColor="text-brand-gold"
                                 data={[]}
                                 dataKey="rollingAverage"
-                                benchmark={47}
+                                benchmark={effectiveParams.avgCheckTarget}
                                 unitPrefix="$"
                                 chartType="composed"
                                 stacked
@@ -2806,7 +2830,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       )}
 
                       {dashboardTab === DashboardTab.GAMIFICATION && (
-                        <GamificationHub />
+                        <GamificationHub goal={effectiveParams.gamificationGoal} />
                       )}
                     </div>
                   </div>
@@ -4141,6 +4165,84 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
                           <input type="range" min="5" max="50" step="0.5" disabled={!isFnBEditable} value={effectiveParams.laborCostTarget} onChange={e => setParams({ ...params, laborCostTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
+                        </div>
+
+                        {/* Profit Margin Target */}
+                        <div className="bg-brand-dark/40 rounded-2xl p-4 border border-brand-gold/10">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                              <Percent size={14} className="text-brand-eco" />
+                            </div>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Profit Margin Target</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.profitMarginTarget}</span>
+                            <span className="text-xs text-white/30 font-bold uppercase mb-0.5">%</span>
+                          </div>
+                          <input type="number" disabled={!isFnBEditable} step="0.5" value={effectiveParams.profitMarginTarget} onChange={e => setParams({ ...params, profitMarginTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="range" min="0" max="50" step="0.5" disabled={!isFnBEditable} value={effectiveParams.profitMarginTarget} onChange={e => setParams({ ...params, profitMarginTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
+                        </div>
+
+                        {/* Total Sales Target */}
+                        <div className="bg-brand-dark/40 rounded-2xl p-4 border border-brand-gold/10">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                              <DollarSign size={14} className="text-brand-eco" />
+                            </div>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Total Sales Target</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-brand-eco leading-none">${effectiveParams.totalSalesTarget.toLocaleString()}</span>
+                          </div>
+                          <input type="number" disabled={!isFnBEditable} step="500" value={effectiveParams.totalSalesTarget} onChange={e => setParams({ ...params, totalSalesTarget: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="range" min="5000" max="50000" step="500" disabled={!isFnBEditable} value={effectiveParams.totalSalesTarget} onChange={e => setParams({ ...params, totalSalesTarget: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
+                        </div>
+
+                        {/* Sentiment Target */}
+                        <div className="bg-brand-dark/40 rounded-2xl p-4 border border-brand-gold/10">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                              <Star size={14} className="text-brand-eco" />
+                            </div>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Sentiment Target</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.sentimentTarget}</span>
+                            <span className="text-xs text-white/30 font-bold uppercase mb-0.5">★</span>
+                          </div>
+                          <input type="number" disabled={!isFnBEditable} step="0.1" value={effectiveParams.sentimentTarget} onChange={e => setParams({ ...params, sentimentTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="range" min="1" max="5" step="0.1" disabled={!isFnBEditable} value={effectiveParams.sentimentTarget} onChange={e => setParams({ ...params, sentimentTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
+                        </div>
+
+                        {/* Avg Check Target */}
+                        <div className="bg-brand-dark/40 rounded-2xl p-4 border border-brand-gold/10">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                              <Receipt size={14} className="text-brand-eco" />
+                            </div>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Avg Check Target</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-brand-eco leading-none">${effectiveParams.avgCheckTarget}</span>
+                          </div>
+                          <input type="number" disabled={!isFnBEditable} step="1" value={effectiveParams.avgCheckTarget} onChange={e => setParams({ ...params, avgCheckTarget: parseFloat(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="range" min="10" max="200" step="1" disabled={!isFnBEditable} value={effectiveParams.avgCheckTarget} onChange={e => setParams({ ...params, avgCheckTarget: parseFloat(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
+                        </div>
+
+                        {/* Gamification Goal */}
+                        <div className="bg-brand-dark/40 rounded-2xl p-4 border border-brand-gold/10">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                              <Trophy size={14} className="text-brand-eco" />
+                            </div>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Gamification Goal</span>
+                          </div>
+                          <div className="flex items-end gap-2 mb-3">
+                            <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.gamificationGoal.toLocaleString()}</span>
+                            <span className="text-xs text-white/30 font-bold uppercase mb-0.5">pts</span>
+                          </div>
+                          <input type="number" disabled={!isFnBEditable} step="100" value={effectiveParams.gamificationGoal} onChange={e => setParams({ ...params, gamificationGoal: parseInt(e.target.value) || 0 })} className={`w-full bg-brand-dark/60 border rounded-lg py-2 px-3 text-sm font-bold outline-none transition-all text-right mb-3 ${isFnBEditable ? 'border-brand-gold/10 text-brand-eco focus:border-brand-gold' : 'border-brand-gold/30 text-brand-eco cursor-default'}`} />
+                          <input type="range" min="500" max="10000" step="100" disabled={!isFnBEditable} value={effectiveParams.gamificationGoal} onChange={e => setParams({ ...params, gamificationGoal: parseInt(e.target.value) })} className={`w-full h-1.5 bg-white/15 rounded-full appearance-none accent-brand-eco ${isFnBEditable ? 'cursor-pointer' : 'cursor-default opacity-60'}`} />
                         </div>
                       </div>
                     </div>

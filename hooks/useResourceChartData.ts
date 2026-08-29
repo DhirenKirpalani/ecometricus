@@ -6,16 +6,17 @@ export interface ResourceData {
   [outletKey: string]: number | string;
 }
 
-export const useResourceChartData = () => {
+export const useResourceChartData = (waterTargetParam?: number, energyTargetParam?: number) => {
   const [waterData, setWaterData] = useState<ResourceData[]>([]);
   const [energyData, setEnergyData] = useState<ResourceData[]>([]);
   const [outletKeys, setOutletKeys] = useState<string[]>([]);
 
-  const [waterTarget] = useState(25000);
-  const [energyTarget] = useState(1000);
+  const waterTarget = waterTargetParam ?? 25000;
+  const energyTarget = energyTargetParam ?? 1000;
 
-  const [waterDailyBenchmark] = useState(3751);
-  const [energyDailyBenchmark] = useState(142);
+  // Daily benchmark = weekly target / 7
+  const waterDailyBenchmark = Math.round(waterTarget / 7);
+  const energyDailyBenchmark = Math.round(energyTarget / 7);
 
   const [waterWeeklyTotal, setWaterWeeklyTotal] = useState(0);
   const [energyWeeklyTotal, setEnergyWeeklyTotal] = useState(0);
@@ -71,7 +72,6 @@ export const useResourceChartData = () => {
             const outletName = (log.outlet_name || log.outlets?.name || '').toUpperCase();
             const amount = Number(log.amount) || 0;
 
-            // Match outlet name to a dynamic key
             const matchedKey = keys.find(k => k === outletName) ||
               keys.find(k => outletName.includes(k) || k.includes(outletName)) ||
               keys.find(k => k.slice(0, 4) === outletName.slice(0, 4));
@@ -92,7 +92,7 @@ export const useResourceChartData = () => {
         setWaterData(wTransformed);
         setEnergyData(eTransformed);
 
-        // 4. Totals — sum all dynamic outlet keys
+        // 4. Totals
         const wTotal = wTransformed.reduce((acc, curr) =>
           acc + keys.reduce((s, k) => s + (Number(curr[k]) || 0), 0), 0);
         const eTotal = eTransformed.reduce((acc, curr) =>
@@ -110,7 +110,7 @@ export const useResourceChartData = () => {
 
     fetchResourceData();
     return () => window.removeEventListener('ecometricus_resource_updated', handleStorageChange);
-  }, []);
+  }, [waterTarget, energyTarget]);
 
   return {
     waterData,
