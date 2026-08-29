@@ -3008,17 +3008,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                     {/* ── Audit Report Card ── */}
                     <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_40px_rgba(119,177,57,0.04)]">
-                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between border-b border-brand-eco/15 gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-eco/15">
+                        <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center shrink-0">
                             <FileText size={18} className="text-brand-eco" />
                           </div>
-                          <div className="min-w-0">
+                          <div>
                             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Compliance</p>
                             <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Audit Report</h4>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                      </div>
+
+                      <div className="p-6 sm:p-8 space-y-6 bg-brand-dark/40">
+                        {/* Action buttons */}
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => setIsEditingAudit(!isEditingAudit)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-dark/60 border border-brand-gold/10 text-white/60 hover:border-brand-gold/25 hover:text-white'}`}
@@ -3034,9 +3038,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             Get Report
                           </button>
                         </div>
-                      </div>
-
-                      <div className="p-6 sm:p-8 space-y-6 bg-brand-dark/40">
                         {/* Cycle + Outlet */}
                         <div className="space-y-4">
                           <div className="flex items-center gap-3">
