@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Trash2, Edit2, Plus, RotateCcw, CheckCircle2, AlertTriangle,
-  Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown
+  Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown,
+  ImagePlus, X, Loader2
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
@@ -76,6 +77,7 @@ interface WasteEntry {
   unit: 'kg' | 'lbs' | 'L';
   timestamp: string;
   imageUrl?: string;
+  images?: string[];
   staffName?: string;
   outletCode?: string;
 }
@@ -319,12 +321,13 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
     destination: string;
     amount: string;
     imageUrl: string;
+    images: string[];
     water: string;
     energy: string;
   }>(() => {
     try {
       const saved = localStorage.getItem('ecometricus_daily_form');
-      if (saved) return JSON.parse(saved);
+      if (saved) return { ...{ images: [] }, ...JSON.parse(saved) };
     } catch {}
     return {
       category: '',
@@ -337,6 +340,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       destination: '',
       amount: '',
       imageUrl: '',
+      images: [],
       water: '',
       energy: ''
     };
@@ -348,6 +352,54 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   const productInputRef = useRef<HTMLInputElement>(null);
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const showConfirm = (message: string, onConfirm: () => void) => setConfirmModal({ message, onConfirm });
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Upload images to Supabase Storage
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadingImages(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const uploadedUrls: string[] = [];
+      for (const file of Array.from(files)) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) continue;
+        // Max 5MB
+        if (file.size > 5 * 1024 * 1024) continue;
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${session.user.id}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('waste-images')
+          .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('waste-images')
+          .getPublicUrl(fileName);
+
+        if (urlData?.publicUrl) uploadedUrls.push(urlData.publicUrl);
+      }
+
+      if (uploadedUrls.length > 0) {
+        setForm(prev => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
+      }
+    } catch (err) {
+      console.error('[DailyInput] Image upload failed:', err);
+    } finally {
+      setUploadingImages(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = (idx: number) => {
+    setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));
+  };
 
   useEffect(() => {
     if (confirmModal) {
@@ -407,7 +459,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
   const handleTare = () => {
     setForm({
       category: '', subCategory: '', product: '', products: [], productSearch: '',
-      reason: '', customReason: '', destination: '', amount: '', imageUrl: '', water: '', energy: ''
+      reason: '', customReason: '', destination: '', amount: '', imageUrl: '', images: [], water: '', energy: ''
     });
     setEditingId(null);
     setEditingResourceId(null);
@@ -441,6 +493,8 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
           is_mock: false,
           user_id: session?.user?.id || null,
           created_by: user.fullName,
+          image_url: form.images.length > 0 ? form.images[0] : null,
+          images: form.images.length > 0 ? form.images : null,
         });
       }
 
@@ -462,7 +516,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
     if (editingId) {
       setWasteEntries(prev => prev.map(entry =>
         entry.id === editingId
-          ? { ...entry, category: form.category, subCategory: form.subCategory, product: productStr, reason: finalReason, destination: form.destination, amount: parseFloat(form.amount), unit }
+          ? { ...entry, category: form.category, subCategory: form.subCategory, product: productStr, reason: finalReason, destination: form.destination, amount: parseFloat(form.amount), unit, images: form.images }
           : entry
       ));
       onAuditLog?.('waste_entry_updated', 'daily_input', productStr,
@@ -481,7 +535,8 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
         unit,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         staffName: user.fullName,
-        outletCode: user.outletCode
+        outletCode: user.outletCode,
+        images: form.images,
       };
       setWasteEntries([newEntry, ...wasteEntries]);
       onAuditLog?.('waste_entry_added', 'daily_input', productStr,
@@ -504,7 +559,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
       reason: isCustom ? 'Other' : entry.reason,
       customReason: isCustom ? entry.reason : '',
       destination: entry.destination,
-      amount: entry.amount.toString(), imageUrl: entry.imageUrl || ''
+      amount: entry.amount.toString(), imageUrl: entry.imageUrl || '', images: entry.images || []
     });
     setUnit(entry.unit);
   };
@@ -803,6 +858,78 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
             </div>
           )}
 
+          {/* Step 7: Visual Verification */}
+          {(form.products.length > 0 || form.product) && form.reason && form.amount && form.destination && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
+                <span className="w-5 h-5 rounded-full bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-[9px]">7</span>
+                Visual Verification
+                <span className="text-white/30 font-medium normal-case tracking-normal text-[10px] ml-1">(optional)</span>
+              </label>
+
+              {/* Upload area */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={e => handleImageUpload(e.target.files)}
+                className="hidden"
+              />
+
+              {form.images.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImages}
+                  className="w-full border-2 border-dashed border-brand-gold/20 rounded-xl py-8 flex flex-col items-center gap-2 text-white/40 hover:border-brand-gold/40 hover:text-white/60 transition-all"
+                >
+                  {uploadingImages ? (
+                    <Loader2 size={24} className="animate-spin text-brand-gold" />
+                  ) : (
+                    <ImagePlus size={24} className="text-brand-gold/60" />
+                  )}
+                  <span className="text-[11px] font-bold uppercase tracking-widest">
+                    {uploadingImages ? 'Uploading…' : 'Upload Photos'}
+                  </span>
+                  <span className="text-[9px] text-white/30">Click to select images (max 5MB each)</span>
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  {/* Image thumbnails */}
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {form.images.map((url, idx) => (
+                      <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-brand-gold/20">
+                        <img src={url} alt={`Waste ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-1 right-1 w-5 h-5 bg-brand-dark/80 border border-brand-alert/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={10} className="text-brand-alert" />
+                        </button>
+                      </div>
+                    ))}
+                    {/* Add more button */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImages}
+                      className="aspect-square border-2 border-dashed border-brand-gold/20 rounded-lg flex flex-col items-center justify-center gap-1 text-white/30 hover:border-brand-gold/40 hover:text-white/50 transition-all"
+                    >
+                      {uploadingImages ? (
+                        <Loader2 size={18} className="animate-spin text-brand-gold" />
+                      ) : (
+                        <Plus size={18} />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-white/30 font-medium">{form.images.length} image{form.images.length !== 1 ? 's' : ''} attached</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Submit / Cancel */}
           {(form.products.length > 0 || form.product) && form.reason && form.amount && form.destination && (
             <div className="flex gap-3">
@@ -935,7 +1062,19 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 {wasteEntries.map((entry) => (
                   <tr key={entry.id} className="border-b border-brand-gold/5 hover:bg-white/3 transition-colors">
                     <td className="py-3 px-4">
-                      <span className="text-xs font-black text-white uppercase tracking-wider">{entry.product}</span>
+                      <div className="flex items-center gap-2">
+                        {entry.images && entry.images.length > 0 && (
+                          <div className="flex -space-x-1 shrink-0">
+                            {entry.images.slice(0, 2).map((url, idx) => (
+                              <img key={idx} src={url} alt="" className="w-7 h-7 rounded-md object-cover border border-brand-gold/20" />
+                            ))}
+                            {entry.images.length > 2 && (
+                              <div className="w-7 h-7 rounded-md bg-brand-dark border border-brand-gold/20 flex items-center justify-center text-[8px] font-bold text-white/50">+{entry.images.length - 2}</div>
+                            )}
+                          </div>
+                        )}
+                        <span className="text-xs font-black text-white uppercase tracking-wider">{entry.product}</span>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{entry.category}</span>
