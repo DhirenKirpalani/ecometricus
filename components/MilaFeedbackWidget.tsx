@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, Lightbulb, Minimize2, Maximize2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useI18n } from '../lib/useI18n';
 
 interface MilaFeedbackWidgetProps {
     user: {
@@ -10,6 +11,7 @@ interface MilaFeedbackWidgetProps {
 }
 
 const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
+    const { t } = useI18n();
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isSubmitted, setIsSubmitted] = useState(false);
@@ -91,8 +93,8 @@ const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
                         <Lightbulb className="text-brand-eco" size={16} />
                     </div>
                     <div>
-                        <h3 className="text-sm font-black text-white uppercase tracking-wider">Mila AI</h3>
-                        <p className="text-[10px] text-brand-gold uppercase tracking-widest">ESG Strategist</p>
+                        <h3 className="text-sm font-black text-white uppercase tracking-wider">{t('mila.headerTitle')}</h3>
+                        <p className="text-[10px] text-brand-gold uppercase tracking-widest">{t('mila.headerStrategist')}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -108,7 +110,7 @@ const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
                 {/* Intro Message - Mila Style */}
                 <div className="flex justify-start">
                     <div className="max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed bg-white/5 border border-brand-gold/10 text-gray-200 rounded-bl-none">
-                        Thank you for sharing your thoughts and comments to improve Ecometricus Sustainability system.
+                        {t('mila.feedbackIntro')}
                     </div>
                 </div>
 
@@ -116,9 +118,9 @@ const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
                 {isSubmitted ? (
                     <div className="flex justify-start">
                         <div className="max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed bg-white/5 border border-brand-eco/50 text-white rounded-bl-none shadow-[0_0_15px_rgba(119,177,57,0.1)]">
-                            <p className="mb-2">Thank you for sharing your thoughts and comments to improve Ecometricus sustainability system.</p>
+                            <p className="mb-2">{t('mila.feedbackSuccess')}</p>
                             <div className="inline-block px-3 py-1 bg-brand-eco/20 border border-brand-eco rounded-full text-brand-eco font-bold text-[10px] uppercase tracking-wider">
-                                +5 Points Awarded
+                                {t('mila.feedbackPoints')}
                             </div>
                         </div>
                     </div>
@@ -126,7 +128,7 @@ const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
                     <div className="flex justify-center mt-10 opacity-50">
                         <div className="flex flex-col items-center gap-2">
                             <Lightbulb size={24} className="text-brand-gold/50" />
-                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">Listening Mode Active</p>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">{t('mila.feedbackListening')}</p>
                         </div>
                     </div>
                 )}
@@ -142,7 +144,7 @@ const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
-                        placeholder="Type your suggestion..."
+                        placeholder={t('mila.feedbackPlaceholder')}
                         className="flex-grow bg-white/5 border border-brand-gold/10 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors"
                         disabled={isLoading || isSubmitted}
                     />
@@ -155,7 +157,7 @@ const MilaFeedbackWidget: React.FC<MilaFeedbackWidgetProps> = ({ user }) => {
                     </button>
                 </div>
                 <div className="text-[9px] text-center text-gray-600 mt-2 uppercase tracking-widest">
-                    AI can make mistakes. Verify critical data.
+                    {t('mila.feedbackFooter')}
                 </div>
             </div>
         </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { useI18n } from '../lib/useI18n';
 import {
     Trophy, Crown, Medal, Sparkles, CheckCircle2, Clock, Zap,
     RefreshCw, Flame, Target, TrendingUp, Award, Users, Building2,
@@ -49,6 +50,7 @@ interface GamificationHubProps {
 }
 
 const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
+    const { t } = useI18n();
     const [outlets, setOutlets] = useState<OutletData[]>([]);
     const [leaderboard, setLeaderboard] = useState<LeaderboardData[]>([]);
     const [logs, setLogs] = useState<ActionLogEntry[]>([]);
@@ -187,10 +189,10 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                             Earth Keeper
                         </h1>
                         <div className="flex items-center gap-3 mt-1">
-                            <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em]">Performance Hub</p>
+                            <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em]">{t('gamification.subtitle')}</p>
                             <div className="h-1 w-1 rounded-full bg-brand-gold/30"></div>
                             <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em]">
-                                Engagement: {outlets.length > 0 ? Math.round(outlets.reduce((sum, o) => sum + o.engagement_pct, 0) / outlets.length) : 0}%
+                                {t('gamification.engagement', { value: outlets.length > 0 ? Math.round(outlets.reduce((sum, o) => sum + o.engagement_pct, 0) / outlets.length) : 0 })}
                             </p>
                         </div>
                     </div>
@@ -201,7 +203,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                     </button>
                     <div className="px-4 py-2.5 bg-brand-gold/10 border border-brand-gold/40 rounded-xl flex items-center gap-2">
                         <Trophy size={14} className="text-brand-gold" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Goal: {OUTLET_GOAL} pts</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.goalBadge', { value: OUTLET_GOAL })}</span>
                     </div>
                 </div>
             </div>
@@ -211,7 +213,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                 <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5">
                     <div className="flex items-center gap-2 mb-3">
                         <Building2 size={16} className="text-brand-gold" />
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Top Outlet</h4>
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.topOutlet')}</h4>
                     </div>
                     <p className="text-2xl font-geometric font-black text-white leading-none">{outlets[0]?.name || '—'}</p>
                     <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{outlets[0]?.total_points.toLocaleString() || 0} pts</p>
@@ -219,7 +221,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                 <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5">
                     <div className="flex items-center gap-2 mb-3">
                         <Users size={16} className="text-brand-gold" />
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Top Staff</h4>
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.topStaff')}</h4>
                     </div>
                     <p className="text-2xl font-geometric font-black text-white leading-none">{leaderboard[0]?.name || '—'}</p>
                     <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{leaderboard[0]?.total_points || 0} pts</p>
@@ -227,18 +229,18 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                 <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5">
                     <div className="flex items-center gap-2 mb-3">
                         <Flame size={16} className="text-brand-alert" />
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Best Streak</h4>
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.bestStreak')}</h4>
                     </div>
                     <p className="text-2xl font-geometric font-black text-white leading-none">{maxStreak} days</p>
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">Consecutive check-ins</p>
+                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{t('gamification.consecutiveCheckins')}</p>
                 </div>
                 <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5">
                     <div className="flex items-center gap-2 mb-3">
                         <Calendar size={16} className="text-brand-eco" />
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Today's Check-ins</h4>
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.todaysCheckins')}</h4>
                     </div>
                     <p className="text-2xl font-geometric font-black text-white leading-none">{totalCheckinsToday}</p>
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">Active users today</p>
+                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{t('gamification.activeUsersToday')}</p>
                 </div>
             </div>
 
@@ -275,7 +277,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                                         </svg>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
                                             <span className="text-2xl font-black text-white leading-none">{Math.round(o.engagement_pct)}%</span>
-                                            <span className="text-[7px] font-black text-brand-gold uppercase tracking-[0.2em] leading-none mt-1">Engaged</span>
+                                            <span className="text-[7px] font-black text-brand-gold uppercase tracking-[0.2em] leading-none mt-1">{t('gamification.engaged')}</span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -288,11 +290,11 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                                 <div className="flex-grow w-full space-y-4">
                                     <div className="flex justify-between items-end">
                                         <div>
-                                            <p className="text-[10px] font-black text-brand-gold uppercase tracking-widest mb-1">Weekly Points</p>
+                                            <p className="text-[10px] font-black text-brand-gold uppercase tracking-widest mb-1">{t('gamification.weeklyPoints')}</p>
                                             <h4 className="text-3xl sm:text-4xl font-geometric font-black tracking-tighter text-white">{o.total_points.toLocaleString()}</h4>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Goal</p>
+                                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{t('gamification.goal')}</p>
                                             <p className="text-sm font-bold text-white/60">{OUTLET_GOAL.toLocaleString()}</p>
                                         </div>
                                     </div>
@@ -305,7 +307,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                                         <div className="flex items-center gap-2">
                                             <Zap size={14} className="text-brand-gold" />
                                             <span className="text-[9px] font-black text-white/80 uppercase tracking-widest">
-                                                {o.engagement_pct >= 80 ? 'Reward Unlocked: Sustainability Lunch' : o.engagement_pct >= 50 ? 'Halfway to Goal' : 'Keep Going!'}
+                                                {o.engagement_pct >= 80 ? t('gamification.rewardUnlocked') : o.engagement_pct >= 50 ? t('gamification.halfwayToGoal') : t('gamification.keepGoing')}
                                             </span>
                                         </div>
                                         <Sparkles size={14} className="text-brand-gold" />
@@ -323,7 +325,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                     {/* Podium */}
                     {leaderboard.length >= 3 && (
                         <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-6">
-                            <h4 className="text-center text-brand-gold text-sm font-black uppercase tracking-widest mb-8">Top Performers</h4>
+                            <h4 className="text-center text-brand-gold text-sm font-black uppercase tracking-widest mb-8">{t('gamification.topPerformers')}</h4>
                             <div className="flex items-end justify-center gap-4 sm:gap-8">
                                 {[1, 0, 2].map((idx) => {
                                     const s = leaderboard[idx];
@@ -357,9 +359,9 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                     {/* Full Ranking */}
                     <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
                         <div className="flex justify-between items-center px-5 py-3 border-b border-brand-gold/15">
-                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">Rank</span>
-                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">Staff Member</span>
-                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">Points</span>
+                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.rankHeader')}</span>
+                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.staffMemberHeader')}</span>
+                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.pointsHeader')}</span>
                         </div>
                         <div className="divide-y divide-brand-gold/5">
                             {leaderboard.map((s, idx) => (
@@ -382,7 +384,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                                 </div>
                             ))}
                             {leaderboard.length === 0 && (
-                                <div className="text-center py-12 text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Awaiting Sync Data...</div>
+                                <div className="text-center py-12 text-[10px] font-black uppercase tracking-[0.3em] text-white/20">{t('gamification.awaitingSyncData')}</div>
                             )}
                         </div>
                     </div>
@@ -395,8 +397,8 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                     {checkins.length === 0 ? (
                         <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-12 text-center">
                             <Flame size={32} className="text-white/20 mx-auto mb-3" />
-                            <p className="text-sm text-white/40">No check-in data yet.</p>
-                            <p className="text-xs text-white/25 mt-1">Start logging daily entries to build streaks!</p>
+                            <p className="text-sm text-white/40">{t('gamification.noCheckinsTitle')}</p>
+                            <p className="text-xs text-white/25 mt-1">{t('gamification.noCheckinsHint')}</p>
                         </div>
                     ) : (
                         <>
@@ -427,10 +429,10 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                             {/* Full check-in list */}
                             <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
                                 <div className="flex justify-between items-center px-5 py-3 border-b border-brand-gold/15">
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">User</span>
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest hidden sm:block">Entries (W / Wa / E)</span>
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">Streak</span>
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest hidden sm:block">Date</span>
+                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.userHeader')}</span>
+                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest hidden sm:block">{t('gamification.entriesHeader')}</span>
+                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.streakHeader')}</span>
+                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest hidden sm:block">{t('gamification.dateHeader')}</span>
                                 </div>
                                 <div className="divide-y divide-brand-gold/5">
                                     {checkins.map((c, i) => (
@@ -471,13 +473,13 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                     <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-6">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-2 h-2 bg-brand-eco rounded-full animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.5)]"></div>
-                            <h3 className="text-sm font-black uppercase tracking-widest text-white">Live Activity</h3>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-white">{t('gamification.tabLiveActivity')}</h3>
                         </div>
 
                         {logs.length === 0 ? (
                             <div className="text-center py-12">
                                 <Zap size={32} className="text-white/20 mx-auto mb-3" />
-                                <p className="text-sm text-white/40">No recent activity.</p>
+                                <p className="text-sm text-white/40">{t('gamification.noRecentActivity')}</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

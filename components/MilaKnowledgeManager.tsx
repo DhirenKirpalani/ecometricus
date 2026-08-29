@@ -9,6 +9,7 @@ import {
   clearAllDocuments, MilaDocument
 } from '../lib/mila-rag';
 import { extractFileText, isSupportedFile } from '../lib/file-extract';
+import { useI18n } from '../lib/useI18n';
 // @ts-ignore
 
 // Category metadata — icon + color + label
@@ -49,6 +50,7 @@ function getLevel(xp: number) {
 }
 
 const MilaKnowledgeManager: React.FC = () => {
+  const { t } = useI18n();
   const [documents, setDocuments] = useState<MilaDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,7 +156,7 @@ const MilaKnowledgeManager: React.FC = () => {
     if (totalGained > 0) {
       setXpGained(totalGained);
       setTimeout(() => setXpGained(null), 3000);
-      setUploadStatus({ msg: `Indexed ${successCount} file(s) · ${totalChunks} chunks — +${totalGained} XP!`, type: 'success' });
+      setUploadStatus({ msg: t('mila.kbStatusIndexed', { count: successCount, chunks: totalChunks, xp: totalGained }), type: 'success' });
     }
 
     // Clear done items after a delay, refresh docs
@@ -178,13 +180,13 @@ const MilaKnowledgeManager: React.FC = () => {
   };
 
   const handleClearAll = async () => {
-    if (!confirm('Delete ALL documents? This cannot be undone.')) return;
+    if (!confirm(t('mila.kbConfirmClearAll'))) return;
     const result = await clearAllDocuments();
     if (result.success) {
-      setUploadStatus({ msg: 'All documents deleted.', type: 'success' });
+      setUploadStatus({ msg: t('mila.kbStatusDeleted'), type: 'success' });
       loadDocs();
     } else {
-      setUploadStatus({ msg: result.error || 'Clear failed.', type: 'error' });
+      setUploadStatus({ msg: result.error || t('mila.kbStatusClearFailed'), type: 'error' });
     }
     setTimeout(() => setUploadStatus(null), 4000);
   };
@@ -201,7 +203,7 @@ const MilaKnowledgeManager: React.FC = () => {
     const supported = files.filter(isSupportedFile);
     const unsupported = files.length - supported.length;
     if (unsupported > 0) {
-      setUploadStatus({ msg: `${unsupported} file(s) skipped — unsupported format. Use TXT, MD, CSV, DOCX, PDF.`, type: 'error' });
+      setUploadStatus({ msg: t('mila.kbStatusUnsupported', { count: unsupported }), type: 'error' });
       setTimeout(() => setUploadStatus(null), 4000);
     }
     if (supported.length === 0) return;
@@ -225,14 +227,14 @@ const MilaKnowledgeManager: React.FC = () => {
       try {
         const text = await extractFileText(item.file);
         if (!text || text.trim().length === 0) {
-          setFileQueue(prev => prev.map(f => f.id === item.id ? { ...f, status: 'error', error: 'No text found' } : f));
+          setFileQueue(prev => prev.map(f => f.id === item.id ? { ...f, status: 'error', error: t('mila.kbQueueNoText') } : f));
         } else {
           setFileQueue(prev => prev.map(f => f.id === item.id ? {
             ...f, status: 'ready', content: text, wordCount: text.split(/\s+/).length
           } : f));
         }
       } catch (err: any) {
-        setFileQueue(prev => prev.map(f => f.id === item.id ? { ...f, status: 'error', error: err.message || 'Failed' } : f));
+        setFileQueue(prev => prev.map(f => f.id === item.id ? { ...f, status: 'error', error: err.message || t('mila.kbQueueFailed') } : f));
       }
     }
   };
@@ -331,12 +333,12 @@ const MilaKnowledgeManager: React.FC = () => {
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                Mila Knowledge Base
+                {t('mila.kbTitle')}
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{currentLevel.name}</span>
                 <span className="w-1 h-1 rounded-full bg-white/20" />
-                <span className="text-[11px] font-medium text-white/50">{stats.total} documents · {stats.totalWords.toLocaleString()} words indexed</span>
+                <span className="text-[11px] font-medium text-white/50">{t('mila.kbStats', { total: stats.total, totalWords: stats.totalWords.toLocaleString() })}</span>
               </div>
             </div>
           </div>
@@ -354,7 +356,7 @@ const MilaKnowledgeManager: React.FC = () => {
             <TrendingUp size={12} className="text-brand-eco/50" />
           </div>
           <p className="text-2xl font-geometric font-black text-white leading-none">{stats.total}</p>
-          <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mt-1.5">Total Documents</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mt-1.5">{t('mila.kbTotalDocuments')}</p>
         </div>
 
         {/* Categories */}
@@ -365,7 +367,7 @@ const MilaKnowledgeManager: React.FC = () => {
             </div>
           </div>
           <p className="text-2xl font-geometric font-black text-white leading-none">{stats.categories}</p>
-          <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mt-1.5">Categories</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mt-1.5">{t('mila.kbCategories')}</p>
         </div>
 
         {/* Words Indexed */}
@@ -378,7 +380,7 @@ const MilaKnowledgeManager: React.FC = () => {
           <p className="text-2xl font-geometric font-black text-white leading-none">
             {stats.totalWords >= 1000 ? `${(stats.totalWords / 1000).toFixed(1)}K` : stats.totalWords}
           </p>
-          <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mt-1.5">Words Indexed</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mt-1.5">{t('mila.kbWordsIndexed')}</p>
         </div>
 
         {/* Sources */}
@@ -389,7 +391,7 @@ const MilaKnowledgeManager: React.FC = () => {
             </div>
           </div>
           <p className="text-2xl font-geometric font-black text-white leading-none">{stats.sources}</p>
-          <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mt-1.5">Data Sources</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mt-1.5">{t('mila.kbDataSources')}</p>
         </div>
       </div>
 
@@ -403,7 +405,7 @@ const MilaKnowledgeManager: React.FC = () => {
               : 'bg-brand-dark/40 border-brand-gold/20 text-white/40 hover:text-white/70 hover:border-brand-gold/30'
           }`}
         >
-          All ({stats.total})
+          {t('mila.kbCategoryAll', { total: stats.total })}
         </button>
         {CATEGORIES.map(cat => {
           const meta = CATEGORY_META[cat];
@@ -434,7 +436,7 @@ const MilaKnowledgeManager: React.FC = () => {
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
           <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search knowledge base..."
+            placeholder={t('mila.kbSearchPlaceholder')}
             className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all" />
         </div>
 
@@ -450,7 +452,7 @@ const MilaKnowledgeManager: React.FC = () => {
           </button>
           <button onClick={() => setShowUpload(!showUpload)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all shadow-lg shadow-brand-gold/20">
-            <Plus size={16} /> Add Document
+            <Plus size={16} /> {t('mila.kbAddDocument')}
           </button>
         </div>
       </div>
@@ -472,8 +474,8 @@ const MilaKnowledgeManager: React.FC = () => {
                 <Upload size={18} className="text-brand-gold" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Upload Document</h3>
-                <p className="text-[10px] text-white/40 mt-0.5">Earn +{XP_PER_UPLOAD} XP on upload</p>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('mila.kbUploadTitle')}</h3>
+                <p className="text-[10px] text-white/40 mt-0.5">{t('mila.kbUploadXpHint', { xp: XP_PER_UPLOAD })}</p>
               </div>
             </div>
             <button onClick={() => setShowUpload(false)} className="p-2 rounded-lg text-white/30 hover:text-white hover:bg-brand-gold/10 transition-all">
@@ -486,8 +488,8 @@ const MilaKnowledgeManager: React.FC = () => {
             <div className="relative border-2 border-dashed border-brand-gold/15 rounded-xl py-6 px-4 text-center hover:border-brand-gold/40 transition-all cursor-pointer">
               <input type="file" accept=".txt,.md,.csv,.docx,.pdf" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" multiple />
               <Upload size={22} className="mx-auto mb-2 text-white/30" />
-              <p className="text-sm text-white/50 font-medium">Drop files here or click to browse</p>
-              <p className="text-[10px] text-white/25 mt-1.5">TXT · MD · CSV · DOCX · PDF · Multiple files supported</p>
+              <p className="text-sm text-white/50 font-medium">{t('mila.kbUploadDropHint')}</p>
+              <p className="text-[10px] text-white/25 mt-1.5">{t('mila.kbUploadFormats')}</p>
             </div>
           </label>
 
@@ -522,12 +524,12 @@ const MilaKnowledgeManager: React.FC = () => {
                     <p className="text-xs font-bold text-white truncate">{item.name}</p>
                   </div>
                   <p className="text-[10px] text-white/40 mt-0.5">
-                    {item.status === 'pending' && 'Waiting in queue...'}
-                    {item.status === 'extracting' && 'Extracting text...'}
-                    {item.status === 'ready' && `${item.wordCount.toLocaleString()} words ready`}
-                    {item.status === 'uploading' && 'Uploading & indexing...'}
-                    {item.status === 'done' && 'Indexed successfully'}
-                    {item.status === 'error' && (item.error || 'Failed')}
+                    {item.status === 'pending' && t('mila.kbQueuePending')}
+                    {item.status === 'extracting' && t('mila.kbQueueExtracting')}
+                    {item.status === 'ready' && t('mila.kbQueueReady', { count: item.wordCount.toLocaleString() })}
+                    {item.status === 'uploading' && t('mila.kbQueueUploading')}
+                    {item.status === 'done' && t('mila.kbQueueIndexed')}
+                    {item.status === 'error' && (item.error || t('mila.kbQueueFailed'))}
                   </p>
                 </div>
 
@@ -569,7 +571,7 @@ const MilaKnowledgeManager: React.FC = () => {
                   className="absolute inset-0 opacity-0 cursor-pointer" />
                 <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${uploadForm.autoChunk ? 'left-4' : 'left-0.5'}`} />
               </div>
-              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Auto-chunk</span>
+              <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{t('mila.kbAutoChunk')}</span>
             </label>
           </div>
 
@@ -578,14 +580,14 @@ const MilaKnowledgeManager: React.FC = () => {
             <button onClick={handleUpload} disabled={readyCount === 0 || isProcessing}
               className="flex-1 px-5 py-3.5 rounded-xl bg-brand-gold text-brand-dark font-black text-sm uppercase tracking-wider hover:bg-brand-gold/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-gold/20 disabled:opacity-40 disabled:cursor-not-allowed">
               {isProcessing ? (
-                <><RefreshCw size={16} className="animate-spin" /> Processing...</>
+                <><RefreshCw size={16} className="animate-spin" /> {t('mila.kbProcessing')}</>
               ) : (
-                <><Upload size={16} /> Upload {readyCount > 0 && `${readyCount} File${readyCount > 1 ? 's' : ''}`}</>
+                <><Upload size={16} /> {t('mila.kbUploadButton', { count: readyCount })}</>
               )}
             </button>
             <button onClick={() => { setShowUpload(false); setFileQueue([]); }}
               className="px-5 py-3.5 rounded-xl bg-brand-dark/60 border border-brand-gold/10 text-white/60 font-bold text-sm uppercase tracking-wider hover:text-white transition-all">
-              Cancel
+              {t('mila.kbCancel')}
             </button>
           </div>
         </div>
@@ -597,7 +599,7 @@ const MilaKnowledgeManager: React.FC = () => {
           <div className="inline-flex w-12 h-12 rounded-2xl bg-brand-gold/10 border border-brand-gold/20 items-center justify-center mb-4">
             <RefreshCw size={20} className="animate-spin text-brand-gold/60" />
           </div>
-          <p className="text-sm text-white/40 font-medium">Loading knowledge base...</p>
+          <p className="text-sm text-white/40 font-medium">{t('mila.kbLoading')}</p>
         </div>
       ) : filteredDocs.length === 0 ? (
         <div className="text-center py-16 bg-[#1c3933]/50 border border-brand-gold/20 rounded-2xl">
@@ -605,10 +607,10 @@ const MilaKnowledgeManager: React.FC = () => {
             <FileText size={24} className="text-white/20" />
           </div>
           <p className="text-sm text-white/40 font-medium mb-1">
-            {documents.length === 0 ? 'No documents yet' : 'No documents match your filters'}
+            {documents.length === 0 ? t('mila.kbEmptyNoDocs') : t('mila.kbEmptyNoMatch')}
           </p>
           <p className="text-[11px] text-white/25">
-            {documents.length === 0 ? 'Upload a document or seed the knowledge base to get started' : 'Try adjusting your search or category filter'}
+            {documents.length === 0 ? t('mila.kbEmptyStart') : t('mila.kbEmptyAdjust')}
           </p>
         </div>
       ) : (
@@ -674,7 +676,7 @@ const MilaKnowledgeManager: React.FC = () => {
                         onClick={() => setExpandedDoc(isExpanded ? null : doc.baseTitle)}
                         className="text-[9px] font-bold uppercase tracking-widest text-brand-gold/50 hover:text-brand-gold mt-1.5 transition-colors"
                       >
-                        {isExpanded ? 'Show less' : 'Read more'}
+                        {isExpanded ? t('mila.kbShowLess') : t('mila.kbReadMore')}
                       </button>
                     )}
 

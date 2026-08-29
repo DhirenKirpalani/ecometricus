@@ -5,6 +5,7 @@ import { useNavigate as useRouterNavigate, useLocation } from 'react-router-dom'
 import MilaWidget from './MilaWidget';
 import GamificationHub from './GamificationHub';
 import { supabase } from '../lib/supabase';
+import { useI18n } from '../lib/useI18n';
 import {
   Building2,
   Users,
@@ -59,7 +60,6 @@ import {
   FileDigit,
   ChevronDown,
   Unlock,
-  Key,
   CheckSquare,
   Square,
   Eye,
@@ -652,6 +652,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, di
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateUser }) => {
   const routerNavigate = useRouterNavigate();
   const location = useLocation();
+  const { t, lang, changeLang } = useI18n();
 
   // Derive active view from URL path
   // Portal view paths (including /dashboard/daily-input) are checked first
@@ -671,8 +672,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // Navigate to the URL for the selected view
   const setActiveView = (view: PortalView) => {
     if (view === PortalView.DASHBOARD) {
-      // Going to dashboard overview — keep current inner tab or default to overview
-      const currentTab = PATH_TO_DASHBOARD_TAB[location.pathname] || DashboardTab.SUMMARIZED;
+      // Going to dashboard — keep current inner tab or default based on role
+      const fallbackTab = user.role.toLowerCase() === 'basic' ? DashboardTab.FOOD_WASTE : DashboardTab.SUMMARIZED;
+      const currentTab = PATH_TO_DASHBOARD_TAB[location.pathname] || fallbackTab;
       routerNavigate(DASHBOARD_TAB_PATHS[currentTab]);
     } else {
       const path = PORTAL_VIEW_PATHS[view] || '/dashboard';
@@ -681,22 +683,52 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   };
 
   // Derive inner dashboard tab from URL path
-  const dashboardTab = PATH_TO_DASHBOARD_TAB[location.pathname] || DashboardTab.SUMMARIZED;
+  // Basic users don't have access to the Overview tab, so default to Food Waste
+  const defaultDashboardTab = user.role.toLowerCase() === 'basic' ? DashboardTab.FOOD_WASTE : DashboardTab.SUMMARIZED;
+  const urlDashboardTab = PATH_TO_DASHBOARD_TAB[location.pathname] || defaultDashboardTab;
+  const dashboardTab = user.role.toLowerCase() === 'basic' && urlDashboardTab === DashboardTab.SUMMARIZED
+    ? DashboardTab.FOOD_WASTE
+    : urlDashboardTab;
 
   // Navigate to the URL for the selected inner tab
   const setDashboardTab = (tab: DashboardTab) => {
-    const path = DASHBOARD_TAB_PATHS[tab] || '/dashboard/overview';
+    const defaultPath = user.role.toLowerCase() === 'basic' ? '/dashboard/food-waste' : '/dashboard/overview';
+    const path = DASHBOARD_TAB_PATHS[tab] || defaultPath;
     routerNavigate(path);
   };
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isHydrating, setIsHydrating] = useState(true);
 
-  // Redirect bare /dashboard to /dashboard/overview
+  // Redirect bare /dashboard to the user's default tab
+  // Basic users → /dashboard/daily-input, everyone else → /dashboard/overview
   useEffect(() => {
     if (location.pathname === '/dashboard') {
-      routerNavigate('/dashboard/overview', { replace: true });
+      const defaultPath = user.role.toLowerCase() === 'basic' ? '/dashboard/daily-input' : '/dashboard/overview';
+      routerNavigate(defaultPath, { replace: true });
     }
-  }, [location.pathname, routerNavigate]);
+  }, [location.pathname, user.role, routerNavigate]);
+
+  // Gate: Redirect basic users away from restricted dashboard URLs → /dashboard/daily-input
+  // Basic users can only access: /dashboard/daily-input, /dashboard/food-waste,
+  // /dashboard/energy-water, /dashboard/gamification, /dashboard/contact
+  // Only redirect if the path is under /dashboard — don't interfere with
+  // navigation to other pages (e.g. / for home, /about, etc.)
+  useEffect(() => {
+    if (user.role.toLowerCase() !== 'basic') return;
+    if (!location.pathname.startsWith('/dashboard')) return;
+
+    const BASIC_ALLOWED = [
+      '/dashboard/daily-input',
+      '/dashboard/food-waste',
+      '/dashboard/energy-water',
+      '/dashboard/gamification',
+      '/dashboard/contact',
+    ];
+
+    if (!BASIC_ALLOWED.includes(location.pathname)) {
+      routerNavigate('/dashboard/daily-input', { replace: true });
+    }
+  }, [location.pathname, user.role, routerNavigate]);
 
   // ── Toast + Confirm modal ──────────────────────────────────────────────────
   const [toast, setToast] = useState<{ id: number; message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -762,8 +794,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [enrollOutlet, setEnrollOutlet] = useState('');
   const [enrollRole, setEnrollRole] = useState('');
   const [enrollPermissions, setEnrollPermissions] = useState<string[]>([]);
-  const [genPassword, setGenPassword] = useState('');
-  const [genLink, setGenLink] = useState('');
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
   // Shared Administrative Core State
   const [outlets, setOutlets] = useState<Outlet[]>([]);
@@ -807,8 +838,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+
+      // Determine company_id (the admin/owner's user_id):
+      // - Admins/super_admins: their own session.user.id
+      // - Supervisors/basic: look up personnel by their email to find the admin's user_id
+      let companyId = session.user.id;
+      const roleLower = user.role?.toLowerCase() || '';
+      if (roleLower !== 'admin' && roleLower !== 'super_admin') {
+        const { data: personnelRow } = await supabase
+          .from('personnel')
+          .select('user_id')
+          .eq('email', user.email)
+          .maybeSingle();
+        if (personnelRow?.user_id) companyId = personnelRow.user_id;
+      }
+
       await supabase.from('audit_logs').insert({
         user_id: session.user.id,
+        company_id: companyId,
+        outlet_code: user.outletCode || metadata?.outletCode || null,
         actor_name: user.fullName,
         actor_role: user.role,
         action,
@@ -829,9 +877,35 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const { data, error } = await supabase.from('audit_logs')
-        .select('*').eq('user_id', session.user.id)
-        .order('created_at', { ascending: false }).limit(50);
+
+      const roleLower = user.role?.toLowerCase() || '';
+      let query = supabase.from('audit_logs').select('*');
+
+      if (roleLower === 'admin' || roleLower === 'super_admin') {
+        // Admins: see all logs from their company (company_id = their own user_id)
+        query = query.eq('company_id', session.user.id);
+      } else if (roleLower === 'supervisor') {
+        // Supervisors: see all logs from their company, filtered by their outlet
+        // First find the admin's user_id from personnel
+        const { data: personnelRow } = await supabase
+          .from('personnel')
+          .select('user_id')
+          .eq('email', user.email)
+          .maybeSingle();
+        if (personnelRow?.user_id) {
+          query = query.eq('company_id', personnelRow.user_id)
+                       .eq('outlet_code', user.outletCode);
+        } else {
+          // Fallback: only own logs
+          query = query.eq('user_id', session.user.id);
+        }
+      } else {
+        // Basic users: only own logs
+        query = query.eq('user_id', session.user.id);
+      }
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false }).limit(100);
       if (!error && data) setAuditLogs(data);
     } catch (e) {
       // Table might not exist yet — silently ignore
@@ -947,7 +1021,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             outletCode: dbOutlets.find(o => o.id === p.outlet_id)?.code || '',
             permissions: Array.isArray(p.permissions) ? p.permissions : (p.permissions ? String(p.permissions).split(',').map((s: string) => s.trim()).filter(Boolean) : []),
             // Password stored as pincode in DB
-            password: p.pincode || p.access_code || ''
+            password: p.pincode || '',
+            accessCode: p.access_code || ''
           }));
           setUsers(mappedUsers);
         }
@@ -1123,9 +1198,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // 7. Fetch Raw Resource Logs for Mila KPI Sync
       let resourceQuery = supabase.from('resource_logs').select('*');
       if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
-        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
-        if (userOutlet && (userOutlet as any).id) {
-          resourceQuery = resourceQuery.eq('outlet_id', (userOutlet as any).id);
+        const userOutlet = outlets.find((o: any) => o.code === user.outletCode || o.id === user.outletCode);
+        if (userOutlet) {
+          // Table uses outlet_name, not outlet_id
+          resourceQuery = resourceQuery.eq('outlet_name', userOutlet.name);
         }
       }
       const { data: resourceData } = await resourceQuery;
@@ -1199,10 +1275,27 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     window.addEventListener('ecometricus_resource_updated', handleDataUpdate);
     window.addEventListener('ecometricus_kpi_updated', handleDataUpdate);
 
+    // Supabase Realtime subscriptions — auto-refresh when ANY user adds/updates/deletes entries
+    const wasteChannel = supabase
+      .channel('dashboard_waste_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'food_waste_logs' }, () => {
+        fetchOperationalData();
+      })
+      .subscribe();
+
+    const resourceChannel = supabase
+      .channel('dashboard_resource_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resource_logs' }, () => {
+        fetchOperationalData();
+      })
+      .subscribe();
+
     return () => {
       window.removeEventListener('ecometricus_waste_updated', handleDataUpdate);
       window.removeEventListener('ecometricus_resource_updated', handleDataUpdate);
       window.removeEventListener('ecometricus_kpi_updated', handleDataUpdate);
+      supabase.removeChannel(wasteChannel);
+      supabase.removeChannel(resourceChannel);
     };
   }, [user.role, user.outletCode]);
 
@@ -1273,7 +1366,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const fetchDynamicBenchmarks = async () => {
       const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
         ? (params.selectedManualOutlet === 'all'
-          ? 'All Outlets'
+          ? t('dashboard.allOutlets')
           : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
         : 'Unknown Outlet';
         
@@ -1418,9 +1511,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   const handleEnroll = async () => {
     if (!enrollName || !enrollEmail || !enrollPosition || !enrollOutlet) {
-      showToast("Please complete all enrollment fields.", 'error');
+      showToast(t('dashboard.pleaseCompleteFields'), 'error');
       return;
     }
+    if (isEnrolling) return;
+    setIsEnrolling(true);
 
     // Email validation — block submission if invalid
     const emailError = validateCorporateEmail(enrollEmail);
@@ -1440,17 +1535,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // Shuffle so the special char isn't always last
       return pin.split('').sort(() => Math.random() - 0.5).join('');
     };
-    const password = enrollId
-      ? (users.find(u => u.id === enrollId)?.password || genPin())
-      : genPin();
+    // URL-safe access code (alphanumeric only, no special chars) for the invite link
+    const genAccessCode = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      return code;
+    };
+    const existingUser = enrollId ? users.find(u => u.id === enrollId) : null;
+    const password = existingUser?.password || genPin();
+    const accessCode = existingUser?.accessCode || genAccessCode();
 
-    const link = `https://ecometricus.com/access/${enrollOutlet}?token=${password.toLowerCase()}`;
+    const link = `${window.location.origin}/access/${enrollOutlet}?token=${accessCode.toLowerCase()}`;
     const upsertId = enrollId || Date.now().toString();
 
     // 🛡️ Auth Sync Gate (Phase 3 Repair)
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      showToast("Authentication required.", 'error');
+      showToast(t('dashboard.authenticationRequired'), 'error');
       return;
     }
 
@@ -1463,6 +1565,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       role: enrollRole.toLowerCase(),
       position: enrollPosition,
       pincode: password,
+      access_code: accessCode,
+      invited_by: user.fullName,
       permissions: enrollPermissions
     };
     
@@ -1506,10 +1610,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           outletCode: enrollOutlet,
           role: enrollRole.toLowerCase() as any,
           permissions: enrollPermissions,
-          password: password
+          password: password,
+          accessCode: accessCode
         } : u));
     } else {
-      const newUser: UserProfile & { password?: string } = {
+      const newUser: UserProfile & { password?: string; accessCode?: string } = {
         id: newId,
         fullName: enrollName,
         email: enrollEmail,
@@ -1517,13 +1622,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         position: enrollPosition as any,
         outletCode: enrollOutlet,
         permissions: enrollPermissions,
-        password: password
+        password: password,
+        accessCode: accessCode
       };
       setUsers(prev => [...prev, newUser]);
     }
-
-    setGenPassword('');
-    setGenLink('');
 
     setEnrollId(null);
     setEnrollName('');
@@ -1534,8 +1637,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     setEnrollRole('');
     setEnrollPermissions([]);
 
-    showToast(`${enrollName || 'Staff member'} saved successfully.`, 'success');
+    showToast(t('dashboard.staffSaved', { name: enrollName || 'Staff member' }), 'success');
     logAction(enrollId ? 'personnel_updated' : 'personnel_enrolled', 'personnel', enrollName || 'Unknown', `${enrollName} enrolled as ${enrollPosition} for ${enrollOutlet}`, { role: enrollRole, position: enrollPosition, outlet: enrollOutlet });
+    setIsEnrolling(false);
   };
 
   const handleEdit = (user: UserProfile & { password?: string }) => {
@@ -1548,30 +1652,55 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const roleKey = Object.keys(ROLE_DEFAULT_PERMISSIONS).find(k => k.toLowerCase() === user.role.toLowerCase()) || 'View';
     setEnrollRole(roleKey);
     setEnrollPermissions(user.permissions?.length ? user.permissions : ROLE_DEFAULT_PERMISSIONS[roleKey]);
-    setGenPassword(user.password || '');
-    setGenLink(`https://ecometricus.com/access/${user.outletCode}?token=${(user.password || '').toLowerCase()}`);
 
     const form = document.getElementById('enrollment-form');
     form?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleDeletePersonnel = (id: string) => {
-    showConfirm("Permanently remove this staff member from the registry?", async () => {
+    const targetUser = users.find(u => u.id === id);
+    showConfirm(`Remove ${targetUser?.fullName || 'this staff member'}? This will permanently delete their account and revoke their access.`, async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { showToast("Authentication required.", 'error'); return; }
+      if (!session) { showToast(t('dashboard.authenticationRequired'), 'error'); return; }
 
+      // 1. Call edge function to delete auth account + related data
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://rqhlhazvplpajzwwoncz.supabase.co'}/functions/v1/delete-user`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: id.includes('-') ? id : undefined,
+            email: targetUser?.email,
+          }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          console.error('DELETE_USER_EDGE_ERROR:', errData);
+          // Fall through to personnel delete anyway
+        }
+      } catch (err) {
+        console.error('DELETE_USER_FETCH_ERROR:', err);
+        // Continue — try to at least delete the personnel row
+      }
+
+      // 2. Delete personnel record (in case edge function didn't)
       const { error, status } = await supabase.from('personnel').delete().eq('id', id);
 
       if (error || (status !== 204 && status !== 200)) {
         console.error("PERSONNEL_DELETE_FAILURE:", error);
-        showToast("Database Error: " + (error?.message || `Failed to remove staff member.`), 'error');
+        showToast(t('dashboard.databaseError', { message: error?.message || t('dashboard.failedToRemoveStaff') }), 'error');
         return;
       }
 
       setUsers(prev => prev.filter(u => u.id !== id));
-      showToast("Staff member removed.", 'success');
-      const removedUser = users.find(u => u.id === id);
-      logAction('personnel_removed', 'personnel', removedUser?.fullName || 'Unknown', `Removed ${removedUser?.fullName || 'staff member'} from registry`, { email: removedUser?.email });
+      showToast(`${targetUser?.fullName || 'Staff member'} removed and account deleted.`, 'success');
+      logAction('personnel_removed', 'personnel', targetUser?.fullName || 'Unknown',
+        `Removed ${targetUser?.fullName || 'staff member'} — account deleted and access revoked`,
+        { email: targetUser?.email, id });
     });
   };
 
@@ -1582,14 +1711,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const existing = outlets.filter(o => o.name).find(o => o.name.toLowerCase() === cleanName.toLowerCase());
 
     if (existing) {
-      showToast("Outlet already registered.", 'error');
+      showToast(t('dashboard.outletAlreadyRegistered'), 'error');
       return;
     }
 
     // 🛡️ Auth Persistence Sync (Phase 4)
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      showToast("Authentication required.", 'error');
+      showToast(t('dashboard.authenticationRequired'), 'error');
       return;
     }
 
@@ -1626,7 +1755,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     if (error || (status !== 201 && status !== 200)) {
       console.error("OUTLET_INSERT_FAILURE:", error);
-      showToast("Database Error: " + (error?.message || `Failed to save outlet.`), 'error');
+      showToast(t('dashboard.databaseError', { message: error?.message || t('dashboard.failedToSaveOutlet') }), 'error');
       return;
     }
 
@@ -1639,9 +1768,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   const handleRemoveOutlet = (code: string) => {
     const outletName = outlets.find(o => o.code === code)?.name || code;
-    showConfirm(`Remove "${outletName}" from your outlets?`, async () => {
+    showConfirm(t('dashboard.removeOutletConfirm', { name: outletName }), async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { showToast("Authentication required.", 'error'); return; }
+      if (!session) { showToast(t('dashboard.authenticationRequired'), 'error'); return; }
 
       // Delete by outlet_name (actual DB column)
       const name = outlets.find(o => o.code === code)?.name;
@@ -1676,7 +1805,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("User authentication required for persistence.");
+      if (!session) throw new Error(t('dashboard.userAuthRequired'));
       const userId = session.user.id;
 
       // 1. Upsert Company Identity
@@ -1733,7 +1862,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         }
       }
 
-      showToast("Saved successfully.", 'success');
+      showToast(t('dashboard.savedSuccessfully'), 'success');
       logAction('settings_saved', 'company', company.name || 'Organization', `Updated company identity, audit config, and ${outlets.length} outlet(s)`, { region: company.region, city: company.city, outletCount: outlets.length });
       setSaveStatus('success');
       setIsEditingIdentity(false);
@@ -1891,7 +2020,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      showToast("Authentication required.", 'error');
+      showToast(t('dashboard.authenticationRequired'), 'error');
       setSaveStatus('idle');
       return;
     }
@@ -1899,7 +2028,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
       ? (params.selectedManualOutlet === 'all'
-        ? 'All Outlets'
+        ? t('dashboard.allOutlets')
         : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
       : 'Unknown Outlet';
 
@@ -1929,7 +2058,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       showToast('Database Error: ' + error.message, 'error');
       console.error(error);
     } else {
-      showToast('Benchmarks saved.', 'success');
+      showToast(t('dashboard.benchmarksSaved'), 'success');
       setParamsUpdatedAt(new Date().toLocaleString());
       logAction('benchmarks_saved', 'benchmark', params.benchmarkRegion, `Saved benchmark parameters (${params.benchmarkRegion})`, { wasteTarget: params.wasteTarget, energyTarget: params.energyTarget, waterTarget: params.waterTarget });
     }
@@ -1974,7 +2103,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
         const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
           ? (params.selectedManualOutlet === 'all'
-            ? 'All Outlets'
+            ? t('dashboard.allOutlets')
             : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
           : 'Unknown Outlet';
 
@@ -2053,7 +2182,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   }, [params]);
 
   const handleGetReport = () => {
-    showToast(`Generating ${auditReport.cycle} report for ${auditReport.outletSelection}…`, 'info');
+    showToast(t('dashboard.generatingReport', { cycle: auditReport.cycle, outlet: auditReport.outletSelection }), 'info');
   };
 
   const rawJson = useMemo(() => JSON.stringify({
@@ -2139,8 +2268,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const sessionData = useMemo(() => {
     // Live Supabase Data only — no mock/fallback values
     const totalWasteKg = rawWasteLogs.reduce((sum, e) => sum + (parseFloat(e.mass_kg) || 0), 0);
-    const totalWaterUsage = rawResourceLogs.filter(e => e.resource_type === 'water').reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-    const totalEnergyUsage = rawResourceLogs.filter(e => e.resource_type === 'energy').reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+    const totalWaterUsage = rawResourceLogs.reduce((sum, e) => sum + (parseFloat(e.water_liters) || 0), 0);
+    const totalEnergyUsage = rawResourceLogs.reduce((sum, e) => sum + (parseFloat(e.energy_kwh) || 0), 0);
 
     // CO2 conversion factors (matching useCo2ChartData hook)
     const wasteCo2Coeff = 2.85;   // kg CO2e per kg food waste
@@ -2150,12 +2279,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     // Water footprint coefficient: water embedded in wasted food
     const waterCoeff = 3.40;
 
-    // Financial Impact: total waste kg * $6.50 multiplier
-    const totalFinancialLoss = totalWasteKg * 6.50;
-
-    // 85/15 item-loss vs logistics proportional split
-    const financialLossItems = totalFinancialLoss * 0.85;
-    const financialLossDisposal = totalFinancialLoss * 0.15;
+    // Financial Impact: unified coefficients ($7.50/kg item value + $1.25/kg logistics)
+    const costPerItemUnit = 7.50;
+    const costPerDisposalUnit = 1.25;
+    const financialLossItems = totalWasteKg * costPerItemUnit;
+    const financialLossDisposal = totalWasteKg * costPerDisposalUnit;
+    const totalFinancialLoss = financialLossItems + financialLossDisposal;
 
     const wasteBenchmark = effectiveParams.wasteTarget;
 
@@ -2190,7 +2319,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     userProfile: user, // Full profile for Mila agent tools
     company: {
       name: company.name || 'Your Hotel',
-      outlet: company.currentOutletName || 'All Outlets',
+      outlet: company.currentOutletName || t('dashboard.allOutlets'),
       region: company.region || '',
       city: company.city || '',
       totalOutlets: outlets.length,
@@ -2232,7 +2361,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-dark text-white flex-col gap-6">
         <div className="w-12 h-12 rounded-full border-2 border-brand-gold/20 border-t-brand-gold animate-spin" />
-        <p className="text-sm font-medium text-white/60">Loading your dashboard…</p>
+        <p className="text-sm font-medium text-white/60">{t('dashboard.loadingDashboard')}</p>
       </div>
     );
   }
@@ -2258,17 +2387,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       {confirmModal && (
         <div className="fixed inset-0 z-[99998] flex items-center justify-center bg-brand-dark/80 backdrop-blur-sm">
           <div className="bg-[#1c3933] border border-brand-gold/25 rounded-2xl p-6 shadow-[0_16px_64px_rgba(0,0,0,0.7)] max-w-sm w-full mx-4">
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold/80 mb-2">Confirm Action</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-brand-gold/80 mb-2">{t('dashboard.confirmAction')}</p>
             <p className="text-sm text-white/80 leading-relaxed mb-6">{confirmModal.message}</p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setConfirmModal(null)}
                 className="px-4 py-2 rounded-lg border border-brand-gold/15 text-white/70 hover:text-white hover:border-brand-gold/30 text-[11px] font-semibold transition-colors"
-              >Cancel</button>
+              >{t('dashboard.cancel')}</button>
               <button
                 onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
                 className="px-4 py-2 rounded-lg bg-brand-alert/20 border border-brand-alert/40 text-brand-alert hover:bg-brand-alert/30 text-[11px] font-semibold transition-colors"
-              >Confirm</button>
+              >{t('dashboard.confirm')}</button>
             </div>
           </div>
         </div>
@@ -2291,6 +2420,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           {/* ── Right: user + logout ── */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
 
+            {/* Language toggle — segmented pill (matches landing navbar) */}
+            <div className="flex items-center gap-0.5 bg-white/5 border border-brand-gold/10 rounded-full p-0.5">
+              <button
+                onClick={() => changeLang('en')}
+                className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all duration-200 ${lang === 'en' ? 'bg-brand-gold text-brand-dark shadow-sm' : 'text-white/35 hover:text-white/70'}`}
+              >EN</button>
+              <button
+                onClick={() => changeLang('es')}
+                className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all duration-200 ${lang === 'es' ? 'bg-brand-gold text-brand-dark shadow-sm' : 'text-white/35 hover:text-white/70'}`}
+              >ES</button>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block w-px h-7 bg-white/8" />
+
             {/* Avatar */}
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
               <span className="text-brand-gold text-[10px] sm:text-xs font-black leading-none tracking-tight">
@@ -2300,7 +2444,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
             {/* Role only — full name is already in the greeting below */}
             <p className="hidden md:block text-[12px] text-brand-gold/70 font-semibold tracking-widest uppercase">
-              {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              {user.position || user.role.charAt(0).toUpperCase() + user.role.slice(1)}
             </p>
 
             {/* Divider */}
@@ -2309,11 +2453,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             {/* Logout */}
             <button
               onClick={onLogout}
-              title="Log out"
+              title={t('dashboard.navLogOut')}
               className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg border border-brand-gold/15 text-white/70 hover:text-white hover:border-brand-alert/60 hover:bg-brand-alert/10 transition-all duration-150"
             >
               <LogOut size={14} />
-              <span className="hidden sm:inline text-[11px] font-semibold">Log out</span>
+              <span className="hidden sm:inline text-[11px] font-semibold">{t('dashboard.navLogOut')}</span>
             </button>
           </div>
         </div>
@@ -2330,20 +2474,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           {/* Nav items — scrollable if needed */}
           <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-y-auto scrollbar-hide p-2 lg:p-3 lg:pt-6 lg:flex-grow lg:min-h-0">
 
-              <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
+              {user.role.toLowerCase() !== 'basic' && (
+                <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label={t('dashboard.navOverview')} />
+              )}
               {user.role.toLowerCase() !== 'admin' && (
-                <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label="Daily Input" />
+                <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label={t('dashboard.navDailyInput')} />
               )}
               {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin' || user.role.toLowerCase() === 'supervisor') && (
                 <>
-                  <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
-                  <SidebarItem view={PortalView.TEAM} icon={Users} label="Team" />
-                  <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label="Benchmarks" />
-                  <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label="Audit Log" />
+                  <SidebarItem view={PortalView.IDENTITY} icon={Building2} label={t('dashboard.navCompany')} />
+                  <SidebarItem view={PortalView.TEAM} icon={Users} label={t('dashboard.navTeam')} />
+                  <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label={t('dashboard.navBenchmarks')} />
+                  <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label={t('dashboard.navAuditLog')} />
                 </>
               )}
               {user.role.toLowerCase() === 'super_admin' && (
-                <SidebarItem view={PortalView.SUPER_ADMIN} icon={ShieldCheck} label="Super Admin" />
+                <SidebarItem view={PortalView.SUPER_ADMIN} icon={ShieldCheck} label={t('dashboard.navSuperAdmin')} />
               )}
           </div>
 
@@ -2364,8 +2510,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               {/* Greeting */}
               {(() => {
                 const h = currentTime.getHours();
-                const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-                const firstName = user.fullName?.split(' ')[0] ?? 'there';
+                const greeting = h < 12 ? t('dashboard.greetingMorning') : h < 17 ? t('dashboard.greetingAfternoon') : t('dashboard.greetingEvening');
+                const firstName = user.fullName?.split(' ')[0] ?? t('dashboard.greetingFallback');
                 return (
                   <div className="flex items-end justify-between gap-4 shrink-0">
                     <div className="min-w-0">
@@ -2377,7 +2523,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <span className="w-1 h-1 rounded-full bg-white/15" />
                         <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="w-1 h-1 rounded-full bg-white/15" />
-                        <span className="truncate">{company.currentOutletName || 'All Outlets'}</span>
+                        <span className="truncate">{company.currentOutletName || t('dashboard.allOutlets')}</span>
                       </p>
                     </div>
                   </div>
@@ -2392,14 +2538,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-5 shrink-0">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
-                    {v === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
-                    {v === PortalView.CONTACT && "Get Help & Share Feedback"}
-                    {v === PortalView.SUPER_ADMIN && "Platform Control Center"}
+                    {v === PortalView.DASHBOARD && t('dashboard.realTimeTracking')}
+                    {v === PortalView.CONTACT && t('dashboard.getHelp')}
+                    {v === PortalView.SUPER_ADMIN && t('dashboard.platformControl')}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
-                    {v === PortalView.DASHBOARD && "Operational Insights"}
-                    {v === PortalView.CONTACT && "Contact Support"}
-                    {v === PortalView.SUPER_ADMIN && "Super Admin"}
+                    {v === PortalView.DASHBOARD && t('dashboard.operationalInsights')}
+                    {v === PortalView.CONTACT && t('dashboard.contactSupport')}
+                    {v === PortalView.SUPER_ADMIN && t('dashboard.superAdmin')}
                   </h3>
                 </div>
 
@@ -2413,7 +2559,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold tracking-wide transition-all ${saveStatus === 'success' ? 'bg-brand-eco text-brand-dark' : 'bg-brand-eco text-brand-dark hover:brightness-110'} ${saveStatus === 'saving' ? 'opacity-70 cursor-wait' : ''} shadow-[0_2px_12px_rgba(119,177,57,0.25)]`}
                     >
                       {saveStatus === 'saving' ? <RefreshCcw size={12} className="animate-spin" /> : saveStatus === 'success' ? <Check size={12} /> : <Save size={12} />}
-                      {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Save'}
+                      {saveStatus === 'saving' ? t('dashboard.saving') : saveStatus === 'success' ? t('dashboard.saved') : 'Save'}
                     </button>
                   )}
                 </div>
@@ -2425,11 +2571,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   <div className="space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col flex-grow overflow-y-auto scrollbar-hide pr-2">
                     <div className="flex overflow-x-auto gap-2 w-full sm:w-fit shrink-0 scrollbar-hide pb-1">
                       {[
-                        { id: DashboardTab.SUMMARIZED, label: 'Overview', icon: TrendingUp, color: 'brand-gold' },
-                        { id: DashboardTab.FOOD_WASTE, label: 'Food Waste', icon: Leaf, color: 'brand-eco' },
-                        { id: DashboardTab.ENERGY_WATER, label: 'Energy & Water', icon: Zap, color: 'brand-energy' },
-                        { id: DashboardTab.GAMIFICATION, label: 'Gamification', icon: Award, color: 'brand-gold' },
-                      ].map((tab) => {
+                        { id: DashboardTab.SUMMARIZED, label: t('dashboard.tabOverview'), icon: TrendingUp, color: 'brand-gold' },
+                        { id: DashboardTab.FOOD_WASTE, label: t('dashboard.tabFoodWaste'), icon: Leaf, color: 'brand-eco' },
+                        { id: DashboardTab.ENERGY_WATER, label: t('dashboard.tabEnergyWater'), icon: Zap, color: 'brand-energy' },
+                        { id: DashboardTab.GAMIFICATION, label: t('dashboard.tabGamification'), icon: Award, color: 'brand-gold' },
+                      ].filter((tab) => user.role.toLowerCase() !== 'basic' || tab.id !== DashboardTab.SUMMARIZED).map((tab) => {
                         const active = dashboardTab === tab.id;
                         return (
                           <button
@@ -2463,10 +2609,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <div>
                                 <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                                  Mila Actionable Intelligence
+                                  {t('dashboard.milaTitle')}
                                 </h2>
                                 <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                                  Sustainability Performance — Proportional Scaling — Operational ESG Strategy Hub
+                                  {t('dashboard.milaSubtitle')}
                                 </p>
                               </div>
                             </div>
@@ -2478,7 +2624,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <div className="flex items-center justify-between gap-2 mb-4">
                                   <div className="flex items-center gap-2">
                                     <Cloud size={16} className="text-brand-gold" />
-                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Carbon Lifecycle</h4>
+                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.carbonLifecycle')}</h4>
                                   </div>
                                   {impacts.isDeviating ? (
                                     <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
@@ -2495,7 +2641,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <span className="text-xs font-medium text-white/50 uppercase ml-1.5">kg CO₂e</span>
                                 </p>
                                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
-                                  {impacts.isDeviating ? 'Deviation impact detected' : 'Within target range'}
+                                  {impacts.isDeviating ? t('dashboard.deviationImpactDetected') : t('dashboard.withinTargetRange')}
                                 </p>
                               </div>
 
@@ -2504,7 +2650,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <div className="flex items-center justify-between gap-2 mb-4">
                                   <div className="flex items-center gap-2">
                                     <Droplets size={16} className="text-brand-gold" />
-                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Water Resource</h4>
+                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.waterResource')}</h4>
                                   </div>
                                   <div className="flex items-center gap-1.5 bg-brand-eco/15 text-brand-eco border border-brand-eco/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
                                     <ShieldCheck size={9} /> Averted
@@ -2515,7 +2661,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <span className="text-xs font-medium text-white/50 uppercase ml-1.5">L</span>
                                 </p>
                                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
-                                  Averted loss
+                                  {t('dashboard.avertedLoss')}
                                 </p>
                               </div>
 
@@ -2524,7 +2670,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <div className="flex items-center justify-between gap-2 mb-4">
                                   <div className="flex items-center gap-2">
                                     <DollarSign size={16} className={impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'} />
-                                    <h4 className={`text-[11px] font-black uppercase tracking-widest ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>Financial Impact</h4>
+                                    <h4 className={`text-[11px] font-black uppercase tracking-widest ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>{t('dashboard.financialImpact')}</h4>
                                   </div>
                                   {impacts.isDeviating ? (
                                     <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
@@ -2540,7 +2686,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   ${impacts.totalFinancialLoss.toFixed(2)}
                                 </p>
                                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
-                                  {impacts.isDeviating ? 'Supervisor notified' : 'Within financial cap'}
+                                  {impacts.isDeviating ? t('dashboard.supervisorNotified') : t('dashboard.withinFinancialCap')}
                                 </p>
                               </div>
                             </div>
@@ -2569,18 +2715,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             // "Status Badge Logic"
                             // Professional Corporate Neutralization (No Red)
                             let chartColor = '#C8A413'; // Gold default
-                            let statusLabel = 'REVIEW';
+                            let statusLabel = t('dashboard.review');
                             let statusBg = 'bg-brand-gold';
                             let statusText = 'text-brand-dark';
 
                             if (engagementPct >= 85) {
                               chartColor = '#22c55e'; // Green
-                              statusLabel = 'ON TRACK';
+                              statusLabel = t('dashboard.onTrack');
                               statusBg = 'bg-green-500';
                               statusText = 'text-white';
                             } else if (engagementPct >= 65) {
                               chartColor = '#eab308';
-                              statusLabel = 'REVIEW';
+                              statusLabel = t('dashboard.review');
                               statusBg = 'bg-brand-dark/60 border border-brand-gold/40 shadow-inner';
                               statusText = 'text-brand-gold font-black';
                             }
@@ -2602,10 +2748,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       </div>
                                       <div>
                                         <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                                          Earth Keeper
+                                          {t('dashboard.earthKeeperTitle')}
                                         </h2>
                                         <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                                          Cumulative Engagement — outlet performance & staff leaderboard.
+                                          {t('dashboard.earthKeeperSubtitle')}
                                         </p>
                                       </div>
                                     </div>
@@ -2622,10 +2768,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <div className="flex flex-col justify-center">
                                       <div className="text-4xl font-geometric font-black text-white leading-none">
                                         {engagementPct}%
-                                        <span className="text-sm text-white/50 font-medium uppercase tracking-wide block mt-2">Participation</span>
+                                        <span className="text-sm text-white/50 font-medium uppercase tracking-wide block mt-2">{t('dashboard.participation')}</span>
                                       </div>
                                       <p className="text-xs text-white/50 mt-3 font-medium leading-relaxed max-w-sm">
-                                        Cumulative tracking of sustainability reporting across all active outlets.
+                                        {t('dashboard.cumulativeTracking')}
                                       </p>
                                     </div>
 
@@ -2671,10 +2817,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <div>
                                 <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                                  Sustainability Report
+                                  {t('dashboard.sustainabilityReportTitle')}
                                 </h2>
                                 <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                                  Environmental impact tracking — waste, water & carbon footprint analysis.
+                                  {t('dashboard.sustainabilityReportSubtitle')}
                                 </p>
                               </div>
                             </div>
@@ -2719,10 +2865,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <div>
                                 <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                                  KPI Report
+                                  {t('dashboard.kpiReportTitle')}
                                 </h2>
                                 <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                                  Key performance indicators — food cost, labor & profit margin trends.
+                                  {t('dashboard.kpiReportSubtitle')}
                                 </p>
                               </div>
                             </div>
@@ -2732,8 +2878,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
                             <div className="w-full h-[280px]">
                               <KpiChart
-                                title="Food Cost"
-                                subtitle="Variance vs regional benchmark"
+                                title={t('dashboard.foodCost')}
+                                subtitle={t('dashboard.foodCostSubtitle')}
                                 icon={Utensils}
                                 iconColor="text-brand-gold"
                                 data={foodCostLogs}
@@ -2750,8 +2896,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="w-full h-[280px]">
                               <KpiChart
-                                title="Labor Cost"
-                                subtitle="Variance vs regional benchmark"
+                                title={t('dashboard.laborCost')}
+                                subtitle={t('dashboard.laborCostSubtitle')}
                                 icon={Users}
                                 iconColor="text-brand-gold"
                                 data={laborCostLogs}
@@ -2772,8 +2918,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
                             <div className="w-full h-[280px]">
                               <KpiChart
-                                title="Profit Margins"
-                                subtitle="Luxury boutique performance"
+                                title={t('dashboard.profitMargins')}
+                                subtitle={t('dashboard.profitMarginsSubtitle')}
                                 icon={Percent}
                                 iconColor="text-brand-gold"
                                 data={profitMarginLogs}
@@ -2791,8 +2937,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                             <div className="w-full h-[280px]">
                               <KpiChart
-                                title="Total Outlet Sales"
-                                subtitle="Weekly stacked breakdown"
+                                title={t('dashboard.totalOutletSales')}
+                                subtitle={t('dashboard.totalOutletSalesSubtitle')}
                                 icon={DollarSign}
                                 iconColor="text-brand-gold"
                                 data={salesLogs}
@@ -2816,8 +2962,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
                             <div className="w-full h-[280px]">
                               <KpiChart
-                                title="Customer Sentiment"
-                                subtitle="Variance vs regional benchmark"
+                                title={t('dashboard.customerSentiment')}
+                                subtitle={t('dashboard.customerSentimentSubtitle')}
                                 icon={Star}
                                 iconColor="text-brand-gold"
                                 data={sentimentLogs}
@@ -2834,8 +2980,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="w-full h-[280px]">
                               <KpiChart
-                                title="Avg Check"
-                                subtitle="Rolling monthly average"
+                                title={t('dashboard.avgCheck')}
+                                subtitle={t('dashboard.avgCheckSubtitle')}
                                 icon={Receipt}
                                 iconColor="text-brand-gold"
                                 data={avgCheckLogs}
@@ -2889,7 +3035,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 )}
                 {activeView === PortalView.DAILY_INPUT && (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <DailyInputForm user={user} onAuditLog={logAction} />
+                    <DailyInputForm
+                      user={user}
+                      companyName={company.name}
+                      outletName={outlets.find(o => o.id === user.outletCode || o.code === user.outletCode || o.outlet_id === user.outletCode)?.name || outlets.find(o => o.outlet_name)?.outlet_name || company.currentOutletName}
+                      onAuditLog={logAction}
+                    />
                   </div>
                 )}
                 {activeView === PortalView.IDENTITY && (
@@ -2903,10 +3054,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <div>
                           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                            Company Identity
+                            {t('dashboard.companyIdentityTitle')}
                           </h2>
                           <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                            Manage Profile & Audit Protocols
+                            {t('dashboard.companyIdentitySubtitle')}
                           </p>
                         </div>
                       </div>
@@ -2914,14 +3065,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       <div className="flex items-center gap-3">
                         <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
                           {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
-                          {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
+                          {saveStatus === 'saving' ? t('dashboard.saving') : saveStatus === 'success' ? t('dashboard.saved') : t('dashboard.autoSaveOn')}
                         </div>
                         <button
                           onClick={() => setIsEditingIdentity(!isEditingIdentity)}
                           className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
                         >
                           {isEditingIdentity ? <Unlock size={12} /> : <Edit2 size={12} />}
-                          {isEditingIdentity ? 'Lock' : 'Edit'}
+                          {isEditingIdentity ? t('dashboard.lock') : t('dashboard.edit')}
                         </button>
                       </div>
                     </div>
@@ -2934,8 +3085,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <Building2 size={18} className="text-brand-gold" />
                           </div>
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Profile</p>
-                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Company Details</h4>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">{t('dashboard.profile')}</p>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.companyDetails')}</h4>
                           </div>
                         </div>
                       </div>
@@ -2948,30 +3099,30 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="flex items-center gap-2 flex-1">
                               <MapPin size={13} className="text-brand-gold/50" />
-                              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Location</p>
+                              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">{t('dashboard.location')}</p>
                             </div>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Region</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.region')}</label>
                               <CustomSelect
                                 value={company.region}
                                 options={Object.keys(REGION_DATA)}
                                 onChange={(newRegion) => setCompany({ ...company, region: newRegion, city: '' })}
                                 disabled={!isEditingIdentity}
-                                placeholder="Select Region"
+                                placeholder={t('dashboard.selectRegion')}
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">City / Country</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.cityCountry')}</label>
                               <CustomSelect
                                 value={company.city}
                                 options={REGION_DATA[company.region] ?? []}
                                 onChange={(city) => setCompany({ ...company, city })}
                                 disabled={!isEditingIdentity}
-                                placeholder="Select City / Country"
-                                emptyMessage="Select a region first"
+                                placeholder={t('dashboard.selectCityCountry')}
+                                emptyMessage={t('dashboard.selectARegionFirst')}
                               />
                             </div>
                           </div>
@@ -2985,12 +3136,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="flex items-center gap-2 flex-1">
                               <Building2 size={13} className="text-brand-gold/50" />
-                              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Property</p>
+                              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">{t('dashboard.property')}</p>
                             </div>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="space-y-1.5 pl-2 sm:pl-10">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Hotel / Company Name</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.hotelCompanyName')}</label>
                             <input
                               type="text"
                               value={company.name}
@@ -3009,7 +3160,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="flex items-center gap-2 flex-1">
                               <Store size={13} className="text-brand-gold/50" />
-                              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Outlets</p>
+                              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">{t('dashboard.outlets')}</p>
                               {outlets.filter(o => o.name && o.code).length > 0 && (
                                 <span className="text-[9px] font-bold text-brand-eco bg-brand-eco/10 px-2 py-0.5 rounded-full border border-brand-eco/20">{outlets.filter(o => o.name && o.code).length} Active</span>
                               )}
@@ -3019,7 +3170,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Add Outlet Name</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.addOutletName')}</label>
                               <input
                                 type="text"
                                 value={company.currentOutletName}
@@ -3030,12 +3181,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   setCompany({ ...company, currentOutletName: name, currentOutletCode: prefix + seq });
                                 }}
                                 className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
-                                placeholder="e.g. Skyline Lounge"
+                                placeholder={t('dashboard.addOutletPlaceholder')}
                                 readOnly={!isEditingIdentity}
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Generated Code</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.generatedCode')}</label>
                               <div className="flex items-center gap-2">
                                 <input type="text" value={company.currentOutletCode} className="flex-grow bg-brand-dark/80 border border-brand-gold/20 rounded-xl py-3 px-4 text-sm text-brand-gold font-bold font-mono outline-none" readOnly />
                                 <button
@@ -3085,8 +3236,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <FileText size={18} className="text-brand-eco" />
                           </div>
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Compliance</p>
-                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Audit Report</h4>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">{t('dashboard.compliance')}</p>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.auditReport')}</h4>
                           </div>
                         </div>
                       </div>
@@ -3099,7 +3250,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-dark/60 border border-brand-gold/10 text-white/60 hover:border-brand-gold/25 hover:text-white'}`}
                           >
                             {isEditingAudit ? <Unlock size={12} /> : <Edit2 size={12} />}
-                            {isEditingAudit ? 'Lock' : 'Edit'}
+                            {isEditingAudit ? t('dashboard.lock') : t('dashboard.edit')}
                           </button>
                           <button
                             onClick={handleGetReport}
@@ -3115,12 +3266,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.cycle ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
                               {auditReport.cycle ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
                             </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Report Configuration</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">{t('dashboard.reportConfiguration')}</p>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Report Cycle</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.reportCycle')}</label>
                               <CustomSelect
                                 value={auditReport.cycle}
                                 options={['Daily', 'Weekly', 'Monthly', 'Quarterly']}
@@ -3129,7 +3280,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Outlet Selection</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.outletSelection')}</label>
                               <CustomSelect
                                 value={auditReport.outletSelection}
                                 options={['All outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
@@ -3146,12 +3297,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.fromDate && auditReport.toDate ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
                               {auditReport.fromDate && auditReport.toDate ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
                             </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">Date Range</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">{t('dashboard.dateRange')}</p>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">From Date</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.fromDate')}</label>
                               <CustomDatePicker
                                 value={auditReport.fromDate}
                                 onChange={v => setAuditReport({ ...auditReport, fromDate: v })}
@@ -3159,7 +3310,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">To Date</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.toDate')}</label>
                               <CustomDatePicker
                                 value={auditReport.toDate}
                                 onChange={v => setAuditReport({ ...auditReport, toDate: v })}
@@ -3175,12 +3326,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.comments ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
                               {auditReport.comments ? <CheckCircle2 size={14} /> : <FileText size={13} />}
                             </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/80">Audit Comments</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/80">{t('dashboard.auditComments')}</p>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="space-y-1.5 pl-2 sm:pl-10">
                             <textarea
-                              placeholder="Add operational notes or compliance details for the current reporting cycle..."
+                              placeholder={t('dashboard.auditCommentsPlaceholder')}
                               value={auditReport.comments}
                               onChange={e => setAuditReport({ ...auditReport, comments: e.target.value })}
                               disabled={!isEditingAudit}
@@ -3207,9 +3358,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     <div className="max-w-2xl mx-auto">
                       {/* Intro */}
                       <div className="mb-8">
-                        <h4 className="text-lg font-geometric font-bold text-white mb-3">Need help?</h4>
+                        <h4 className="text-lg font-geometric font-bold text-white mb-3">{t('dashboard.needHelp')}</h4>
                         <p className="text-sm text-white/60 leading-relaxed">
-                          To help us enhance Ecometricus and deliver an even better experience, we'd greatly appreciate your feedback. Please share any comments or suggestions that could improve its performance. Thank you for your support!
+                          {t('dashboard.feedbackPrompt')}
                         </p>
                       </div>
 
@@ -3217,8 +3368,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       <div className="flex items-center gap-3 mb-8 p-4 rounded-xl bg-brand-gold/10 border border-brand-gold/25">
                         <Mail size={18} className="text-brand-gold shrink-0" />
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Support Email</p>
-                          <a href="mailto:support@ecometricus.com" className="text-sm text-white font-semibold hover:text-brand-gold transition-colors">support@ecometricus.com</a>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold/70">{t('dashboard.supportEmail')}</p>
+                          <a href="mailto:support@ecometricus.com" className="text-sm text-white font-semibold hover:text-brand-gold transition-colors">{t('dashboard.supportEmailAddress')}</a>
                         </div>
                       </div>
 
@@ -3228,20 +3379,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <div className="w-16 h-16 rounded-full bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center mb-5">
                             <CheckCircle2 size={32} className="text-brand-eco" />
                           </div>
-                          <h4 className="text-lg font-geometric font-bold text-white mb-2">Message Sent!</h4>
-                          <p className="text-sm text-white/50 max-w-sm">Thank you for reaching out. Our support team will get back to you within 24 hours.</p>
+                          <h4 className="text-lg font-geometric font-bold text-white mb-2">{t('dashboard.messageSent')}</h4>
+                          <p className="text-sm text-white/50 max-w-sm">{t('dashboard.thankYouSupport')}</p>
                           <button
                             onClick={() => { setContactSent(false); setContactMessage(''); }}
                             className="mt-6 px-5 py-2.5 rounded-xl bg-brand-gold/15 border border-brand-gold/30 text-brand-gold text-[12px] font-bold hover:bg-brand-gold/25 transition-all"
                           >
-                            Send Another Message
+                            {t('dashboard.sendAnotherMessage')}
                           </button>
                         </div>
                       ) : (
                         <div className="space-y-5">
                           {/* Name */}
                           <div className="space-y-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Your name</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.yourName')}</label>
                             <input
                               type="text"
                               value={contactName}
@@ -3252,7 +3403,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                           {/* Email */}
                           <div className="space-y-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Your email</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.yourEmail')}</label>
                             <input
                               type="email"
                               value={contactEmail}
@@ -3264,24 +3415,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                           {/* Message */}
                           <div className="space-y-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">What happened?</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.whatHappened')}</label>
                             <textarea
                               value={contactMessage}
                               onChange={e => setContactMessage(e.target.value)}
                               className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all hover:border-brand-gold/30 min-h-[120px] resize-none"
-                              placeholder="Describe your issue in simple words..."
+                              placeholder={t('dashboard.placeholderIssue')}
                             />
                           </div>
 
                           {/* Screenshots */}
                           <div className="space-y-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Screenshots (optional)</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.screenshots')}</label>
                             <label className="flex flex-col items-center justify-center gap-2 w-full py-8 rounded-xl border-2 border-dashed border-brand-gold/15 hover:border-brand-gold/40 cursor-pointer transition-all bg-brand-dark/40 hover:bg-brand-gold/5">
                               <ImageIcon size={24} className="text-brand-gold/50" />
                               <span className="text-xs text-white/50 font-semibold">
                                 {contactScreenshots.length > 0
                                   ? `${contactScreenshots.length} file${contactScreenshots.length > 1 ? 's' : ''} selected`
-                                  : 'Click to add images'}
+                                  : t('dashboard.clickToAddImages')}
                               </span>
                               <input
                                 type="file"
@@ -3316,7 +3467,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <button
                             onClick={async () => {
                               if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) {
-                                setToast({ id: Date.now(), message: 'Please fill in all fields.', type: 'error' });
+                                setToast({ id: Date.now(), message: t('dashboard.pleaseFillAllFields'), type: 'error' });
                                 return;
                               }
                               setContactSending(true);
@@ -3329,9 +3480,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-gold/15 border border-brand-gold/40 text-brand-gold text-sm font-bold hover:bg-brand-gold/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             {contactSending ? (
-                              <><RefreshCcw size={16} className="animate-spin" /> Sending…</>
+                              <><RefreshCcw size={16} className="animate-spin" /> {t('dashboard.sending')}</>
                             ) : (
-                              <><Send size={16} /> Send to support</>
+                              <><Send size={16} /> {t('dashboard.sendToSupport')}</>
                             )}
                           </button>
                         </div>
@@ -3351,10 +3502,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <div>
                           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                            Audit Log
+                            {t('dashboard.auditLogTitle')}
                           </h2>
                           <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                            System Activity & Change Tracking
+                            {t('dashboard.auditLogSubtitle')}
                           </p>
                         </div>
                       </div>
@@ -3370,7 +3521,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           title="Refresh"
                         >
                           <RefreshCcw size={13} />
-                          <span className="hidden sm:inline">Refresh</span>
+                          <span className="hidden sm:inline">{t('dashboard.refresh')}</span>
                         </button>
                       </div>
                     </div>
@@ -3382,33 +3533,33 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       {auditLogs.length > 0 && (() => {
                         const actionTypes = [...new Set(auditLogs.map((l: any) => l.action))];
                         const labelMap: Record<string, string> = {
-                          outlet_added: 'Outlets',
-                          outlet_removed: 'Outlets',
-                          settings_saved: 'Settings',
-                          personnel_enrolled: 'Personnel',
-                          personnel_updated: 'Personnel',
-                          personnel_removed: 'Personnel',
-                          benchmarks_saved: 'Benchmarks',
-                          benchmarks_updated: 'Benchmarks',
-                          waste_entry_added: 'Daily Input',
-                          waste_entry_updated: 'Daily Input',
-                          waste_entry_deleted: 'Daily Input',
-                          water_entry_added: 'Daily Input',
-                          water_entry_updated: 'Daily Input',
-                          water_entry_deleted: 'Daily Input',
-                          energy_entry_added: 'Daily Input',
-                          energy_entry_updated: 'Daily Input',
-                          energy_entry_deleted: 'Daily Input',
+                          outlet_added: t('dashboard.auditOutlets'),
+                          outlet_removed: t('dashboard.auditOutlets'),
+                          settings_saved: t('dashboard.auditSettings'),
+                          personnel_enrolled: t('dashboard.auditPersonnel'),
+                          personnel_updated: t('dashboard.auditPersonnel'),
+                          personnel_removed: t('dashboard.auditPersonnel'),
+                          benchmarks_saved: t('dashboard.auditBenchmarks'),
+                          benchmarks_updated: t('dashboard.auditBenchmarks'),
+                          waste_entry_added: t('dashboard.auditDailyInput'),
+                          waste_entry_updated: t('dashboard.auditDailyInput'),
+                          waste_entry_deleted: t('dashboard.auditDailyInput'),
+                          water_entry_added: t('dashboard.auditDailyInput'),
+                          water_entry_updated: t('dashboard.auditDailyInput'),
+                          water_entry_deleted: t('dashboard.auditDailyInput'),
+                          energy_entry_added: t('dashboard.auditDailyInput'),
+                          energy_entry_updated: t('dashboard.auditDailyInput'),
+                          energy_entry_deleted: t('dashboard.auditDailyInput'),
                         };
-                        const categories = [...new Set(actionTypes.map((a: string) => labelMap[a as string] || 'Other'))];
+                        const categories = [...new Set(actionTypes.map((a: string) => labelMap[a as string] || t('dashboard.other')))];
                         return (
                           <div className="px-4 sm:px-8 py-3 border-b border-brand-gold/15 flex items-center gap-2 flex-wrap bg-brand-dark/20">
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/50 mr-1">Filter</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/50 mr-1">{t('dashboard.filter')}</span>
                             <button
                               onClick={() => setAuditFilter(null)}
                               className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-[#1c3933] border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
                             >
-                              All
+                              {t('dashboard.all')}
                             </button>
                             {categories.map(cat => (
                               <button
@@ -3430,29 +3581,29 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-16 h-16 rounded-2xl bg-[#1c3933] border border-brand-gold/20 flex items-center justify-center mb-5">
                               <ScrollText size={28} className="text-white/15" />
                             </div>
-                            <p className="text-sm text-white/40 font-medium">No activity recorded yet</p>
-                            <p className="text-[11px] text-white/25 mt-2 max-w-[280px]">Actions by you and your team — outlets, settings, personnel, benchmarks — will appear here in real time</p>
+                            <p className="text-sm text-white/40 font-medium">{t('dashboard.noActivity')}</p>
+                            <p className="text-[11px] text-white/25 mt-2 max-w-[280px]">{t('dashboard.noActivityDescription')}</p>
                           </div>
                         ) : (() => {
                           const labelMap: Record<string, string> = {
-                            outlet_added: 'Outlets',
-                            outlet_removed: 'Outlets',
-                            settings_saved: 'Settings',
-                            personnel_enrolled: 'Personnel',
-                            personnel_updated: 'Personnel',
-                            personnel_removed: 'Personnel',
-                            benchmarks_saved: 'Benchmarks',
-                            benchmarks_updated: 'Benchmarks',
+                            outlet_added: t('dashboard.auditOutlets'),
+                            outlet_removed: t('dashboard.auditOutlets'),
+                            settings_saved: t('dashboard.auditSettings'),
+                            personnel_enrolled: t('dashboard.auditPersonnel'),
+                            personnel_updated: t('dashboard.auditPersonnel'),
+                            personnel_removed: t('dashboard.auditPersonnel'),
+                            benchmarks_saved: t('dashboard.auditBenchmarks'),
+                            benchmarks_updated: t('dashboard.auditBenchmarks'),
                           };
                           const filtered = auditFilter
-                            ? auditLogs.filter((l: any) => (labelMap[l.action] || 'Other') === auditFilter)
+                            ? auditLogs.filter((l: any) => (labelMap[l.action] || t('dashboard.other')) === auditFilter)
                             : auditLogs;
 
                           if (filtered.length === 0) {
                             return (
                               <div className="flex flex-col items-center justify-center py-16 text-center">
-                                <p className="text-sm text-white/30 font-medium">No {auditFilter?.toLowerCase()} activity</p>
-                                <p className="text-[11px] text-white/20 mt-1">Try a different filter</p>
+                                <p className="text-sm text-white/30 font-medium">{t('dashboard.noFilterActivity', { filter: auditFilter?.toLowerCase() ?? '' })}</p>
+                                <p className="text-[11px] text-white/20 mt-1">{t('dashboard.tryDifferentFilter')}</p>
                               </div>
                             );
                           }
@@ -3511,14 +3662,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                           benchmarks_updated: 'text-brand-gold bg-brand-gold/15 border-brand-gold/30',
                                         };
                                         const labelMap: Record<string, string> = {
-                                          outlet_added: 'Outlet Added',
-                                          outlet_removed: 'Outlet Removed',
-                                          settings_saved: 'Settings Saved',
-                                          personnel_enrolled: 'Personnel Enrolled',
-                                          personnel_updated: 'Personnel Updated',
-                                          personnel_removed: 'Personnel Removed',
-                                          benchmarks_saved: 'Benchmarks Saved',
-                                          benchmarks_updated: 'Benchmarks Updated',
+                                          outlet_added: t('dashboard.labelOutletAdded'),
+                                          outlet_removed: t('dashboard.labelOutletRemoved'),
+                                          settings_saved: t('dashboard.labelSettingsSaved'),
+                                          personnel_enrolled: t('dashboard.labelPersonnelEnrolled'),
+                                          personnel_updated: t('dashboard.labelPersonnelUpdated'),
+                                          personnel_removed: t('dashboard.labelPersonnelRemoved'),
+                                          benchmarks_saved: t('dashboard.labelBenchmarksSaved'),
+                                          benchmarks_updated: t('dashboard.labelBenchmarksUpdated'),
                                         };
                                         const Icon = iconMap[log.action] || Activity;
                                         const color = colorMap[log.action] || 'text-white/40 bg-brand-dark/60 border-brand-gold/15';
@@ -3582,10 +3733,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       </div>
                       <div>
                         <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                          Staff Registry
+                          {t('dashboard.staffRegistryTitle')}
                         </h2>
                         <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                          Role & Permission Registry
+                          {t('dashboard.staffRegistrySubtitle')}
                         </p>
                       </div>
                     </div>
@@ -3610,7 +3761,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               isEditingUserRef.current = false;
                               setEnrollId(null); setEnrollName(''); setEnrollEmail(''); setEnrollEmailError('');
                               setEnrollPosition(''); setEnrollOutlet(''); setEnrollRole('');
-                              setEnrollPermissions([]); setGenPassword(''); setGenLink('');
+                              setEnrollPermissions([]);
                             }}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-brand-gold/10 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-brand-gold/20 transition-colors"
                           >
@@ -3628,19 +3779,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="flex items-center gap-2 flex-1">
                               <User size={13} className="text-brand-gold/50" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Identity</p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">{t('dashboard.identity')}</p>
                             </div>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Full Name</label>
-                              <input type="text" value={enrollName} onChange={e => setEnrollName(e.target.value)} placeholder="Hotel Staff Name"
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.fullName')}</label>
+                              <input type="text" value={enrollName} onChange={e => setEnrollName(e.target.value)} placeholder={t('dashboard.fullNamePlaceholder')}
                                 className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all" />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Corporate Email</label>
-                              <input type="email" value={enrollEmail} onChange={e => { const val = e.target.value; setEnrollEmail(val); setEnrollEmailError(validateCorporateEmail(val)); }} placeholder="staff@hotel.com"
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.corporateEmail')}</label>
+                              <input type="email" value={enrollEmail} onChange={e => { const val = e.target.value; setEnrollEmail(val); setEnrollEmailError(validateCorporateEmail(val)); }} placeholder={t('dashboard.corporateEmailPlaceholder')}
                                 className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all ${enrollEmailError ? 'border-brand-alert' : enrollEmail && !enrollEmailError ? 'border-brand-eco/40' : 'border-brand-gold/15'}`} />
                               {enrollEmailError ? (
                                 <div className="flex items-start gap-2 ml-1 mt-1 px-3 py-2 rounded-lg bg-brand-alert/10 border border-brand-alert/25">
@@ -3650,7 +3801,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               ) : enrollEmail && !enrollEmailError ? (
                                 <div className="flex items-center gap-2 ml-1 mt-1 px-3 py-2 rounded-lg bg-brand-eco/10 border border-brand-eco/25">
                                   <CheckCircle2 size={13} className="text-brand-eco shrink-0" />
-                                  <span className="text-[10px] font-bold text-brand-eco leading-tight">Valid company email</span>
+                                  <span className="text-[10px] font-bold text-brand-eco leading-tight">{t('dashboard.validCompanyEmail')}</span>
                                 </div>
                               ) : null}
                             </div>
@@ -3665,28 +3816,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="flex items-center gap-2 flex-1">
                               <Briefcase size={13} className="text-brand-gold/50" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Assignment</p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">{t('dashboard.assignment')}</p>
                             </div>
                             <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Position</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.thPosition')}</label>
                               <CustomSelect
                                 value={enrollPosition}
                                 options={['Admin', 'Exec Chef', 'Outlet Manager', 'Chef Prep', 'GM']}
                                 onChange={setEnrollPosition}
-                                placeholder="Select Position"
+                                placeholder={t('dashboard.selectPosition')}
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Primary Outlet</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.primaryOutlet')}</label>
                               <CustomSelect
                                 value={enrollOutlet}
                                 options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
                                 onChange={v => setEnrollOutlet(outlets.find(o => `${o.name} (${o.code})` === v)?.code || v)}
-                                placeholder="Select Outlet"
-                                emptyMessage="No outlets added yet — go to Company → Outlets"
+                                placeholder={t('dashboard.selectOutlet')}
+                                emptyMessage={t('dashboard.noOutletsMessage')}
                               />
                             </div>
                           </div>
@@ -3700,7 +3851,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div className="flex items-center gap-2 flex-1">
                               <ShieldCheck size={13} className="text-brand-gold/50" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Permissions</p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">{t('dashboard.permissions')}</p>
                               {enrollPermissions.length > 0 && (
                                 <span className="text-[9px] font-bold text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded-full border border-brand-gold/20">{enrollPermissions.length} Selected</span>
                               )}
@@ -3717,8 +3868,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             >
                               <span className={enrollPermissions.length ? 'text-white text-sm' : 'text-white/40 text-sm'}>
                                 {enrollPermissions.length === 0
-                                  ? 'Select Permissions'
-                                  : `${enrollPermissions.length} Permission${enrollPermissions.length > 1 ? 's' : ''} Selected`}
+                                  ? t('dashboard.selectPermissions')
+                                  : t('dashboard.permissionsSelected', { count: enrollPermissions.length })}
                               </span>
                               <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${isPermDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
@@ -3762,66 +3913,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                         </div>
 
-                        {/* ── Step 4: Generated Credentials ── */}
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${genPassword ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-gold/15 text-brand-gold border border-brand-gold/30'}`}>
-                              {genPassword ? <CheckCircle2 size={14} /> : '4'}
-                            </div>
-                            <div className="flex items-center gap-2 flex-1">
-                              <Key size={13} className="text-brand-gold/50" />
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Generated Credentials</p>
-                              {genPassword && (
-                                <span className="text-[9px] font-bold text-brand-eco bg-brand-eco/10 px-2 py-0.5 rounded-full border border-brand-eco/20">Ready</span>
-                              )}
-                            </div>
-                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
-                            <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Password / PIN</label>
-                              <div className="relative flex items-center">
-                                <input type="text" readOnly value={genPassword} placeholder="Generated upon save…"
-                                  className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3 px-4 pl-9 pr-12 text-brand-gold font-mono font-bold text-sm outline-none placeholder:text-white/20" />
-                                <Key size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/40 pointer-events-none" />
-                                {genPassword && (
-                                  <button type="button" onClick={() => { navigator.clipboard?.writeText(genPassword); showToast('PIN copied to clipboard.', 'success'); }}
-                                    title="Copy PIN"
-                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center bg-brand-gold/10 border border-brand-gold/20 text-brand-gold hover:bg-brand-gold/20 transition-all">
-                                    <Copy size={14} />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Login Link</label>
-                              <div className="relative flex items-center">
-                                <input type="text" readOnly value={genLink} placeholder="Generated upon save…"
-                                  className="w-full bg-brand-dark/60 border border-brand-gold/15 rounded-xl py-3 px-4 pl-9 pr-12 text-brand-gold font-mono font-bold text-[10px] outline-none truncate placeholder:text-white/20" />
-                                <Link2 size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-gold/40 pointer-events-none" />
-                                {genLink && (
-                                  <button type="button" onClick={() => { navigator.clipboard?.writeText(genLink); showToast('Login link copied to clipboard.', 'success'); }}
-                                    title="Copy link"
-                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center bg-brand-gold/10 border border-brand-gold/20 text-brand-gold hover:bg-brand-gold/20 transition-all">
-                                    <Copy size={14} />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
                         {/* ── Submit button ── */}
                         <button onClick={handleEnroll}
-                          className="w-full flex items-center justify-center gap-2.5 py-4 bg-gradient-to-r from-brand-eco to-brand-eco/90 text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_6px_20px_rgba(119,177,57,0.3)] hover:brightness-110 hover:shadow-[0_8px_28px_rgba(119,177,57,0.4)] active:scale-[0.98] transition-all">
-                          {enrollId ? <><Save size={14} /> Save Role Changes</> : <><UserPlus size={14} /> Enroll & Generate Access</>}
+                          disabled={isEnrolling}
+                          className="w-full flex items-center justify-center gap-2.5 py-4 bg-gradient-to-r from-brand-eco to-brand-eco/90 text-brand-dark rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_6px_20px_rgba(119,177,57,0.3)] hover:brightness-110 hover:shadow-[0_8px_28px_rgba(119,177,57,0.4)] active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100">
+                          {isEnrolling ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-brand-dark/30 border-t-brand-dark rounded-full animate-spin" />
+                              {enrollId ? t('dashboard.savingChanges') : t('dashboard.enrollingStaff')}
+                            </>
+                          ) : (
+                            enrollId ? <><Save size={14} /> {t('dashboard.saveRoleChanges')}</> : <><UserPlus size={14} /> {t('dashboard.enrollGenerateAccess')}</>
+                          )}
                         </button>
                       </div>
                     </div>
 
                     <div className="space-y-8">
                       <div className="px-6 mb-2">
-                        <h5 className="text-[12px] font-black uppercase tracking-[0.4em] text-brand-gold">Active Staff Registry</h5>
+                        <h5 className="text-lg sm:text-xl font-geometric font-black uppercase tracking-[0.3em] text-brand-gold">{t('dashboard.activeStaffRegistry')}</h5>
                       </div>
 
                       {/* Management Group Table */}
@@ -3829,18 +3939,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <div className="px-6">
                           <div className="flex items-center gap-3 mb-3">
                             <UserCheck size={14} className="text-brand-gold" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Management Group (Admin & GM)</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.managementGroup')}</span>
                           </div>
                           <div className="overflow-x-auto rounded-xl border border-brand-gold/20">
                             <table className="w-full text-left">
                               <thead>
                                 <tr className="bg-brand-gold/10 border-b border-brand-gold/20">
-                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">Name</th>
-                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">Position</th>
-                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">Role</th>
-                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">PIN</th>
-                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">Access Link</th>
-                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80 text-right">Actions</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thName')}</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPosition')}</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thRole')}</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thEmail')}</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPin')}</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thAccessLink')}</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold text-right">{t('dashboard.thActions')}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -3863,13 +3974,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       <span className="text-[10px] text-brand-gold font-black uppercase tracking-widest px-2 py-1 rounded bg-brand-gold/10 border border-brand-gold/20">{u.role.toUpperCase()}</span>
                                     </td>
                                     <td className="px-4 py-3">
+                                      <span className="text-[11px] text-white/60 font-medium truncate max-w-[180px] block">{u.email}</span>
+                                    </td>
+                                    <td className="px-4 py-3">
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider">{visiblePasswords.has(u.id) ? u.password : '••••••••'}</span>
                                         <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold transition-colors">
                                           {visiblePasswords.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
                                         </button>
                                         {u.password && (
-                                          <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast('PIN copied.', 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold transition-colors">
+                                          <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast(t('dashboard.pinCopied'), 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold transition-colors">
                                             <Copy size={12} />
                                           </button>
                                         )}
@@ -3877,11 +3991,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     </td>
                                     <td className="px-4 py-3">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.password || '').toLowerCase()}` : '••••••••••••••••'}</span>
+                                        <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}` : '••••••••••••••••'}</span>
                                         <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
                                           {visibleLinks.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
                                         </button>
-                                        <button onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }} className="text-brand-eco/50 hover:text-brand-eco transition-colors" title="Copy link">
+                                        <button onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}`); showToast('Link copied.', 'success'); }} className="text-brand-eco/50 hover:text-brand-eco transition-colors" title="Copy link">
                                           <Copy size={11} />
                                         </button>
                                       </div>
@@ -3919,12 +4033,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <table className="w-full text-left">
                                 <thead>
                                   <tr className="bg-brand-eco/10 border-b border-brand-eco/20">
-                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">Name</th>
-                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">Position</th>
-                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">Role</th>
-                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">PIN</th>
-                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">Access Link</th>
-                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80 text-right">Actions</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thName')}</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPosition')}</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thRole')}</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thEmail')}</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPin')}</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thAccessLink')}</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold text-right">{t('dashboard.thActions')}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -3947,13 +4062,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         <span className="text-[10px] text-brand-eco font-black uppercase tracking-widest px-2 py-1 rounded bg-brand-eco/10 border border-brand-eco/20">{u.role.toUpperCase()}</span>
                                       </td>
                                       <td className="px-4 py-3">
+                                        <span className="text-[11px] text-white/60 font-medium truncate max-w-[180px] block">{u.email}</span>
+                                      </td>
+                                      <td className="px-4 py-3">
                                         <div className="flex items-center gap-1.5">
                                           <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider">{visiblePasswords.has(u.id) ? u.password : '••••••••'}</span>
                                           <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold transition-colors">
                                             {visiblePasswords.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
                                           </button>
                                           {u.password && (
-                                            <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast('PIN copied.', 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold transition-colors">
+                                            <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast(t('dashboard.pinCopied'), 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold transition-colors">
                                               <Copy size={12} />
                                             </button>
                                           )}
@@ -3961,11 +4079,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       </td>
                                       <td className="px-4 py-3">
                                         <div className="flex items-center gap-1.5">
-                                          <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.password || '').toLowerCase()}` : '••••••••••••••••'}</span>
+                                          <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}` : '••••••••••••••••'}</span>
                                           <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
                                             {visibleLinks.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
                                           </button>
-                                          <button onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }} className="text-brand-eco/50 hover:text-brand-eco transition-colors" title="Copy link">
+                                          <button onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}`); showToast('Link copied.', 'success'); }} className="text-brand-eco/50 hover:text-brand-eco transition-colors" title="Copy link">
                                             <Copy size={11} />
                                           </button>
                                         </div>
@@ -4003,17 +4121,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <div>
                           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                            Benchmarking Engine
+                            {t('dashboard.benchmarkingEngineTitle')}
                           </h2>
                           <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                            Metric Units & KPI Thresholds
+                            {t('dashboard.benchmarkingEngineSubtitle')}
                           </p>
                         </div>
                       </div>
                       {/* Auto-save indicator */}
                       <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
                         {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
-                        {autoSaveStatus === 'saving' ? 'Saving…' : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : 'Auto-save on'}
+                        {autoSaveStatus === 'saving' ? t('dashboard.saving') : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : t('dashboard.autoSaveOn')}
                       </div>
                     </div>
 
@@ -4026,7 +4144,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <div className="min-w-0">
                             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 01</p>
-                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Industry Benchmarking</h4>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.industryBenchmarking')}</h4>
                           </div>
                         </div>
                         <button
@@ -4034,14 +4152,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingBenchmarks ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
                         >
                           {isEditingBenchmarks ? <Unlock size={12} /> : <Edit2 size={12} />}
-                          {isEditingBenchmarks ? 'Lock' : 'Edit'}
+                          {isEditingBenchmarks ? t('dashboard.lock') : t('dashboard.edit')}
                         </button>
                       </div>
 
                       <div className="p-4 sm:p-6 bg-brand-dark/40 space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Profile Category</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.profileCategory')}</label>
                             <CustomSelect
                               value={params.benchmarkRegion}
                               options={['ASEAN Luxury Hotels', 'European Michelin Standard', 'North American Premium', 'Middle East Luxury Collection', 'Manual Entry']}
@@ -4050,12 +4168,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">Outlet Selection</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.outletSelection')}</label>
                             <CustomSelect
-                              value={params.selectedManualOutlet === 'all' ? 'All Outlets' : (outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : '')}
-                              options={['All Outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
+                              value={params.selectedManualOutlet === 'all' ? t('dashboard.allOutlets') : (outlets.find(o => o.code === params.selectedManualOutlet) ? `${outlets.find(o => o.code === params.selectedManualOutlet)?.name} (${params.selectedManualOutlet})` : '')}
+                              options={[t('dashboard.allOutlets'), ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
                               onChange={v => {
-                                if (v === 'All Outlets') {
+                                if (v === t('dashboard.allOutlets')) {
                                   setParams({ ...params, selectedManualOutlet: 'all' });
                                 } else {
                                   const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
@@ -4063,7 +4181,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 }
                               }}
                               placeholder="Select Target Outlet"
-                              emptyMessage="No outlets added yet — go to Company → Outlets"
+                              emptyMessage={t('dashboard.noOutletsMessage')}
                               disabled={!isEditingBenchmarks}
                             />
                           </div>
@@ -4071,13 +4189,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                         {isManualBenchmark && (
                           <p className="text-[10px] text-white/50 font-medium leading-tight ml-1">
-                            Each outlet follows its individual parameters under manual entry mode.
+                            {t('dashboard.manualModeNote')}
                           </p>
                         )}
 
                         {paramsUpdatedAt && (
                           <p className="text-[8px] font-black text-gray-400/80 uppercase tracking-[0.2em] animate-pulse text-center pt-1">
-                            Last Updated: {paramsUpdatedAt}
+                            {t('dashboard.lastUpdated', { date: paramsUpdatedAt })}
                           </p>
                         )}
                       </div>
@@ -4093,7 +4211,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <div className="min-w-0">
                             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Step 02</p>
-                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Sustainability Metrics</h4>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.sustainabilityMetrics')}</h4>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -4102,7 +4220,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingSustainability ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
                           >
                             {isEditingSustainability ? <Unlock size={12} /> : <Edit2 size={12} />}
-                            {isEditingSustainability ? 'Lock' : 'Edit'}
+                            {isEditingSustainability ? t('dashboard.lock') : t('dashboard.edit')}
                           </button>
                         </div>
                       </div>
@@ -4116,14 +4234,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {!isSustainabilityEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
-                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">{t('dashboard.locked')}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-2 mb-3">
                             <div className="w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
                               <Leaf size={14} className="text-brand-gold" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Food Waste</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.foodWaste")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-gold leading-none">{effectiveParams.wasteTarget}</span>
@@ -4142,14 +4260,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {!isSustainabilityEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
-                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">{t('dashboard.locked')}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-2 mb-3">
                             <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
                               <Droplets size={14} className="text-blue-400" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Water Usage</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.waterUsage")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-blue-400 leading-none">{effectiveParams.waterTarget.toLocaleString()}</span>
@@ -4165,14 +4283,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {!isSustainabilityEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
-                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">{t('dashboard.locked')}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-2 mb-3">
                             <div className="w-8 h-8 rounded-lg bg-brand-energy/10 border border-brand-energy/20 flex items-center justify-center shrink-0">
                               <Zap size={14} className="text-brand-energy" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Energy Limit</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.energyLimit")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-energy leading-none">{effectiveParams.energyTarget.toLocaleString()}</span>
@@ -4194,7 +4312,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <div className="min-w-0">
                             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 03</p>
-                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">F&B KPIs</h4>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.fnbKpis')}</h4>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -4203,7 +4321,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingFnB ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
                           >
                             {isEditingFnB ? <Unlock size={12} /> : <Edit2 size={12} />}
-                            {isEditingFnB ? 'Lock' : 'Edit'}
+                            {isEditingFnB ? t('dashboard.lock') : t('dashboard.edit')}
                           </button>
                         </div>
                       </div>
@@ -4214,14 +4332,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {!isFnBEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
-                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">{t('dashboard.locked')}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-2 mb-3">
                             <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
                               <Utensils size={14} className="text-brand-eco" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Food Cost Cap</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.foodCostCap")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.foodCostTarget}</span>
@@ -4236,14 +4354,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {!isFnBEditable && (
                             <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-brand-gold/10 border border-brand-gold/20 rounded-full">
                               <Lock size={9} className="text-brand-gold" />
-                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">Locked</span>
+                              <span className="text-[7px] font-black uppercase text-brand-gold tracking-widest">{t('dashboard.locked')}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-2 mb-3">
                             <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
                               <Users size={14} className="text-brand-eco" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Labor Cost Cap</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.laborCostCap")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.laborCostTarget}</span>
@@ -4259,7 +4377,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
                               <Percent size={14} className="text-brand-eco" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Profit Margin Target</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.profitMarginTarget")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.profitMarginTarget}</span>
@@ -4275,7 +4393,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
                               <DollarSign size={14} className="text-brand-eco" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Total Sales Target</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.totalSalesTarget")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">${effectiveParams.totalSalesTarget.toLocaleString()}</span>
@@ -4290,7 +4408,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
                               <Star size={14} className="text-brand-eco" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Sentiment Target</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.sentimentTarget")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.sentimentTarget}</span>
@@ -4306,7 +4424,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
                               <Receipt size={14} className="text-brand-eco" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Avg Check Target</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.avgCheckTarget")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">${effectiveParams.avgCheckTarget}</span>
@@ -4321,7 +4439,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-8 h-8 rounded-lg bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
                               <Trophy size={14} className="text-brand-eco" />
                             </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">Gamification Goal</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/75">{t("dashboard.gamificationGoal")}</span>
                           </div>
                           <div className="flex items-end gap-2 mb-3">
                             <span className="text-3xl font-geometric font-black text-brand-eco leading-none">{effectiveParams.gamificationGoal.toLocaleString()}</span>
@@ -4341,7 +4459,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <div className="min-w-0">
                           <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Step 04</p>
-                          <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Mila AI Logic</h4>
+                          <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.milaAiLogic')}</h4>
                         </div>
                       </div>
 
@@ -4353,7 +4471,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <AlertCircle size={18} className={params.alertsActive ? 'text-brand-gold' : 'text-white/30'} />
                             </div>
                             <div>
-                              <span className="text-xs font-bold uppercase tracking-tight text-white block">Deviation Alerts</span>
+                              <span className="text-xs font-bold uppercase tracking-tight text-white block">{t('dashboard.deviationAlerts')}</span>
                               <span className={`text-[10px] font-black uppercase tracking-widest ${params.alertsActive ? 'text-brand-gold' : 'text-white/40'}`}>{params.alertsActive ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
@@ -4369,7 +4487,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <Lightbulb size={18} className={params.milaLogic ? 'text-brand-eco' : 'text-white/30'} />
                             </div>
                             <div>
-                              <span className="text-xs font-bold uppercase tracking-tight text-white block">Suggestion Engine</span>
+                              <span className="text-xs font-bold uppercase tracking-tight text-white block">{t('dashboard.suggestionEngine')}</span>
                               <span className={`text-[10px] font-black uppercase tracking-widest ${params.milaLogic ? 'text-brand-eco' : 'text-white/40'}`}>{params.milaLogic ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
@@ -4389,7 +4507,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                           <div className="min-w-0">
                             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 05</p>
-                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">APIs Integration</h4>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.apisIntegration')}</h4>
                           </div>
                           <div className="relative group ml-1">
                             <button onMouseEnter={() => setShowApiInfo(true)} onMouseLeave={() => setShowApiInfo(false)} className="text-gray-500 hover:text-brand-gold transition-colors">
@@ -4398,7 +4516,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             {showApiInfo && (
                               <div className="absolute bottom-full left-0 mb-3 w-72 p-5 bg-brand-dark border border-brand-gold/40 rounded-2xl shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200">
                                 <p className="text-[10px] text-gray-300 font-medium leading-relaxed uppercase tracking-wider">
-                                  Ecometricus utilizes secure, read-only API connections to synchronize your operational data. By integrating with your <span className="text-brand-gold">POS</span>, <span className="text-brand-gold">CRM</span>, and <span className="text-brand-gold">PMS</span>, the engine automatically extracts revenue, covers, and guest preferences to generate real-time ESG and financial performance reports without manual intervention.
+                                  {t('dashboard.apiInfo')}
                                 </p>
                                 <div className="absolute bottom-[-6px] left-3 w-3 h-3 bg-brand-dark border-r border-b border-brand-gold/40 rotate-45"></div>
                               </div>
@@ -4410,7 +4528,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingApis ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
                         >
                           {isEditingApis ? <Unlock size={12} /> : <Edit2 size={12} />}
-                          {isEditingApis ? 'Lock' : 'Edit'}
+                          {isEditingApis ? t('dashboard.lock') : t('dashboard.edit')}
                         </button>
                       </div>
 
@@ -4422,10 +4540,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <div className="w-7 h-7 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
                                 <Link2 size={13} className="text-brand-gold" />
                               </div>
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">POS API Key</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.posApiKey')}</label>
                             </div>
                             <input type="password" disabled={!isEditingApis} value={params.posApiKey} onChange={e => setParams({ ...params, posApiKey: e.target.value })} placeholder="Connect POS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-brand-gold/10'}`} />
-                            <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Sales & Covers</p>
+                            <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">{t('dashboard.posDescription')}</p>
                           </div>
 
                           {/* CRM */}
@@ -4434,10 +4552,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <div className="w-7 h-7 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
                                 <Users size={13} className="text-brand-gold" />
                               </div>
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">CRM API Key</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.crmApiKey')}</label>
                             </div>
                             <input type="password" disabled={!isEditingApis} value={params.crmApiKey} onChange={e => setParams({ ...params, crmApiKey: e.target.value })} placeholder="Connect CRM..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-brand-gold/10'}`} />
-                            <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Guest Loyalty Data</p>
+                            <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">{t('dashboard.crmDescription')}</p>
                           </div>
 
                           {/* PMS */}
@@ -4446,10 +4564,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <div className="w-7 h-7 rounded-lg bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">
                                 <Building2 size={13} className="text-brand-gold" />
                               </div>
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">PMS API Key</label>
+                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.pmsApiKey')}</label>
                             </div>
                             <input type="password" disabled={!isEditingApis} value={params.pmsApiKey} onChange={e => setParams({ ...params, pmsApiKey: e.target.value })} placeholder="Connect PMS..." className={`w-full bg-brand-dark/60 border rounded-xl py-3 px-4 text-xs text-white outline-none transition-all placeholder:text-white/35 ${isEditingApis ? 'border-brand-gold/40 focus:border-brand-gold' : 'border-brand-gold/10'}`} />
-                            <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">Extracts Occupancy & Forecast</p>
+                            <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider ml-1">{t('dashboard.pmsDescription')}</p>
                           </div>
                         </div>
                       </div>
@@ -4466,7 +4584,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             </div>
           </main>
         </div>
-        <MilaWidget context={adminContext} />
+        {user.role.toLowerCase() !== 'basic' && <MilaWidget context={adminContext} />}
       </div>
 
   {/* 🔐 Admin Legal Consent Window (Forensic Gate) */}

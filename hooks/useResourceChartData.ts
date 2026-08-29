@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getPlatformSettings, getWeekStartISO } from '../lib/platformSettings';
 
 export interface ResourceData {
   day: string;
@@ -35,19 +36,23 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
         // 0. Fetch outlets dynamically
         const { data: outletsData } = await supabase
           .from('outlets')
-          .select('id, name, code, color_hex')
-          .order('name', { ascending: true });
+          .select('id, outlet_name, outlet_id, color_hex')
+          .order('outlet_name', { ascending: true });
 
         const keys: string[] = [];
         if (outletsData && outletsData.length > 0) {
-          outletsData.forEach((o: any) => keys.push(o.name.toUpperCase()));
+          outletsData.forEach((o: any) => keys.push((o.outlet_name || o.name || '').toUpperCase()));
         }
         setOutletKeys(keys);
 
-        // 1. Fetch all resource logs
+        // 1. Fetch all resource logs (current chart week only)
+        const settings = await getPlatformSettings();
+        const weekStartISO = getWeekStartISO(settings.weekly_reset_day);
+
         const { data: resourceLogs, error } = await supabase
           .from('resource_logs')
-          .select('amount, resource_type, created_at, outlet_name, outlets(name)')
+          .select('*')
+          .gte('created_at', weekStartISO)
           .order('created_at', { ascending: false })
           .limit(200);
 
@@ -65,12 +70,20 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
         });
 
         // 3. Map Live Data
+        // Build a map of outlet_id → outlet_name for lookups
+        const outletMap: Record<string, string> = {};
+        if (outletsData) {
+          outletsData.forEach((o: any) => {
+            const name = (o.outlet_name || o.name || '').toUpperCase();
+            if (o.id) outletMap[o.id] = name;
+          });
+        }
+
         if (resourceLogs && resourceLogs.length > 0) {
           resourceLogs.forEach((log: any) => {
             const date = new Date(log.created_at);
             const dayLabel = DAYS[date.getDay()];
-            const outletName = (log.outlet_name || log.outlets?.name || '').toUpperCase();
-            const amount = Number(log.amount) || 0;
+            const outletName = (log.outlet_name || outletMap[log.outlet_id] || outletMap[log.outlet_code] || '').toUpperCase();
 
             const matchedKey = keys.find(k => k === outletName) ||
               keys.find(k => outletName.includes(k) || k.includes(outletName)) ||
@@ -78,10 +91,25 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
 
             if (!matchedKey || !dayLabel) return;
 
-            if (log.resource_type === 'water' && waterMap[dayLabel]) {
-              waterMap[dayLabel][matchedKey] += amount;
-            } else if (log.resource_type === 'energy' && energyMap[dayLabel]) {
-              energyMap[dayLabel][matchedKey] += amount;
+            // Table schema uses water_liters and energy_kwh columns (not amount + resource_type)
+            const waterAmount = Number(log.water_liters) || 0;
+            const energyAmount = Number(log.energy_kwh) || 0;
+            const rType = log.resource_type || log.type;
+            const amount = Number(log.amount) || 0;
+
+            if (waterAmount > 0 && waterMap[dayLabel]) {
+              waterMap[dayLabel][matchedKey] += waterAmount;
+            }
+            if (energyAmount > 0 && energyMap[dayLabel]) {
+              energyMap[dayLabel][matchedKey] += energyAmount;
+            }
+            // Fallback for rows that use amount + resource_type columns
+            if (amount > 0 && rType) {
+              if (rType === 'water' && waterMap[dayLabel]) {
+                waterMap[dayLabel][matchedKey] += amount;
+              } else if (rType === 'energy' && energyMap[dayLabel]) {
+                energyMap[dayLabel][matchedKey] += amount;
+              }
             }
           });
         }
@@ -109,7 +137,19 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
     };
 
     fetchResourceData();
-    return () => window.removeEventListener('ecometricus_resource_updated', handleStorageChange);
+
+    // Realtime subscription: auto-refresh when any user adds/updates/deletes resource entries
+    const channel = supabase
+      .channel('resource_logs_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resource_logs' }, () => {
+        fetchResourceData();
+      })
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('ecometricus_resource_updated', handleStorageChange);
+      supabase.removeChannel(channel);
+    };
   }, [waterTarget, energyTarget]);
 
   return {

@@ -63,8 +63,10 @@ export async function saveTranslationToSupabase(
   try {
     // Upsert: insert or update
     const existing = overrides[`${section}.${key}`] || {};
-    const newEn = lang === 'en' ? value : (existing.en ?? translations[section]?.[key]?.en ?? '');
-    const newEs = lang === 'es' ? value : (existing.es ?? translations[section]?.[key]?.es ?? '');
+    const defaultEntry = translations[section]?.[key];
+    const isEntry = (v: any): v is { en: string; es: string } => v && typeof v === 'object' && 'en' in v;
+    const newEn = lang === 'en' ? value : (existing.en ?? (isEntry(defaultEntry) ? defaultEntry.en : '') ?? '');
+    const newEs = lang === 'es' ? value : (existing.es ?? (isEntry(defaultEntry) ? defaultEntry.es : '') ?? '');
 
     const { error } = await supabase
       .from('translations')
@@ -104,11 +106,14 @@ export function useI18n() {
    * Priority: Supabase override > static default > key string
    */
   const t = useCallback((key: string, vars?: Record<string, string | number>): string => {
-    const [section, entryKey] = key.split('.');
-    const sectionData = translations[section];
-    if (!sectionData) return key;
-    const entry = sectionData[entryKey];
-    if (!entry) return key;
+    // Traverse nested path (e.g. 'intelligence.foodWaste.title')
+    const parts = key.split('.');
+    let entry: any = translations[parts[0]];
+    for (let i = 1; i < parts.length; i++) {
+      entry = entry?.[parts[i]];
+      if (!entry) return key;
+    }
+    if (!entry || typeof entry !== 'object' || !('en' in entry)) return key;
 
     // Check override first
     const override = overrides[key];
@@ -127,11 +132,13 @@ export function useI18n() {
 
 // ─── Direct translator (for use outside React components) ───────────────────
 export function translate(key: string, vars?: Record<string, string | number>): string {
-  const [section, entryKey] = key.split('.');
-  const sectionData = translations[section];
-  if (!sectionData) return key;
-  const entry = sectionData[entryKey];
-  if (!entry) return key;
+  const parts = key.split('.');
+  let entry: any = translations[parts[0]];
+  for (let i = 1; i < parts.length; i++) {
+    entry = entry?.[parts[i]];
+    if (!entry) return key;
+  }
+  if (!entry || typeof entry !== 'object' || !('en' in entry)) return key;
 
   const override = overrides[key];
   let result = (override?.[globalLang] ?? entry[globalLang] ?? entry.en) as string;

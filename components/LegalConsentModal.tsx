@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Shield, ChevronRight, CheckCircle2, AlertTriangle, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useI18n } from '../lib/useI18n';
 import { UserProfile } from '../types';
 
 interface LegalConsentModalProps {
@@ -11,6 +12,7 @@ interface LegalConsentModalProps {
 }
 
 const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, onLogout }) => {
+  const { t } = useI18n();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [hasCheckedTerms, setHasCheckedTerms] = useState(false);
@@ -46,13 +48,13 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
       onAccept();
     } catch (err) {
       console.error('Error updating legal consent:', err);
-      alert('Failed to save consent. Please try again.');
+      alert(t('legal.alertSaveError'));
     } finally {
       setIsSubmitting(false);
     }
   };
   const handleDisagree = () => {
-    if (confirm("By disagreeing, you will be unable to access the Ecometricus Benchmarking Engine and will be logged out. Proceed?")) {
+    if (confirm(t('legal.confirmLogout'))) {
       onLogout();
     }
   };
@@ -72,8 +74,8 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
               <Shield className="text-brand-gold" size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white uppercase tracking-tight leading-none">Legal Consent Required</h2>
-              <p className="text-[10px] font-bold text-brand-gold uppercase tracking-[0.2em] mt-1.5">Master Service Agreement</p>
+              <h2 className="text-xl font-bold text-white uppercase tracking-tight leading-none">{t('legal.title')}</h2>
+              <p className="text-[10px] font-bold text-brand-gold uppercase tracking-[0.2em] mt-1.5">{t('legal.subtitle')}</p>
             </div>
           </div>
         </div>
@@ -86,7 +88,7 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
           {/* Welcome Message */}
           <div className="bg-white/5 border border-brand-gold/10 p-6 rounded-xl">
             <p className="text-sm text-gray-300 leading-relaxed font-normal">
-              Welcome, <span className="text-white font-bold">{user?.fullName || 'Administrator'}</span>. As an <span className="text-brand-gold font-bold uppercase tracking-wider text-xs">Administrator</span>, you are required to acknowledge and accept the following terms before accessing the Ecometricus Benchmarking Engine.
+              {t('legal.welcomePart1')}<span className="text-white font-bold">{user?.fullName || t('legal.guestNameFallback')}</span>{t('legal.welcomePart2')}<span className="text-brand-gold font-bold uppercase tracking-wider text-xs">{t('legal.roleLabel')}</span>{t('legal.welcomePart3')}
             </p>
           </div>
 
@@ -94,13 +96,13 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center border border-brand-gold/10">
-                <span className="text-brand-gold font-bold text-[10px]">01</span>
+                <span className="text-brand-gold font-bold text-[10px]">{t('legal.sectionNumber01')}</span>
               </div>
-              <h3 className="text-xs font-bold text-white uppercase tracking-widest">Data Extraction Authority</h3>
+              <h3 className="text-xs font-bold text-white uppercase tracking-widest">{t('legal.section1Title')}</h3>
             </div>
             <div className="pl-9 space-y-2">
               <p className="text-xs text-gray-400 leading-relaxed font-normal border-l border-brand-gold/10 pl-4">
-                The User provides full consent to Ecometricus for the automated extraction and linking of proprietary operational data from established POS (Point of Sale), PMS (Property Management Systems), and CRM platforms.
+                {t('legal.section1Body')}
               </p>
             </div>
           </div>
@@ -109,13 +111,13 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center border border-brand-gold/10">
-                <span className="text-brand-gold font-bold text-[10px]">02</span>
+                <span className="text-brand-gold font-bold text-[10px]">{t('legal.sectionNumber02')}</span>
               </div>
-              <h3 className="text-xs font-bold text-white uppercase tracking-widest">Methodology Recognition</h3>
+              <h3 className="text-xs font-bold text-white uppercase tracking-widest">{t('legal.section2Title')}</h3>
             </div>
             <div className="pl-9 space-y-2">
               <p className="text-xs text-gray-400 leading-relaxed font-normal border-l border-brand-gold/10 pl-4">
-                The User acknowledges that Ecometricus utilizes a data-driven methodology for reporting. All generated reports are for informational and executive decision-making purposes. Due to direct system integrations, reporting variances compared to traditional manual estimates represent actual recorded operations.
+                {t('legal.section2Body')}
               </p>
             </div>
           </div>
@@ -124,13 +126,13 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
           <div className="space-y-3 pb-2">
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center border border-brand-gold/10">
-                <span className="text-brand-gold font-bold text-[10px]">03</span>
+                <span className="text-brand-gold font-bold text-[10px]">{t('legal.sectionNumber03')}</span>
               </div>
-              <h3 className="text-xs font-bold text-white uppercase tracking-widest">Administrative Accountability</h3>
+              <h3 className="text-xs font-bold text-white uppercase tracking-widest">{t('legal.section3Title')}</h3>
             </div>
             <div className="pl-9 space-y-2">
               <p className="text-xs text-gray-400 leading-relaxed font-normal border-l border-brand-gold/10 pl-4">
-                As the primary administrator, the User is held directly responsible for the creation and oversight of all subsequent personnel profiles, system audits, and benchmarking parameters within this instance.
+                {t('legal.section3Body')}
               </p>
             </div>
           </div>
@@ -149,13 +151,13 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
                 className="mt-0.5 w-4 h-4 rounded border-brand-gold/20 bg-transparent text-brand-gold focus:ring-brand-gold"
               />
               <span className="text-[10px] sm:text-xs font-medium text-gray-400 uppercase tracking-wide leading-relaxed">
-                I acknowledge and accept the <span className="text-white">Master Service Agreement</span> and organizational accountability protocols.
+                {t('legal.acknowledgePrefix')}<span className="text-white">{t('legal.acknowledgeAgreement')}</span>{t('legal.acknowledgeSuffix')}
               </span>
             </label>
             
             {!hasScrolledToBottom && (
               <p className="text-[9px] font-bold text-brand-gold uppercase tracking-widest text-center">
-                Please scroll to unlock acceptance
+                {t('legal.scrollToUnlock')}
               </p>
             )}
           </div>
@@ -167,7 +169,7 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
               disabled={isSubmitting}
               className="py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-300 border border-brand-gold/10 text-gray-400 hover:bg-white/5 hover:text-white"
             >
-              I Disagree
+              {t('legal.disagreeButton')}
             </button>
 
             {/* Agree Button: Gold Professional Style */}
@@ -183,19 +185,19 @@ const LegalConsentModal: React.FC<LegalConsentModalProps> = ({ user, onAccept, o
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
-                  Processing...
+                  {t('legal.processing')}
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   {(hasScrolledToBottom && hasCheckedTerms) ? <CheckCircle2 size={14} /> : <Lock size={14} />}
-                  I Agree
+                  {t('legal.agreeButton')}
                 </span>
               )}
             </button>
           </div>
 
           <p className="text-[8px] font-medium text-white/10 uppercase tracking-[0.2em] text-center">
-            Security ID: {user?.id?.slice(0, 8).toUpperCase() || 'SESSION'} | Data Extraction Protocol Active
+            {t('legal.securityIdPrefix')}{user?.id?.slice(0, 8).toUpperCase() || t('legal.sessionFallback')}{t('legal.securityIdSuffix')}
           </p>
         </div>
       </div>

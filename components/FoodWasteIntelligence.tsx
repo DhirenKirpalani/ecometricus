@@ -4,6 +4,7 @@ import { useFoodWasteData } from '../hooks/useFoodWasteData';
 import { useFoodWasteChartData } from '../hooks/useFoodWasteChartData';
 import Co2EmissionsTemplateChart from './Co2EmissionsTemplateChart';
 import { Outlet } from '../types';
+import { useI18n } from '../lib/useI18n';
 
 interface FoodWasteIntelligenceProps {
   outletId: string | null;
@@ -21,6 +22,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
   allOutlets,
   benchmarks
 }) => {
+  const { t } = useI18n();
   const { totalMass, carbonImpact, financialLoss, outletDetails, isLoading } = useFoodWasteData(
     outletId,
     unitType,
@@ -73,7 +75,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <Scale size={16} className="text-brand-gold" />
-              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Total Volume</h4>
+              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('intelligence.foodWaste.totalVolumeTitle')}</h4>
             </div>
             {showAlertMass && (
               <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
@@ -86,7 +88,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
             <span className="text-xs font-medium text-white/50 uppercase ml-1.5">{unitType}</span>
           </p>
           <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
-            Target: &lt; {massTarget} {unitType}
+            {t('intelligence.foodWaste.targetPrefix')}{massTarget} {unitType}
           </p>
         </div>
 
@@ -95,7 +97,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <Cloud size={16} className="text-brand-gold" />
-              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Carbon Impact</h4>
+              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('intelligence.foodWaste.carbonImpactTitle')}</h4>
             </div>
             {showAlertCarbon && (
               <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
@@ -105,10 +107,10 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
           </div>
           <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
             {carbonImpact.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-            <span className="text-xs font-medium text-white/50 uppercase ml-1.5">kg CO₂e</span>
+            <span className="text-xs font-medium text-white/50 uppercase ml-1.5">{t('intelligence.foodWaste.carbonUnit')}</span>
           </p>
           <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
-            Target: &lt; {carbonTarget} kg CO₂e
+            {t('intelligence.foodWaste.targetPrefix')}{carbonTarget} {t('intelligence.foodWaste.carbonUnit')}
           </p>
         </div>
 
@@ -117,7 +119,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
               <DollarSign size={16} className="text-brand-gold" />
-              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">Net Financial Loss</h4>
+              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('intelligence.foodWaste.financialLossTitle')}</h4>
             </div>
             {showAlertFinance && (
               <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
@@ -129,7 +131,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
             ${financialLoss.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </p>
           <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
-            Target: &lt; ${financialTarget}
+            {t('intelligence.foodWaste.targetPrefix')}{t('intelligence.foodWaste.currency')}{financialTarget}
           </p>
         </div>
       </div>
@@ -184,7 +186,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
 
                 {/* Mass metric */}
                 <div className="mb-3">
-                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">Mass</p>
+                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">{t('intelligence.foodWaste.massLabel')}</p>
                   <p className="text-2xl font-geometric font-black text-white leading-none">
                     {outlet.mass.toLocaleString(undefined, { maximumFractionDigits: 1 })}
                     <span className="text-xs font-medium text-white/40 uppercase ml-1.5">{unitType}</span>
@@ -193,7 +195,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
 
                 {/* Cost metric */}
                 <div className="pt-3 border-t border-brand-gold/8">
-                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">Cost</p>
+                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">{t('intelligence.foodWaste.costLabel')}</p>
                   <p className="text-lg font-geometric font-bold text-brand-gold leading-none">
                     $ {outlet.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </p>

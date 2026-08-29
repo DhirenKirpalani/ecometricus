@@ -766,14 +766,18 @@ async function execLogResourceEntry(args: any, ctx: ToolExecutionContext): Promi
         .single();
 
       if (outlet) {
-        const { error } = await supabase.from('resource_logs').insert({
-          outlet_id: outlet.id,
+        const insertPayload: any = {
           outlet_name: outlet.name,
-          resource_type: entry.type,
-          amount: entry.amount,
+          is_mock: false,
           user_id: session.user.id,
           created_by: ctx.user.fullName,
-        });
+        };
+        if (entry.type === 'water') {
+          insertPayload.water_liters = entry.amount;
+        } else {
+          insertPayload.energy_kwh = entry.amount;
+        }
+        const { error } = await supabase.from('resource_logs').insert(insertPayload);
         dbSaved = !error;
       }
 

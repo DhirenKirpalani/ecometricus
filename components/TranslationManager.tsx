@@ -100,10 +100,10 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
     return `${section}.${key}` in edits;
   };
 
-  const getEditValue = (section: string, key: string, lang: Lang) => {
+  const getEditValue = (section: string, key: string, lang: Lang): string => {
     const fullKey = `${section}.${key}`;
     if (fullKey in edits) return edits[fullKey];
-    return translations[section]?.[key]?.[lang] ?? '';
+    return (translations[section]?.[key] as any)?.[lang] ?? '';
   };
 
   return (
@@ -265,7 +265,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
                       <textarea
                         value={getEditValue(section, key, editingLang)}
                         onChange={e => handleEdit(section, key, e.target.value)}
-                        rows={Math.max(1, Math.ceil((translations[section]?.[key]?.[editingLang] ?? '').length / 45))}
+                        rows={Math.max(1, Math.ceil(((translations[section]?.[key] as any)?.[editingLang] ?? '').length / 45))}
                         className="w-full bg-white/5 border border-brand-gold/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-gold/40 transition-all resize-none leading-relaxed"
                         placeholder={editingLang === 'es' ? 'Traducción al español...' : 'English translation...'}
                       />

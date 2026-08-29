@@ -100,7 +100,8 @@ const Field: React.FC<{
   icon?: React.ReactNode;
   right?: React.ReactNode;
   minLength?: number;
-}> = ({ label, type = 'text', value, onChange, placeholder, required, icon, right, minLength }) => (
+  readOnly?: boolean;
+}> = ({ label, type = 'text', value, onChange, placeholder, required, icon, right, minLength, readOnly }) => (
   <div className="space-y-1.5">
     <div className="flex items-center justify-between">
       <label className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-gold/70">{label}</label>
@@ -119,7 +120,8 @@ const Field: React.FC<{
         placeholder={placeholder}
         required={required}
         minLength={minLength}
-        className={`${inputBase} ${icon ? 'pl-11 pr-4' : 'px-4'}`}
+        readOnly={readOnly}
+        className={`${inputBase} ${icon ? 'pl-11 pr-4' : 'px-4'} ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
       />
     </div>
   </div>
@@ -133,7 +135,8 @@ const PasswordField: React.FC<{
   placeholder?: string;
   required?: boolean;
   right?: React.ReactNode;
-}> = ({ label, value, onChange, placeholder = '••••••••', required, right }) => {
+  readOnly?: boolean;
+}> = ({ label, value, onChange, placeholder = '••••••••', required, right, readOnly }) => {
   const [show, setShow] = useState(false);
   return (
     <div className="space-y-1.5">
@@ -150,7 +153,8 @@ const PasswordField: React.FC<{
           placeholder={placeholder}
           required={required}
           minLength={6}
-          className={`${inputBase} pl-11 pr-11`}
+          readOnly={readOnly}
+          className={`${inputBase} pl-11 pr-11 ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
         />
         <button
           type="button"
@@ -181,7 +185,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
   // URL format: /access/OUTL01?token=abc123
   // When detected, look up the personnel record by access_code and pre-fill
   // the signup form with the correct role/permissions (not admin).
-  const [inviteData, setInviteData] = useState<{ role: string; position: string; email: string; fullName: string; outletCode: string } | null>(null);
+  const [inviteData, setInviteData] = useState<{ role: string; position: string; email: string; fullName: string; outletCode: string; outletName: string; pincode: string; invitedBy: string } | null>(null);
   const role = inviteData?.role || 'admin'; // Default admin only for direct sign-ups
   const [inviteLoading, setInviteLoading] = useState(false);
 
@@ -192,22 +196,51 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       setInviteLoading(true);
       // Extract outlet code from path: /access/OUTL01 → OUTL01
       const outletCode = path.replace('/access/', '').split('/')[0] || '';
-      // Look up personnel by access_code (token)
-      Promise.resolve(supabase.from('personnel').select('*').eq('access_code', token.toUpperCase()).maybeSingle())
-        .then(({ data }) => {
+      // Look up personnel by access_code (URL-safe code), fall back to pincode
+      const lookupPersonnel = async () => {
+        // Try access_code first
+        let { data } = await supabase.from('personnel').select('*').eq('access_code', token.toUpperCase()).maybeSingle();
+        // Fallback: try pincode (for records created before access_code column existed)
+        if (!data) {
+          const res = await supabase.from('personnel').select('*').eq('pincode', token.toUpperCase()).maybeSingle();
+          data = res.data;
+        }
+        // If found, try to get the inviter's name and outlet name
+        if (data) {
+          let invitedBy = data.invited_by || '';
+          // Fallback: look up sender name from profiles table using user_id
+          if (!invitedBy && data.user_id) {
+            const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', data.user_id).maybeSingle();
+            if (profile?.full_name) invitedBy = profile.full_name;
+          }
+          // Look up outlet name from outlets table using outlet_id
+          let outletName = '';
+          if (data.outlet_id) {
+            const { data: outlet } = await supabase.from('outlets').select('name').eq('id', data.outlet_id).maybeSingle();
+            if (outlet?.name) outletName = outlet.name;
+          }
+          return { ...data, invited_by: invitedBy, outlet_name: outletName };
+        }
+        return data;
+      };
+      Promise.resolve(lookupPersonnel())
+        .then((data) => {
           if (data) {
+            const pin = data.pincode || '';
             setInviteData({
               role: data.role || 'supervisor',
               position: data.position || 'Staff',
               email: data.email || '',
               fullName: data.full_name || '',
               outletCode: data.outlet_id || outletCode,
+              outletName: data.outlet_name || '',
+              pincode: pin,
+              invitedBy: data.invited_by || '',
             });
             // Pre-fill the form
             if (data.email) setEmail(data.email);
             if (data.full_name) setFullName(data.full_name);
-            // Switch to sign-up view
-            onNavigate(Page.SIGN_UP);
+            if (pin) { setPassword(pin); setVerifyPassword(pin); }
           }
           setInviteLoading(false);
         })
@@ -563,8 +596,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Invitation</p>
                         <p className="text-xs text-white/70 mt-0.5">
-                          You've been invited as <span className="text-brand-gold font-bold">{inviteData?.position}</span>
-                          {inviteData?.email && <> for <span className="text-white">{inviteData.email}</span></>}
+                          {inviteData?.invitedBy
+                            ? <><span className="text-brand-gold font-bold">{inviteData.invitedBy}</span> has invited you to join {inviteData?.outletName ? <span className="text-brand-gold font-bold">{inviteData.outletName}</span> : null} as <span className="text-brand-gold font-bold">{inviteData?.position}</span></>
+                            : <>You've been invited{inviteData?.outletName ? <> to join <span className="text-brand-gold font-bold">{inviteData.outletName}</span></> : null} as <span className="text-brand-gold font-bold">{inviteData?.position}</span></>
+                          }
                         </p>
                       </div>
                     </div>
@@ -578,10 +613,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   )}
 
                   {isSignUp && (
-                    <Field label={t('auth.fullName')} value={fullName} onChange={setFullName} placeholder={t('auth.fullNamePlaceholder')} required icon={<User size={14} />} />
+                    <Field label={t('auth.fullName')} value={fullName} onChange={setFullName} placeholder={t('auth.fullNamePlaceholder')} required icon={<User size={14} />} readOnly={isInvite} />
                   )}
 
-                  <Field label={t('auth.email')} type="email" value={email} onChange={setEmail} placeholder={t('auth.emailPlaceholder')} required icon={<Mail size={14} />} />
+                  <Field label={t('auth.email')} type="email" value={email} onChange={setEmail} placeholder={t('auth.emailPlaceholder')} required icon={<Mail size={14} />} readOnly={isInvite} />
 
                   {!isForgot && (
                     <div className="space-y-2">
@@ -590,6 +625,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                         value={password}
                         onChange={setPassword}
                         required
+                        readOnly={isInvite}
                         right={isSignIn ? (
                           <button type="button" onClick={() => { onNavigate(Page.FORGOT_PASSWORD); setError(null); }} className="text-xs text-brand-gold hover:underline transition-colors">
                             {t('auth.forgotPasswordLink')}
@@ -601,7 +637,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                   )}
 
                   {isSignUp && (
-                    <PasswordField label={t('auth.confirmPassword')} value={verifyPassword} onChange={setVerifyPassword} placeholder={t('auth.repeatPassword')} required />
+                    <PasswordField label={t('auth.confirmPassword')} value={verifyPassword} onChange={setVerifyPassword} placeholder={t('auth.repeatPassword')} required readOnly={isInvite} />
                   )}
 
                   {isSignUp && (

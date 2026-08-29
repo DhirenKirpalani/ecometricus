@@ -3,6 +3,7 @@ import { Cpu, Droplets, Zap, AlertTriangle, ShieldCheck, TrendingDown, Store } f
 import { useResourceChartData } from '../hooks/useResourceChartData';
 import ResourceTemplateChart from './ResourceTemplateChart';
 import { Outlet } from '../types';
+import { useI18n } from '../lib/useI18n';
 
 interface ResourceIntelligenceProps {
   allOutlets: Outlet[];
@@ -11,6 +12,7 @@ interface ResourceIntelligenceProps {
 const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
 
 const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets }) => {
+  const { t } = useI18n();
   const {
     waterData,
     energyData,
@@ -77,24 +79,24 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
                 <Droplets size={18} className="text-blue-400" />
               </div>
               <div>
-                <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">Total Water Usage</h3>
-                <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">Weekly cumulative</p>
+                <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">{t('intelligence.resource.waterTitle')}</h3>
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">{t('intelligence.resource.cumulativeLabel')}</p>
               </div>
             </div>
             {showAlertWater ? (
               <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg shrink-0">
                 <AlertTriangle size={11} className="text-brand-alert" />
-                <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Alert</span>
+                <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">{t('intelligence.resource.alert')}</span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg shrink-0">
                 <ShieldCheck size={11} className="text-brand-eco" />
-                <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">On Target</span>
+                <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">{t('intelligence.resource.onTarget')}</span>
               </div>
             )}
           </div>
           <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
-            {waterWeeklyTotal.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">Litres</span>
+            {waterWeeklyTotal.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">{t('intelligence.resource.waterUnit')}</span>
           </p>
           <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
             {showAlertWater ? 'Benchmark overload detected' : 'Standard consumption pattern'}
@@ -109,19 +111,19 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
                 <Zap size={18} className="text-brand-gold" />
               </div>
               <div>
-                <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">Total Energy Load</h3>
-                <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">Weekly cumulative</p>
+                <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">{t('intelligence.resource.energyTitle')}</h3>
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">{t('intelligence.resource.cumulativeLabel')}</p>
               </div>
             </div>
             {showAlertEnergy ? (
               <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg shrink-0">
                 <AlertTriangle size={11} className="text-brand-alert" />
-                <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Alert</span>
+                <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">{t('intelligence.resource.alert')}</span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg shrink-0">
                 <ShieldCheck size={11} className="text-brand-eco" />
-                <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">On Target</span>
+                <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">{t('intelligence.resource.onTarget')}</span>
               </div>
             )}
           </div>
@@ -169,7 +171,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                Outlet Performance
+                {t('intelligence.resource.outletPerfTitle')}
               </h2>
               <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
                 Resource Breakdown Analytics
@@ -194,14 +196,14 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
                     {isAttention && (
                       <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2 py-0.5 rounded-lg shrink-0">
                         <AlertTriangle size={9} className="text-brand-alert" />
-                        <span className="text-[8px] font-black text-brand-alert uppercase tracking-widest">Alert</span>
+                        <span className="text-[8px] font-black text-brand-alert uppercase tracking-widest">{t('intelligence.resource.alert')}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Water */}
                   <div className="mb-3">
-                    <p className="text-[8px] font-black text-blue-400/60 uppercase tracking-widest mb-1">Water Usage</p>
+                    <p className="text-[8px] font-black text-blue-400/60 uppercase tracking-widest mb-1">{t('intelligence.resource.chartWaterTitle')}</p>
                     <p className="text-xl font-geometric font-black text-white leading-none">
                       {outlet.water.toLocaleString()}<span className="text-xs font-medium text-white/40 uppercase ml-1">L</span>
                     </p>
@@ -209,7 +211,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
 
                   {/* Energy */}
                   <div className="pt-3 border-t border-white/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest mb-1">Energy Load</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest mb-1">{t('intelligence.resource.chartEnergyTitle')}</p>
                     <p className="text-xl font-geometric font-black text-brand-gold leading-none">
                       {outlet.energy.toLocaleString()}<span className="text-xs font-medium text-white/40 uppercase ml-1">kWh</span>
                     </p>
