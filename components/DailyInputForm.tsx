@@ -665,6 +665,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
             <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
               Daily Input
             </h2>
+            <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+              Log Waste & Resource Data
+            </p>
           </div>
         </div>
         {(form.category || form.amount) && (

@@ -2308,7 +2308,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
-                    {activeView === PortalView.DAILY_INPUT && "Log Waste & Resource Data"}
                     {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
@@ -2318,7 +2317,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
-                    {activeView === PortalView.DAILY_INPUT && "Daily Input"}
                     {activeView === PortalView.IDENTITY && "Company Identity"}
                     {activeView === PortalView.TEAM && "Staff Registry"}
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
