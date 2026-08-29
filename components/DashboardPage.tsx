@@ -1663,44 +1663,48 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { showToast(t('dashboard.authenticationRequired'), 'error'); return; }
 
-      // 1. Call edge function to delete auth account + related data
-      try {
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://rqhlhazvplpajzwwoncz.supabase.co'}/functions/v1/delete-user`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: id.includes('-') ? id : undefined,
-            email: targetUser?.email,
-          }),
-        });
+      let authDeleted = false;
+      let authErrorMsg = '';
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          console.error('DELETE_USER_EDGE_ERROR:', errData);
-          // Fall through to personnel delete anyway
-        }
-      } catch (err) {
-        console.error('DELETE_USER_FETCH_ERROR:', err);
-        // Continue — try to at least delete the personnel row
+      // 1. Call RPC to delete auth account + related data
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc('delete_user_account', { target_email: targetUser?.email });
+
+      if (rpcError) {
+        authErrorMsg = rpcError.message || 'Unknown database error';
+        console.error('DELETE_USER_RPC_ERROR:', rpcError);
+      } else if (rpcResult?.success === false) {
+        authErrorMsg = rpcResult?.error || 'Unknown error';
+        console.error('DELETE_USER_RPC_FAILED:', rpcResult);
+      } else {
+        authDeleted = true;
+        console.log('[Dashboard] User auth account deleted:', rpcResult);
       }
 
-      // 2. Delete personnel record (in case edge function didn't)
+      // 2. Delete personnel record
       const { error, status } = await supabase.from('personnel').delete().eq('id', id);
 
       if (error || (status !== 204 && status !== 200)) {
         console.error("PERSONNEL_DELETE_FAILURE:", error);
-        showToast(t('dashboard.databaseError', { message: error?.message || t('dashboard.failedToRemoveStaff') }), 'error');
+        showToast(`Failed to remove staff: ${error?.message || 'Database error'}`, 'error');
         return;
       }
 
+      // 3. Show appropriate message based on whether auth account was deleted
       setUsers(prev => prev.filter(u => u.id !== id));
-      showToast(`${targetUser?.fullName || 'Staff member'} removed and account deleted.`, 'success');
+
+      if (authDeleted) {
+        showToast(`${targetUser?.fullName || 'Staff member'} removed. Account fully deleted.`, 'success');
+      } else {
+        showToast(
+          `${targetUser?.fullName || 'Staff member'} removed from registry, but auth account could not be deleted: ${authErrorMsg}. Run fix_schema_cache.sql migration.`,
+          'error'
+        );
+      }
+
       logAction('personnel_removed', 'personnel', targetUser?.fullName || 'Unknown',
-        `Removed ${targetUser?.fullName || 'staff member'} — account deleted and access revoked`,
-        { email: targetUser?.email, id });
+        `Removed ${targetUser?.fullName || 'staff member'}${authDeleted ? ' — account deleted' : ' — auth account NOT deleted: ' + authErrorMsg}`,
+        { email: targetUser?.email, id, authDeleted, authErrorMsg });
     });
   };
 
