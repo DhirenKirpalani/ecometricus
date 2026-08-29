@@ -127,7 +127,67 @@ NOTIFY pgrst, 'reload schema';
 
 -- 8. Enable Realtime for live chart updates
 -- This allows the frontend to subscribe to changes and auto-refresh charts
-ALTER PUBLICATION supabase_realtime ADD TABLE public.food_waste_logs;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.resource_logs;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.outlets;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.benchmarks;
+-- Use DO blocks to skip tables that are already in the publication
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.food_waste_logs;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.resource_logs;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.outlets;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.benchmarks;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- 9. Function to delete a user's auth account (called via RPC by admin)
+-- This avoids needing a separate edge function deployment
+CREATE OR REPLACE FUNCTION public.delete_user_account(target_email TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  target_uuid UUID;
+  caller_email TEXT;
+  caller_role TEXT;
+BEGIN
+  -- Get the caller's email from the current JWT
+  caller_email := auth.email()::TEXT;
+
+  -- Look up the caller's role in personnel
+  SELECT role INTO caller_role
+  FROM public.personnel
+  WHERE email = caller_email
+  LIMIT 1;
+
+  -- Only admins and super_admins can delete users
+  IF caller_role IS NULL OR (caller_role NOT ILIKE '%admin%') THEN
+    RETURN json_build_object('success', false, 'error', 'Forbidden: admin access required');
+  END IF;
+
+  -- Find the target user's UUID by email
+  SELECT id INTO target_uuid
+  FROM auth.users
+  WHERE email = target_email
+  LIMIT 1;
+
+  IF target_uuid IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'User not found in auth.users');
+  END IF;
+
+  -- Delete related data
+  DELETE FROM public.daily_checkins WHERE user_id = target_uuid;
+  DELETE FROM public.benchmarks WHERE user_id = target_uuid;
+  DELETE FROM public.personnel WHERE email = target_email;
+
+  -- Delete the auth account
+  DELETE FROM auth.users WHERE id = target_uuid;
+
+  RETURN json_build_object('success', true, 'deleted_user_id', target_uuid);
+END;
+$$;
+
+-- Grant execute to authenticated users (the function itself checks admin role)
+GRANT EXECUTE ON FUNCTION public.delete_user_account(TEXT) TO authenticated;
