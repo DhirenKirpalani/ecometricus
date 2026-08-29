@@ -2857,6 +2857,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                     {/* ── Company Identity Card ── */}
                     <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.05)]">
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-gold/15">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <Building2 size={18} className="text-brand-gold" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Profile</p>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">Company Details</h4>
+                          </div>
+                        </div>
+                      </div>
                       <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 bg-brand-dark/40">
                         {/* ── Step 1: Location ── */}
                         <div className="space-y-4">
