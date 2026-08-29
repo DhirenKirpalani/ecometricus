@@ -2838,20 +2838,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             Manage Profile & Audit Protocols
                           </p>
                         </div>
-                        {/* Auto-save indicator */}
+                      </div>
+                      {/* Auto-save indicator + Edit button */}
+                      <div className="flex items-center gap-3">
                         <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
                           {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
                           {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'success' ? 'Saved' : 'Auto-save on'}
                         </div>
+                        <button
+                          onClick={() => setIsEditingIdentity(!isEditingIdentity)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                        >
+                          {isEditingIdentity ? <Unlock size={12} /> : <Edit2 size={12} />}
+                          {isEditingIdentity ? 'Lock' : 'Edit'}
+                        </button>
                       </div>
-                      {/* Edit button */}
-                      <button
-                        onClick={() => setIsEditingIdentity(!isEditingIdentity)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
-                      >
-                        {isEditingIdentity ? <Unlock size={12} /> : <Edit2 size={12} />}
-                        {isEditingIdentity ? 'Lock' : 'Edit'}
-                      </button>
                     </div>
 
                     {/* ── Company Identity Card ── */}
