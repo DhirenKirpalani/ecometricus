@@ -2071,7 +2071,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const totalWaterUsage = rawResourceLogs.filter(e => e.resource_type === 'water').reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
     const totalEnergyUsage = rawResourceLogs.filter(e => e.resource_type === 'energy').reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
 
-    const carbonCoeff = 2.85;
+    // CO2 conversion factors (matching useCo2ChartData hook)
+    const wasteCo2Coeff = 2.85;   // kg CO2e per kg food waste
+    const waterCo2Coeff = 0.0003; // kg CO2e per litre of water
+    const energyCo2Coeff = 0.45;  // kg CO2e per kWh of energy
+
+    // Water footprint coefficient: water embedded in wasted food
     const waterCoeff = 3.40;
 
     // Financial Impact: total waste kg * $6.50 multiplier
@@ -2083,6 +2088,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
     const wasteBenchmark = effectiveParams.wasteTarget;
 
+    // Total carbon impact = food waste CO2 + water CO2 + energy CO2
+    const wasteCo2 = totalWasteKg * wasteCo2Coeff;
+    const waterCo2 = totalWaterUsage * waterCo2Coeff;
+    const energyCo2 = totalEnergyUsage * energyCo2Coeff;
+    const totalCarbonImpact = wasteCo2 + waterCo2 + energyCo2;
+
     return {
       waste: {
         kg: totalWasteKg,
@@ -2092,7 +2103,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       water: totalWaterUsage,
       energy: totalEnergyUsage,
       impacts: {
-        carbonImpact: totalWasteKg * carbonCoeff,
+        carbonImpact: totalCarbonImpact,
         waterFootprint: totalWasteKg * waterCoeff,
         totalFinancialLoss,
         isDeviating: totalWasteKg > wasteBenchmark

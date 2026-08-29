@@ -108,7 +108,7 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
 
     fetchChartData();
     return () => window.removeEventListener('ecometricus_waste_updated', handleStorageChange);
-  }, []);
+  }, [targetKg, activeOutletCount]);
 
   return { chartData, outletKeys, target, dailyBenchmark, weeklyTotal, isLoading };
 };
