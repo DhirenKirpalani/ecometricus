@@ -1,6 +1,0 @@
-id
-full_name
-role
-outlet_id
-pincode
-created_at
