@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { retrieveContext } from '../lib/mila-rag';
 import { getToolsForRole, executeTool, type ToolCall, type ToolResult, type ToolExecutionContext } from '../lib/mila-tools';
 import { supabase } from '../lib/supabase';
+import { useI18n } from '../lib/useI18n';
 import type { UserProfile } from '../types';
 
 interface MilaWidgetProps {
@@ -32,15 +33,16 @@ interface Message {
 const MAX_TOOL_ROUNDS = 5; // Safety limit to prevent infinite loops
 
 const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
+    const { t } = useI18n();
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [proactiveInsights, setProactiveInsights] = useState<Insight[]>([]);
     const [showInsightsPanel, setShowInsightsPanel] = useState(false);
 
     // Extract user name and hotel info from context
-    const userFirstName = context?.user?.firstName || context?.user?.name?.split(' ')[0] || 'there';
-    const hotelName = context?.company?.name || 'your hotel';
-    const outletName = context?.company?.outlet || 'All Outlets';
+    const userFirstName = context?.user?.firstName || context?.user?.name?.split(' ')[0] || t('mila.greetingFallback');
+    const hotelName = context?.company?.name || t('mila.hotelFallback');
+    const outletName = context?.company?.outlet || t('mila.outletFallback');
     const region = context?.company?.region || '';
     const city = context?.company?.city || '';
     const userProfile: UserProfile = context?.userProfile || {
@@ -50,9 +52,9 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
     // Dynamic Greeting Logic
     const getGreeting = () => {
         const hour = new Date().getHours();
-        if (hour >= 5 && hour < 12) return "Good morning";
-        if (hour >= 12 && hour < 18) return "Good afternoon";
-        return "Good evening";
+        if (hour >= 5 && hour < 12) return t('mila.greetingMorning');
+        if (hour >= 12 && hour < 18) return t('mila.greetingAfternoon');
+        return t('mila.greetingEvening');
     };
 
     const [messages, setMessages] = useState<Message[]>([]);
@@ -137,7 +139,7 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
         try {
             // @ts-ignore
             const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || "sk-0a92323227144880af7b3a250fbfbe42";
-            if (!apiKey) throw new Error("Configuration Error: VITE_DEEPSEEK_API_KEY is missing from .env");
+            if (!apiKey) throw new Error(t('mila.errorMissingApiKey'));
 
             // RAG: Retrieve relevant documents from internal knowledge base
             const ragContext = await retrieveContext(userText, 5);
@@ -276,7 +278,7 @@ INSTRUCTIONS:
                         setMessages(prev => [...prev, {
                             id: toolMsgId,
                             sender: 'tool',
-                            text: `Executing ${toolName}...`,
+                            text: t('mila.toolExecuting', { toolName }),
                             timestamp: new Date(),
                             toolName,
                             toolStatus: 'running',
@@ -289,7 +291,7 @@ INSTRUCTIONS:
                         // Update tool message status
                         setMessages(prev => prev.map(m =>
                             m.id === toolMsgId
-                                ? { ...m, text: `Completed: ${toolName}`, toolStatus: 'done' }
+                                ? { ...m, text: t('mila.toolCompleted', { toolName }), toolStatus: 'done' }
                                 : m
                         ));
 
@@ -306,12 +308,12 @@ INSTRUCTIONS:
                 }
 
                 // No tool calls — this is the final response
-                finalText = assistantMessage?.content || "I'm having trouble processing that request right now.";
+                finalText = assistantMessage?.content || t('mila.errorProcessing');
                 break;
             }
 
             if (!finalText) {
-                finalText = "I've completed the requested actions. Is there anything else you'd like me to do?";
+                finalText = t('mila.doneResponse');
             }
 
             setActiveTool(null);
@@ -329,7 +331,7 @@ INSTRUCTIONS:
             const errorMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 sender: 'mila',
-                text: `Connectivity Alert: ${error.message}`,
+                text: t('mila.errorConnectivity', { errorMessage: error.message }),
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, errorMsg]);
@@ -341,21 +343,21 @@ INSTRUCTIONS:
 
     // Tool display names
     const toolDisplayNames: Record<string, string> = {
-        query_waste_data: 'Querying waste data',
-        query_resource_data: 'Querying resource data',
-        get_kpi_summary: 'Calculating KPIs',
-        compare_outlets: 'Comparing outlets',
-        list_outlets: 'Listing outlets',
-        get_staff_compliance: 'Checking staff compliance',
-        get_benchmarks: 'Fetching benchmarks',
-        get_audit_trail: 'Reviewing audit trail',
-        search_knowledge_base: 'Searching ESG knowledge base',
-        get_kb_index: 'Indexing knowledge base',
-        web_search: 'Searching external ESG sources',
-        log_waste_entry: 'Logging waste entry',
-        log_resource_entry: 'Logging resource entry',
-        generate_report: 'Generating report',
-        get_proactive_insights: 'Fetching insights',
+        query_waste_data: t('mila.toolQueryWaste'),
+        query_resource_data: t('mila.toolQueryResource'),
+        get_kpi_summary: t('mila.toolKpiSummary'),
+        compare_outlets: t('mila.toolCompareOutlets'),
+        list_outlets: t('mila.toolListOutlets'),
+        get_staff_compliance: t('mila.toolStaffCompliance'),
+        get_benchmarks: t('mila.toolGetBenchmarks'),
+        get_audit_trail: t('mila.toolGetAuditTrail'),
+        search_knowledge_base: t('mila.toolSearchKb'),
+        get_kb_index: t('mila.toolGetKbIndex'),
+        web_search: t('mila.toolWebSearch'),
+        log_waste_entry: t('mila.toolLogWaste'),
+        log_resource_entry: t('mila.toolLogResource'),
+        generate_report: t('mila.toolGenerateReport'),
+        get_proactive_insights: t('mila.toolGetInsights'),
     };
 
     if (!isOpen) {
@@ -363,7 +365,7 @@ INSTRUCTIONS:
             <button
                 onClick={() => setIsOpen(true)}
                 className="fixed bottom-8 right-8 z-[100] group"
-                aria-label="Open Mila AI"
+                aria-label={t('mila.openButtonAria')}
             >
                 {/* Outer pulsing ring */}
                 <div className="absolute inset-0 rounded-full bg-brand-eco/20 animate-ping-slow" />
@@ -391,7 +393,7 @@ INSTRUCTIONS:
 
                 {/* Tooltip on hover */}
                 <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-2 rounded-lg bg-brand-dark border border-brand-gold/30 text-[11px] font-bold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-xl">
-                    Ask Mila AI
+                    {t('mila.openButtonTooltip')}
                     <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-brand-dark" />
                 </div>
             </button>
@@ -413,11 +415,11 @@ INSTRUCTIONS:
                     </div>
                     <div>
                         <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                            Mila AI
+                            {t('mila.headerTitle')}
                             <span className="w-1.5 h-1.5 rounded-full bg-brand-eco animate-pulse" />
                         </h3>
                         <p className="text-[10px] text-brand-gold uppercase tracking-widest">
-                            {activeTool ? 'Working...' : 'ESG Agent'}
+                            {activeTool ? t('mila.headerWorking') : t('mila.headerAgent')}
                         </p>
                     </div>
                 </div>
@@ -444,7 +446,7 @@ INSTRUCTIONS:
             {showInsightsPanel && proactiveInsights.length > 0 && (
                 <div className="border-b border-brand-gold/20 bg-brand-dark/60 max-h-[280px] overflow-y-auto custom-scrollbar">
                     <div className="px-4 py-2 border-b border-brand-gold/5 flex items-center justify-between sticky top-0 bg-brand-dark/80 backdrop-blur-sm">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Proactive Insights</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('mila.insightsTitle')}</span>
                         <button onClick={() => setShowInsightsPanel(false)} className="text-white/30 hover:text-white transition-colors">
                             <X size={12} />
                         </button>
@@ -471,7 +473,7 @@ INSTRUCTIONS:
                                 onClick={() => dismissInsight(insight.id)}
                                 className="text-[9px] text-white/30 hover:text-white/60 uppercase tracking-widest transition-colors pl-5"
                             >
-                                Dismiss
+                                {t('mila.dismiss')}
                             </button>
                         </div>
                     ))}
@@ -495,7 +497,7 @@ INSTRUCTIONS:
                                             <AlertCircle size={12} className="text-brand-alert shrink-0" />
                                         )}
                                         <span className="text-[10px] text-brand-eco/80 font-medium uppercase tracking-wider">
-                                            {toolDisplayNames[msg.toolName || ''] || msg.toolName || 'Tool'} {msg.toolStatus === 'running' ? '...' : '✓'}
+                                            {toolDisplayNames[msg.toolName || ''] || msg.toolName || t('mila.toolFallback')} {msg.toolStatus === 'running' ? '...' : '✓'}
                                         </span>
                                     </div>
                                 ) : (
@@ -525,7 +527,7 @@ INSTRUCTIONS:
                             <div className="flex justify-start">
                                 <div className="bg-white/5 border border-brand-gold/10 p-3 rounded-2xl rounded-bl-none flex items-center gap-2">
                                     <Loader2 className="animate-spin text-brand-gold" size={14} />
-                                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Thinking...</span>
+                                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">{t('mila.loading')}</span>
                                 </div>
                             </div>
                         )}
@@ -541,7 +543,7 @@ INSTRUCTIONS:
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                                 disabled={isLoading}
-                                placeholder="Ask me to log data, query KPIs, generate reports..."
+                                placeholder={t('mila.inputPlaceholder')}
                                 className="flex-grow bg-white/5 border border-brand-gold/10 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors disabled:opacity-50"
                             />
                             <button
@@ -553,7 +555,7 @@ INSTRUCTIONS:
                             </button>
                         </div>
                         <div className="text-[9px] text-center text-gray-600 mt-2 uppercase tracking-widest">
-                            Mila can now take actions • AI can make mistakes
+                            {t('mila.inputFooter')}
                         </div>
                     </div>
                 </>

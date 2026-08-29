@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getPlatformSettings, getWeekStartISO } from '../lib/platformSettings';
 
 export interface DailyWaste {
   date: string;
@@ -45,19 +46,23 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
         // 0. Fetch outlets dynamically
         const { data: outletsData } = await supabase
           .from('outlets')
-          .select('id, name, code, color_hex')
-          .order('name', { ascending: true });
+          .select('id, outlet_name, outlet_id, color_hex')
+          .order('outlet_name', { ascending: true });
 
         const keys: string[] = [];
         if (outletsData && outletsData.length > 0) {
-          outletsData.forEach((o: any) => keys.push(o.name.toUpperCase()));
+          outletsData.forEach((o: any) => keys.push((o.outlet_name || o.name || '').toUpperCase()));
         }
         setOutletKeys(keys);
 
-        // 1. Fetch Live Data from all outlets
+        // 1. Fetch Live Data from all outlets (current chart week only)
+        const settings = await getPlatformSettings();
+        const weekStartISO = getWeekStartISO(settings.weekly_reset_day);
+
         const { data: wasteLogs, error: wasteError } = await supabase
           .from('food_waste_logs')
-          .select('mass_kg, created_at, outlet_name, outlets(name)')
+          .select('*')
+          .gte('created_at', weekStartISO)
           .order('created_at', { ascending: false })
           .limit(200);
 
@@ -71,12 +76,21 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
           keys.forEach(k => { dayMap[day][k] = 0; });
         });
 
+        // Build a map of outlet_id → outlet_name for lookups
+        const outletMap: Record<string, string> = {};
+        if (outletsData) {
+          outletsData.forEach((o: any) => {
+            const name = (o.outlet_name || o.name || '').toUpperCase();
+            if (o.id) outletMap[o.id] = name;
+          });
+        }
+
         // 3. Map Live Data to Days
         if (wasteLogs && wasteLogs.length > 0) {
           wasteLogs.forEach((log: any) => {
             const date = new Date(log.created_at);
             const dayLabel = DAYS[date.getDay()];
-            const outletName = (log.outlet_name || log.outlets?.name || '').toUpperCase();
+            const outletName = (log.outlet_name || outletMap[log.outlet_id] || '').toUpperCase();
             const mass = Number(log.mass_kg) || 0;
             const co2e = mass * 2.85;
 
@@ -107,7 +121,19 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
     };
 
     fetchChartData();
-    return () => window.removeEventListener('ecometricus_waste_updated', handleStorageChange);
+
+    // Realtime subscription: auto-refresh when any user adds/updates/deletes waste entries
+    const channel = supabase
+      .channel('food_waste_logs_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'food_waste_logs' }, () => {
+        fetchChartData();
+      })
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('ecometricus_waste_updated', handleStorageChange);
+      supabase.removeChannel(channel);
+    };
   }, [targetKg, activeOutletCount]);
 
   return { chartData, outletKeys, target, dailyBenchmark, weeklyTotal, isLoading };

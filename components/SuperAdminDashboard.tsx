@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
+import { useI18n } from '../lib/useI18n';
+import { getPlatformSettings, savePlatformSettings } from '../lib/platformSettings';
 import MilaKnowledgeManager from './MilaKnowledgeManager';
 import {
   LayoutDashboard, Users, Building2, Database, Activity, ShieldCheck,
@@ -40,6 +42,7 @@ interface CompanyRow {
 }
 
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
+  const { t } = useI18n();
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +61,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   const [bannerText, setBannerText] = useState('');
   const [bannerType, setBannerType] = useState<'info' | 'warning' | 'success'>('info');
   const [bannerSaved, setBannerSaved] = useState(false);
+
+  // Weekly chart reset config
+  const [weeklyResetDay, setWeeklyResetDay] = useState<number>(6); // 6 = Saturday
+  const [weeklyResetSaved, setWeeklyResetSaved] = useState(false);
 
   const fetchPlatformData = useCallback(async () => {
     setIsLoading(true);
@@ -96,7 +103,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
       // Fetch resource logs for water footprint
       const { data: resourceLogs } = await supabase
         .from('resource_logs')
-        .select('resource_type, amount');
+        .select('water_liters, energy_kwh, resource_type, amount');
 
       const totalOutlets = outletData?.length || 0;
       const totalUsers = (personnelData?.length || 0) + (companyData?.length || 0);
@@ -107,9 +114,13 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
         sum + ((log.mass_kg || 0) * 2.5), 0); // ~2.5 kg CO2e per kg waste
       const financialLoss = (wasteLogs || []).reduce((sum: number, log: any) =>
         sum + ((log.mass_kg || 0) * (log.cost_per_kg || 6.5)), 0);
-      const waterFootprint = (resourceLogs || []).filter((r: any) =>
-        r.resource_type === 'water').reduce((sum: number, r: any) =>
-        sum + (r.amount || 0), 0);
+      const waterFootprint = (resourceLogs || []).reduce((sum: number, r: any) => {
+        // New schema: water_liters column
+        if (r.water_liters) return sum + Number(r.water_liters);
+        // Old schema: amount + resource_type
+        if (r.resource_type === 'water') return sum + (r.amount || 0);
+        return sum;
+      }, 0);
 
       setStats({
         totalCompanies,
@@ -151,6 +162,16 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   useEffect(() => {
     fetchPlatformData();
   }, [fetchPlatformData]);
+
+  // Load platform settings (weekly reset day + banner config)
+  useEffect(() => {
+    getPlatformSettings().then(s => {
+      setWeeklyResetDay(s.weekly_reset_day);
+      setBannerEnabled(s.banner_enabled);
+      setBannerText(s.banner_text);
+      setBannerType(s.banner_type);
+    });
+  }, []);
 
   const handleSuspendCompany = async (companyId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
@@ -218,20 +239,20 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
         </div>
         <div>
           <h1 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-            Platform Control Center
+            {t('superAdmin.title')}
           </h1>
           <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
-            Global oversight of all companies, outlets, users, and data across the Ecometricus platform.
+            {t('superAdmin.subtitle')}
           </p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex overflow-x-auto gap-2 w-full sm:w-fit shrink-0 scrollbar-hide pb-1">
-        <TabButton id="overview" label="Overview" icon={LayoutDashboard} />
-        <TabButton id="companies" label="Companies" icon={Building2} />
-        <TabButton id="users" label="Users" icon={Users} />
-        <TabButton id="system" label="System" icon={Server} />
+        <TabButton id="overview" label={t('superAdmin.tabOverview')} icon={LayoutDashboard} />
+        <TabButton id="companies" label={t('superAdmin.tabCompanies')} icon={Building2} />
+        <TabButton id="users" label={t('superAdmin.tabUsers')} icon={Users} />
+        <TabButton id="system" label={t('superAdmin.tabSystem')} icon={Server} />
       </div>
 
       {isLoading ? (
@@ -245,10 +266,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
               <div className="space-y-8 animate-in fade-in duration-500">
                 {/* Platform KPIs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                  <StatCard icon={Building2} label="Total Companies" value={stats?.totalCompanies || 0} sublabel="Registered" color="brand-gold" />
-                  <StatCard icon={Building2} label="Total Outlets" value={stats?.totalOutlets || 0} sublabel="Across all companies" color="brand-gold" />
-                  <StatCard icon={Users} label="Total Users" value={stats?.totalUsers || 0} sublabel={`${stats?.activeUsers || 0} active`} color="brand-eco" trend="up" />
-                  <StatCard icon={Database} label="Data Points" value={stats?.totalDataPoints || 0} sublabel="Waste + Resource logs" color="brand-gold" />
+                  <StatCard icon={Building2} label={t('superAdmin.kpiTotalCompanies')} value={stats?.totalCompanies || 0} sublabel={t('superAdmin.kpiTotalCompaniesSub')} color="brand-gold" />
+                  <StatCard icon={Building2} label={t('superAdmin.kpiTotalOutlets')} value={stats?.totalOutlets || 0} sublabel={t('superAdmin.kpiTotalOutletsSub')} color="brand-gold" />
+                  <StatCard icon={Users} label={t('superAdmin.kpiTotalUsers')} value={stats?.totalUsers || 0} sublabel={`${stats?.activeUsers || 0}${t('superAdmin.kpiTotalUsersSub')}`} color="brand-eco" trend="up" />
+                  <StatCard icon={Database} label={t('superAdmin.kpiDataPoints')} value={stats?.totalDataPoints || 0} sublabel={t('superAdmin.kpiDataPointsSub')} color="brand-gold" />
                 </div>
 
                 {/* ESG Impact Summary */}
@@ -259,17 +280,17 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     </div>
                     <div>
                       <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                        Platform ESG Impact
+                        {t('superAdmin.esgHeading')}
                       </h4>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-                        Aggregate Across All Tenants
+                        {t('superAdmin.esgSublabel')}
                       </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                    <StatCard icon={Cloud} label="Carbon Lifecycle" value={stats?.totalCarbonImpact.toFixed(1) || '0'} sublabel="kg CO₂e total" color="brand-gold" />
-                    <StatCard icon={Droplets} label="Water Footprint" value={stats?.totalWaterFootprint.toFixed(1) || '0'} sublabel="Liters total" color="brand-gold" />
-                    <StatCard icon={DollarSign} label="Financial Impact" value={`$${stats?.totalFinancialLoss.toFixed(2) || '0'}`} sublabel="Total loss tracked" color="brand-alert" />
+                    <StatCard icon={Cloud} label={t('superAdmin.esgCarbon')} value={stats?.totalCarbonImpact.toFixed(1) || '0'} sublabel={t('superAdmin.esgCarbonSub')} color="brand-gold" />
+                    <StatCard icon={Droplets} label={t('superAdmin.esgWater')} value={stats?.totalWaterFootprint.toFixed(1) || '0'} sublabel={t('superAdmin.esgWaterSub')} color="brand-gold" />
+                    <StatCard icon={DollarSign} label={t('superAdmin.esgFinancial')} value={`$${stats?.totalFinancialLoss.toFixed(2) || '0'}`} sublabel={t('superAdmin.esgFinancialSub')} color="brand-alert" />
                   </div>
                 </div>
 
@@ -281,16 +302,16 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     </div>
                     <div>
                       <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                        Data Breakdown
+                        {t('superAdmin.dataBreakdown')}
                       </h4>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-                        Entry Volume by Category
+                        {t('superAdmin.dataBreakdownSub')}
                       </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                    <StatCard icon={Leaf} label="Waste Entries" value={stats?.totalWasteEntries || 0} sublabel="Food waste logs" color="brand-eco" />
-                    <StatCard icon={Zap} label="Resource Entries" value={stats?.totalResourceEntries || 0} sublabel="Energy + Water logs" color="brand-energy" />
+                    <StatCard icon={Leaf} label={t('superAdmin.dataWaste')} value={stats?.totalWasteEntries || 0} sublabel={t('superAdmin.dataWasteSub')} color="brand-eco" />
+                    <StatCard icon={Zap} label={t('superAdmin.dataResource')} value={stats?.totalResourceEntries || 0} sublabel={t('superAdmin.dataResourceSub')} color="brand-energy" />
                   </div>
                 </div>
 
@@ -303,15 +324,15 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                       </div>
                       <div>
                         <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                          Recent Companies
+                          {t('superAdmin.recentCompanies')}
                         </h4>
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-                          Latest Registrations
+                          {t('superAdmin.recentCompaniesSub')}
                         </p>
                       </div>
                     </div>
                     <button onClick={() => setActiveTab('companies')} className="flex items-center gap-1 text-[11px] font-bold text-brand-gold hover:text-brand-gold/80 transition-colors">
-                      View All <ChevronRight size={14} />
+                      {t('superAdmin.viewAll')} <ChevronRight size={14} />
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -348,12 +369,12 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                       type="text"
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      placeholder="Search companies..."
+                      placeholder={t('superAdmin.searchPlaceholder')}
                       className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-brand-gold transition-all"
                     />
                   </div>
                   <button onClick={fetchPlatformData} className="flex items-center gap-2 px-4 py-3 rounded-xl bg-brand-dark/60 border border-brand-gold/20 text-white/60 hover:text-brand-gold hover:border-brand-gold/40 transition-all">
-                    <RefreshCcw size={16} /> Refresh
+                    <RefreshCcw size={16} /> {t('superAdmin.refresh')}
                   </button>
                 </div>
 
@@ -363,12 +384,12 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-brand-gold/15">
-                          <th className="text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">Company</th>
-                          <th className="text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">Location</th>
-                          <th className="text-center px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">Outlets</th>
-                          <th className="text-center px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">Users</th>
-                          <th className="text-center px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">Status</th>
-                          <th className="text-right px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">Actions</th>
+                          <th className="text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thCompany')}</th>
+                          <th className="text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thLocation')}</th>
+                          <th className="text-center px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thOutlets')}</th>
+                          <th className="text-center px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thUsers')}</th>
+                          <th className="text-center px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thStatus')}</th>
+                          <th className="text-right px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thActions')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -402,7 +423,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                                     : 'bg-brand-alert/10 border border-brand-alert/30 text-brand-alert hover:bg-brand-alert/20'
                                 }`}
                               >
-                                {c.status === 'suspended' ? <><Unlock size={12} /> Activate</> : <><Ban size={12} /> Suspend</>}
+                                {c.status === 'suspended' ? <><Unlock size={12} /> {t('superAdmin.activate')}</> : <><Ban size={12} /> {t('superAdmin.suspend')}</>}
                               </button>
                             </td>
                           </tr>
@@ -410,7 +431,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         {filteredCompanies.length === 0 && (
                           <tr>
                             <td colSpan={6} className="px-5 py-16 text-center">
-                              <p className="text-sm text-white/30">No companies found.</p>
+                              <p className="text-sm text-white/30">{t('superAdmin.noCompanies')}</p>
                             </td>
                           </tr>
                         )}
@@ -425,14 +446,14 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
             {activeTab === 'users' && (
               <div className="space-y-6 animate-in fade-in duration-500">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-4">
-                  <StatCard icon={Users} label="Total Users" value={stats?.totalUsers || 0} sublabel="All registered" color="brand-gold" />
-                  <StatCard icon={CheckCircle2} label="Active Users" value={stats?.activeUsers || 0} sublabel="Not suspended" color="brand-eco" />
-                  <StatCard icon={Ban} label="Suspended" value={(stats?.totalUsers || 0) - (stats?.activeUsers || 0)} sublabel="Inactive accounts" color="brand-alert" />
+                  <StatCard icon={Users} label={t('superAdmin.usersTotal')} value={stats?.totalUsers || 0} sublabel={t('superAdmin.usersTotalSub')} color="brand-gold" />
+                  <StatCard icon={CheckCircle2} label={t('superAdmin.usersActive')} value={stats?.activeUsers || 0} sublabel={t('superAdmin.usersActiveSub')} color="brand-eco" />
+                  <StatCard icon={Ban} label={t('superAdmin.usersSuspended')} value={(stats?.totalUsers || 0) - (stats?.activeUsers || 0)} sublabel={t('superAdmin.usersSuspendedSub')} color="brand-alert" />
                 </div>
                 <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-8 text-center">
                   <Users size={32} className="text-white/20 mx-auto mb-3" />
-                  <p className="text-sm text-white/40">User management table loads from the users table.</p>
-                  <p className="text-xs text-white/25 mt-1">Use the Companies tab to manage tenant-level access.</p>
+                  <p className="text-sm text-white/40">{t('superAdmin.usersInfo1')}</p>
+                  <p className="text-xs text-white/25 mt-1">{t('superAdmin.usersInfo2')}</p>
                 </div>
               </div>
             )}
@@ -441,11 +462,11 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
             {activeTab === 'system' && (
               <div className="space-y-6 animate-in fade-in duration-500">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  <StatCard icon={Server} label="Supabase Status" value="Online" sublabel="Edge functions active" color="brand-eco" trend="up" />
-                  <StatCard icon={Webhook} label="Webhooks" value="0" sublabel="No integrations" color="brand-gold" />
-                  <StatCard icon={Globe} label="API Endpoints" value="12" sublabel="REST routes" color="brand-gold" />
-                  <StatCard icon={Bell} label="Alert System" value="Active" sublabel="Anomaly detection on" color="brand-eco" trend="up" />
-                  <StatCard icon={FileText} label="Audit Logs" value="Enabled" sublabel="All actions tracked" color="brand-gold" />
+                  <StatCard icon={Server} label={t('superAdmin.sysSupabase')} value={t('superAdmin.sysSupabaseVal')} sublabel={t('superAdmin.sysSupabaseSub')} color="brand-eco" trend="up" />
+                  <StatCard icon={Webhook} label={t('superAdmin.sysWebhooks')} value="0" sublabel={t('superAdmin.sysWebhooksSub')} color="brand-gold" />
+                  <StatCard icon={Globe} label={t('superAdmin.sysApiEndpoints')} value="12" sublabel={t('superAdmin.sysApiEndpointsSub')} color="brand-gold" />
+                  <StatCard icon={Bell} label={t('superAdmin.sysAlert')} value={t('superAdmin.sysAlertVal')} sublabel={t('superAdmin.sysAlertSub')} color="brand-eco" trend="up" />
+                  <StatCard icon={FileText} label={t('superAdmin.sysAudit')} value={t('superAdmin.sysAuditVal')} sublabel={t('superAdmin.sysAuditSub')} color="brand-gold" />
                 </div>
 
                 {/* System Controls */}
@@ -456,10 +477,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     </div>
                     <div>
                       <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                        System Controls
+                        {t('superAdmin.sysControls')}
                       </h4>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-                        Platform Operations
+                        {t('superAdmin.sysControlsSub')}
                       </p>
                     </div>
                   </div>
@@ -469,8 +490,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         <RefreshCcw size={18} className="text-brand-gold" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white">Refresh All Data</p>
-                        <p className="text-[10px] text-white/40 uppercase tracking-wider">Reload platform metrics</p>
+                        <p className="text-sm font-bold text-white">{t('superAdmin.ctrlRefreshData')}</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider">{t('superAdmin.ctrlRefreshDataSub')}</p>
                       </div>
                     </button>
                     <button className="flex items-center gap-3 p-5 rounded-2xl border border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/40 transition-all text-left">
@@ -478,8 +499,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         <Bell size={18} className="text-brand-alert" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white">Alert Config</p>
-                        <p className="text-[10px] text-white/40 uppercase tracking-wider">Manage thresholds</p>
+                        <p className="text-sm font-bold text-white">{t('superAdmin.ctrlAlertConfig')}</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider">{t('superAdmin.ctrlAlertConfigSub')}</p>
                       </div>
                     </button>
                     <button className="flex items-center gap-3 p-5 rounded-2xl border border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/40 transition-all text-left">
@@ -487,8 +508,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         <FileText size={18} className="text-brand-gold" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white">Audit Trail</p>
-                        <p className="text-[10px] text-white/40 uppercase tracking-wider">View all system actions</p>
+                        <p className="text-sm font-bold text-white">{t('superAdmin.ctrlAuditTrail')}</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider">{t('superAdmin.ctrlAuditTrailSub')}</p>
                       </div>
                     </button>
                     <button className="flex items-center gap-3 p-5 rounded-2xl border border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/40 transition-all text-left">
@@ -496,8 +517,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         <Mail size={18} className="text-brand-gold" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white">Email Templates</p>
-                        <p className="text-[10px] text-white/40 uppercase tracking-wider">Manage notifications</p>
+                        <p className="text-sm font-bold text-white">{t('superAdmin.ctrlEmailTemplates')}</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider">{t('superAdmin.ctrlEmailTemplatesSub')}</p>
                       </div>
                     </button>
                     <button className="flex items-center gap-3 p-5 rounded-2xl border border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/40 transition-all text-left">
@@ -505,8 +526,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         <Database size={18} className="text-brand-gold" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white">Database Health</p>
-                        <p className="text-[10px] text-white/40 uppercase tracking-wider">Check table sizes</p>
+                        <p className="text-sm font-bold text-white">{t('superAdmin.ctrlDbHealth')}</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider">{t('superAdmin.ctrlDbHealthSub')}</p>
                       </div>
                     </button>
                   </div>
@@ -520,10 +541,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     </div>
                     <div>
                       <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                        Announcement Banner
+                        {t('superAdmin.announcementHeading')}
                       </h4>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-                        Platform-wide User Notifications
+                        {t('superAdmin.announcementSub')}
                       </p>
                     </div>
                   </div>
@@ -531,8 +552,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     {/* Enable / Disable */}
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold text-white">Enable Banner</p>
-                        <p className="text-[10px] text-white/40 uppercase tracking-wider">Show announcement to all users</p>
+                        <p className="text-sm font-bold text-white">{t('superAdmin.enableBanner')}</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider">{t('superAdmin.enableBannerSub')}</p>
                       </div>
                       <button
                         onClick={() => setBannerEnabled(!bannerEnabled)}
@@ -544,21 +565,21 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
 
                     {/* Banner Type */}
                     <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-brand-gold/80 mb-2 block">Banner Type</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-brand-gold/80 mb-2 block">{t('superAdmin.bannerType')}</label>
                       <div className="flex gap-2">
-                        {(['info', 'warning', 'success'] as const).map(t => (
+                        {(['info', 'warning', 'success'] as const).map(bt => (
                           <button
-                            key={t}
-                            onClick={() => setBannerType(t)}
+                            key={bt}
+                            onClick={() => setBannerType(bt)}
                             className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all border ${
-                              bannerType === t
-                                ? t === 'warning' ? 'bg-brand-alert/15 border-brand-alert/40 text-brand-alert'
-                                  : t === 'success' ? 'bg-brand-eco/15 border-brand-eco/40 text-brand-eco'
+                              bannerType === bt
+                                ? bt === 'warning' ? 'bg-brand-alert/15 border-brand-alert/40 text-brand-alert'
+                                  : bt === 'success' ? 'bg-brand-eco/15 border-brand-eco/40 text-brand-eco'
                                   : 'bg-brand-gold/15 border-brand-gold/40 text-brand-gold'
                                 : 'border-brand-gold/15 text-white/40 hover:text-white/70'
                             }`}
                           >
-                            {t}
+                            {bt === 'info' ? t('superAdmin.bannerTypeInfo') : bt === 'warning' ? t('superAdmin.bannerTypeWarning') : t('superAdmin.bannerTypeSuccess')}
                           </button>
                         ))}
                       </div>
@@ -566,11 +587,11 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
 
                     {/* Banner Text */}
                     <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-brand-gold/80 mb-2 block">Message</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-brand-gold/80 mb-2 block">{t('superAdmin.bannerMessage')}</label>
                       <textarea
                         value={bannerText}
                         onChange={e => setBannerText(e.target.value)}
-                        placeholder="Enter announcement message..."
+                        placeholder={t('superAdmin.bannerPlaceholder')}
                         rows={3}
                         className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all resize-none"
                       />
@@ -579,7 +600,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     {/* Preview */}
                     {bannerEnabled && bannerText.trim() && (
                       <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-brand-gold/80 mb-2 block">Preview</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-brand-gold/80 mb-2 block">{t('superAdmin.bannerPreview')}</label>
                         <div className={`rounded-xl px-4 py-3 text-sm font-bold border ${
                           bannerType === 'warning' ? 'bg-brand-alert/10 border-brand-alert/30 text-brand-alert'
                             : bannerType === 'success' ? 'bg-brand-eco/10 border-brand-eco/30 text-brand-eco'
@@ -593,14 +614,86 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     {/* Save */}
                     <div className="flex justify-end">
                       <button
-                        onClick={() => {
-                          setBannerSaved(true);
-                          setTimeout(() => setBannerSaved(false), 1500);
+                        onClick={async () => {
+                          const ok = await savePlatformSettings({
+                            banner_enabled: bannerEnabled,
+                            banner_text: bannerText,
+                            banner_type: bannerType,
+                          });
+                          if (ok) {
+                            setBannerSaved(true);
+                            setTimeout(() => setBannerSaved(false), 1500);
+                          }
                         }}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-gold/15 border border-brand-gold/40 text-brand-gold text-sm font-bold hover:bg-brand-gold/25 transition-all"
                       >
                         {bannerSaved ? <CheckCircle2 size={16} /> : <Bell size={16} />}
-                        {bannerSaved ? 'Saved!' : 'Save Banner'}
+                        {bannerSaved ? t('superAdmin.bannerSaved') : t('superAdmin.bannerSave')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Weekly Chart Reset Config ── */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-10 h-10 border border-brand-gold/50 rounded-xl bg-brand-gold/5 flex items-center justify-center shrink-0">
+                      <Clock size={18} className="text-brand-gold" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                        {t('superAdmin.weeklyResetHeading')}
+                      </h4>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
+                        {t('superAdmin.weeklyResetSub')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5 sm:p-6 space-y-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-brand-gold/60 mb-2">
+                        {t('superAdmin.weeklyResetDayLabel')}
+                      </label>
+                      <div className="grid grid-cols-7 gap-1.5">
+                        {[
+                          { day: 0, label: 'Sun' },
+                          { day: 1, label: 'Mon' },
+                          { day: 2, label: 'Tue' },
+                          { day: 3, label: 'Wed' },
+                          { day: 4, label: 'Thu' },
+                          { day: 5, label: 'Fri' },
+                          { day: 6, label: 'Sat' },
+                        ].map(({ day, label }) => (
+                          <button
+                            key={day}
+                            onClick={() => setWeeklyResetDay(day)}
+                            className={`py-2.5 rounded-lg text-xs font-bold transition-all ${
+                              weeklyResetDay === day
+                                ? 'bg-brand-gold text-brand-dark shadow-sm'
+                                : 'bg-brand-dark/40 text-white/50 border border-brand-gold/10 hover:text-white/80'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-white/40 mt-3 leading-relaxed">
+                        {t('superAdmin.weeklyResetHint')}
+                      </p>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={async () => {
+                          const ok = await savePlatformSettings({ weekly_reset_day: weeklyResetDay });
+                          if (ok) {
+                            setWeeklyResetSaved(true);
+                            setTimeout(() => setWeeklyResetSaved(false), 1500);
+                          }
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-gold/15 border border-brand-gold/40 text-brand-gold text-sm font-bold hover:bg-brand-gold/25 transition-all"
+                      >
+                        {weeklyResetSaved ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                        {weeklyResetSaved ? t('superAdmin.weeklyResetSaved') : t('superAdmin.weeklyResetSave')}
                       </button>
                     </div>
                   </div>
@@ -614,10 +707,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     </div>
                     <div>
                       <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                        Mila Knowledge Base
+                        {t('superAdmin.milaHeading')}
                       </h4>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-                        AI Training Documents
+                        {t('superAdmin.milaSub')}
                       </p>
                     </div>
                   </div>
@@ -632,10 +725,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                     </div>
                     <div>
                       <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                        Super Admin Users
+                        {t('superAdmin.saHeading')}
                       </h4>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-alert/80">
-                        Platform Control Access
+                        {t('superAdmin.saSub')}
                       </p>
                     </div>
                   </div>
@@ -647,7 +740,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         type="email"
                         value={newAdminEmail}
                         onChange={e => setNewAdminEmail(e.target.value)}
-                        placeholder="user@email.com"
+                        placeholder={t('superAdmin.saPlaceholder')}
                         className="flex-grow bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all"
                       />
                       <button
@@ -664,7 +757,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-alert/15 border border-brand-alert/40 text-brand-alert text-sm font-bold hover:bg-brand-alert/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                       >
                         {addingAdmin ? <CheckCircle2 size={16} /> : <UserPlus size={16} />}
-                        {addingAdmin ? 'Added!' : 'Add Super Admin'}
+                        {addingAdmin ? t('superAdmin.addedSuperAdmin') : t('superAdmin.addSuperAdmin')}
                       </button>
                     </div>
                     <p className="text-[10px] text-white/30 mt-3">
@@ -683,7 +776,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-white truncate">{email}</p>
                             <p className="text-[10px] text-white/40 uppercase tracking-wider">
-                              {email === user.email?.toLowerCase() ? 'You (current session)' : 'Super Admin'}
+                              {email === user.email?.toLowerCase() ? t('superAdmin.currentSession') : t('superAdmin.saRole')}
                             </p>
                           </div>
                         </div>
@@ -691,14 +784,14 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                           <button
                             onClick={() => setSuperAdminEmails(prev => prev.filter(e => e !== email))}
                             className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors shrink-0"
-                            title="Remove super admin"
+                            title={t('superAdmin.removeSuperAdmin')}
                           >
                             <Trash2 size={16} />
                           </button>
                         )}
                         {email === 'dhirenkirpalani2308@gmail.com' && (
                           <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-brand-eco/15 text-brand-eco border border-brand-eco/30 shrink-0">
-                            Primary
+                            {t('superAdmin.primaryBadge')}
                           </span>
                         )}
                       </div>

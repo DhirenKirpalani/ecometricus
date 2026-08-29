@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Info, Leaf, X as XIcon, TrendingDown } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
 
 interface FoodWasteData {
     day: string;
@@ -12,6 +13,7 @@ interface FoodWasteTemplateChartProps {
 }
 
 const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, benchmark }) => {
+    const { t } = useI18n();
     const [selectedDay, setSelectedDay] = useState<FoodWasteData | null>(null);
 
     const minVal = 0;
@@ -35,19 +37,19 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
                         <Leaf size={18} className="text-brand-eco" />
                     </div>
                     <div>
-                        <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">Food Waste</h3>
-                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">Daily Production Waste</p>
+                        <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">{t('charts.foodWasteTitle')}</h3>
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">{t('charts.foodWasteSubtitle')}</p>
                     </div>
                 </div>
                 {hasAlert ? (
                     <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg">
                         <Info size={11} className="text-brand-alert" />
-                        <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Attention</span>
+                        <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">{t('charts.statusAttention')}</span>
                     </div>
                 ) : (
                     <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg">
                         <TrendingDown size={11} className="text-brand-eco" />
-                        <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">On Target</span>
+                        <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">{t('charts.statusOnTarget')}</span>
                     </div>
                 )}
             </div>
@@ -55,15 +57,15 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
             {/* Stats Row */}
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Benchmark</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statBenchmark')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{benchmark.toFixed(2)}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Weekly</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statWeekly')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{weeklyWaste}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Avg/Day</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statAvgDay')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{avgWaste}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
                 </div>
             </div>

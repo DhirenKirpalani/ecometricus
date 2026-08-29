@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Info, Cloud, ShieldCheck, X as XIcon } from 'lucide-react';
 import { DailyWaste } from '../hooks/useFoodWasteChartData';
+import { useI18n } from '../lib/useI18n';
 
 const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
 
@@ -30,6 +31,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
     outletColors = {},
     outletLabels = {},
 }) => {
+    const { t } = useI18n();
     const [selectedDay, setSelectedDay] = useState<DailyWaste | null>(null);
 
     const outletMeta: OutletMeta[] = useMemo(() => {
@@ -61,19 +63,19 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                         <Cloud size={18} className="text-white/60" />
                     </div>
                     <div>
-                        <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">CO2 Emissions</h3>
-                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">Daily Carbon Footprint</p>
+                        <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">{t('charts.co2Title')}</h3>
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">{t('charts.co2Subtitle')}</p>
                     </div>
                 </div>
                 {hasAlert ? (
                     <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg shrink-0">
                         <Info size={11} className="text-brand-alert" />
-                        <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Attention</span>
+                        <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">{t('charts.statusAttention')}</span>
                     </div>
                 ) : (
                     <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg shrink-0">
                         <ShieldCheck size={11} className="text-brand-eco" />
-                        <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">Optimal</span>
+                        <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">{t('charts.statusOptimal')}</span>
                     </div>
                 )}
             </div>
@@ -81,15 +83,15 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
             {/* Stats Row */}
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Benchmark</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statBenchmark')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(benchmark)}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Weekly</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statWeekly')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(weeklyTotal)}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Efficiency</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statEfficiency')}</p>
                     <p className={`text-sm font-geometric font-black leading-none mt-1 ${efficiency >= 0 ? 'text-brand-eco' : 'text-brand-alert'}`}>{efficiency >= 0 ? efficiency : 0}<span className="text-[10px] text-white/40 ml-0.5">%</span></p>
                 </div>
             </div>
@@ -145,7 +147,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                                     const yTop = getY(Math.min(end, maxVal));
                                     const yBottom = getY(Math.max(start, minVal));
                                     return { yTop, h: yBottom - yTop, key: o.key };
-                                }).filter(Boolean);
+                                }).filter((s): s is { yTop: number; h: number; key: string } => s !== null);
 
                                 return (
                                     <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>

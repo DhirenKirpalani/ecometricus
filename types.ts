@@ -27,6 +27,9 @@ export interface Outlet {
   code: string;
   location?: string;
   color_hex?: string;
+  outlet_name?: string;
+  outlet_id?: string;
+  user_id?: string;
 }
 
 export interface UserProfile {
@@ -38,6 +41,7 @@ export interface UserProfile {
   outletCode: string;
   permissions?: string[];
   password?: string;
+  accessCode?: string;
   legal_consent?: boolean;
 }
 

@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { AlertTriangle, TrendingUp, TrendingDown, Minus, ShieldCheck } from 'lucide-react';
 import { Outlet } from '../types';
+import { useI18n } from '../lib/useI18n';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface KpiChartProps {
@@ -88,6 +89,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
   stackKeys = [],
   rollingAverageKey,
 }) => {
+  const { t } = useI18n();
   const hasAlert = useMemo(() => {
     if (!benchmark || !alertIfAbove) return false;
     return data.some(d => Number(d[dataKey]) > benchmark);
@@ -293,7 +295,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
       <div className="grid grid-cols-3 gap-2 mb-4">
         {benchmark !== undefined && (
           <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{benchmarkLabel || 'Bench'}</p>
+            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{benchmarkLabel || t('charts.statBenchmark')}</p>
             <p className="text-sm font-geometric font-black text-white leading-none mt-1">{formatBenchmark(benchmark)}</p>
           </div>
         )}

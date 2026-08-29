@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Page } from '../types';
 import { Check, ChevronLeft, Send, Leaf, ShieldCheck } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
 
 interface AssessmentFormProps {
   onNavigate: (page: Page) => void;
@@ -33,80 +34,81 @@ interface Section {
 const sections: Section[] = [
   {
     id: 'org',
-    title: 'Section 1: Organization Profile',
+    title: 'section1',
     questions: [
-      { id: 'q1', number: 1, label: 'Property type', required: true, type: 'select', placeholder: 'Select', options: ['Hotel', 'Resort', 'Boutique Hotel', 'Restaurant', 'Cruise Ship', 'Other'] },
-      { id: 'q2', number: 2, label: 'Number of F&B outlets', required: true, type: 'select', placeholder: 'Select', options: ['1', '2-3', '4-6', '7-10', '10+'] },
-      { id: 'q3', number: 3, label: 'Average covers per day (total across all outlets)', required: true, type: 'select', placeholder: 'Select', options: ['Less than 50', '50-100', '101-200', '201-500', '500+'] },
+      { id: 'q1', number: 1, label: 'q1Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['Hotel', 'Resort', 'Boutique Hotel', 'Restaurant', 'Cruise Ship', 'Other'] },
+      { id: 'q2', number: 2, label: 'q2Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['1', '2-3', '4-6', '7-10', '10+'] },
+      { id: 'q3', number: 3, label: 'q3Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['Less than 50', '50-100', '101-200', '201-500', '500+'] },
     ],
   },
   {
     id: 'ops',
-    title: 'Section 2 - Current F&B Operations',
+    title: 'section2',
     questions: [
-      { id: 'q4', number: 4, label: 'Do you currently track Food Waste?', required: true, type: 'single', options: ['No tracking at all', 'Manual visual estimate only', 'Periodic weighing (Not daily)', 'Daily weighing with spreadsheets', 'Using a waste tracking system'] },
-      { id: 'q5', number: 5, label: 'If you track waste, can you classify it by source?', required: false, type: 'multi', options: ['Preparation waste (kitchen prep)', 'Buffet waste (overproduction)', 'Plate waste (guest leftovers)', 'Spoilage (storage/inventory issues)', 'We cannot classify by source'] },
-      { id: 'q6', number: 6, label: 'How do you estimate your current food cost percentage?', required: true, type: 'single', options: ["We don't track food cost %", 'Monthly P&L review only', 'Weekly inventory counts', 'Daily tracking per outlet', 'Real-time POS integration'] },
-      { id: 'q7', number: 7, label: 'What are your biggest operational challenges in F&B? (Select up to 3)', required: true, type: 'multi-limit', max: 3, options: ['Food cost control', 'Labor efficiency', 'Waste management', 'Menu profitability', 'Inventory accuracy', 'Guest satisfaction', 'Supply chain management'] },
+      { id: 'q4', number: 4, label: 'q4Label', required: true, type: 'single', options: ['No tracking at all', 'Manual visual estimate only', 'Periodic weighing (Not daily)', 'Daily weighing with spreadsheets', 'Using a waste tracking system'] },
+      { id: 'q5', number: 5, label: 'q5Label', required: false, type: 'multi', options: ['Preparation waste (kitchen prep)', 'Buffet waste (overproduction)', 'Plate waste (guest leftovers)', 'Spoilage (storage/inventory issues)', 'We cannot classify by source'] },
+      { id: 'q6', number: 6, label: 'q6Label', required: true, type: 'single', options: ["We don't track food cost %", 'Monthly P&L review only', 'Weekly inventory counts', 'Daily tracking per outlet', 'Real-time POS integration'] },
+      { id: 'q7', number: 7, label: 'q7Label', required: true, type: 'multi-limit', max: 3, options: ['Food cost control', 'Labor efficiency', 'Waste management', 'Menu profitability', 'Inventory accuracy', 'Guest satisfaction', 'Supply chain management'] },
     ],
   },
   {
     id: 'esg',
-    title: 'Section 3 - Sustainability & ESG Awareness',
+    title: 'section3',
     questions: [
-      { id: 'q8', number: 8, label: 'Does your property produce an ESG or sustainability report?', required: true, type: 'select', placeholder: 'Select', options: ['Yes, annually', 'Yes, periodically', 'No, but planning to', 'No'] },
-      { id: 'q9', number: 9, label: 'If you report on sustainability, which F&B metrics do you include? (Select all that apply)', required: true, type: 'multi', options: ['Food waste weight/volume', 'Food waste as % of purchases', 'Carbon footprint (Scope 3) from F&B', 'Water consumption from F&B', 'Local/sustainable sourcing %', "We don't include F&B-specific metrics"] },
-      { id: 'q10', number: 10, label: 'Are you aware that F&B typically accounts for 50-70% of a hotel\'s Food Waste?', required: true, type: 'select', placeholder: 'Select', options: ['Yes, fully aware', 'Somewhat aware', 'No, I was unaware'] },
-      { id: 'q11', number: 11, label: 'What are your primary sustainability goals for F&B? (Select all that apply)', required: true, type: 'multi', options: ['Meet corporate ESG targets', 'Reduce operational costs', 'Guest/brand expectations', 'Regulatory compliance', 'Achieve sustainability certifications', 'No specific goal yet'] },
+      { id: 'q8', number: 8, label: 'q8Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['Yes, annually', 'Yes, periodically', 'No, but planning to', 'No'] },
+      { id: 'q9', number: 9, label: 'q9Label', required: true, type: 'multi', options: ['Food waste weight/volume', 'Food waste as % of purchases', 'Carbon footprint (Scope 3) from F&B', 'Water consumption from F&B', 'Local/sustainable sourcing %', "We don't include F&B-specific metrics"] },
+      { id: 'q10', number: 10, label: 'q10Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['Yes, fully aware', 'Somewhat aware', 'No, I was unaware'] },
+      { id: 'q11', number: 11, label: 'q11Label', required: true, type: 'multi', options: ['Meet corporate ESG targets', 'Reduce operational costs', 'Guest/brand expectations', 'Regulatory compliance', 'Achieve sustainability certifications', 'No specific goal yet'] },
     ],
   },
   {
     id: 'tech',
-    title: 'Section 4 - Data & Technology Infrastructure',
+    title: 'section4',
     questions: [
-      { id: 'q12', number: 12, label: 'Which systems do you currently use in F&B?', required: true, type: 'multi', options: ['POS (point of sale)', 'Inventory management software', 'Recipe/menu engineering platform', 'Waste tracking system (Winnow, Leanpath, etc.)', 'ESG reporting platform', 'Spreadsheets only'] },
-      { id: 'q13', number: 13, label: 'If you use a waste tracking system, what are your biggest frustrations? (Select all that apply)', required: true, type: 'multi', options: ['Not applicable - we don\'t use one', 'High upfront hardware costs ($3,000-6,000+)', 'Long implementation time', 'Staff resistance to using it', "Data doesn't integrate with other systems", 'Limited actionable insights', 'Proprietary hardware lock-in'] },
-      { id: 'q14', number: 14, label: 'How comfortable is your team with mobile/tablet technology?', required: true, type: 'select', placeholder: 'Select comfort level', options: ['1 - Very uncomfortable', '2 - Uncomfortable', '3 - Neutral', '4 - Comfortable', '5 - Very comfortable'] },
-      { id: 'q15', number: 15, label: 'How quickly do you need insights to take action?', required: true, type: 'select', placeholder: 'Select timeframe', options: ['Real-time', 'Daily', 'Weekly', 'Monthly', 'Quarterly'] },
+      { id: 'q12', number: 12, label: 'q12Label', required: true, type: 'multi', options: ['POS (point of sale)', 'Inventory management software', 'Recipe/menu engineering platform', 'Waste tracking system (Winnow, Leanpath, etc.)', 'ESG reporting platform', 'Spreadsheets only'] },
+      { id: 'q13', number: 13, label: 'q13Label', required: true, type: 'multi', options: ['Not applicable - we don\'t use one', 'High upfront hardware costs ($3,000-6,000+)', 'Long implementation time', 'Staff resistance to using it', "Data doesn't integrate with other systems", 'Limited actionable insights', 'Proprietary hardware lock-in'] },
+      { id: 'q14', number: 14, label: 'q14Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['1 - Very uncomfortable', '2 - Uncomfortable', '3 - Neutral', '4 - Comfortable', '5 - Very comfortable'] },
+      { id: 'q15', number: 15, label: 'q15Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['Real-time', 'Daily', 'Weekly', 'Monthly', 'Quarterly'] },
     ],
   },
   {
     id: 'ai',
-    title: 'Section 5 - AI & Intelligence Readiness',
+    title: 'section5',
     questions: [
-      { id: 'q16', number: 16, label: 'What insights would be most valuable to you? (Select all that apply)', required: true, type: 'multi', options: ['Waste trends by time, day, or season', 'Financial impact (cost per kg wasted)', 'CO₂ equivalents for ESG reporting', 'Predictive alerts (forecasted waste spikes)', 'Comparison vs industry benchmarks', 'Outlet-by-outlet performance'] },
-      { id: 'q17', number: 17, label: 'Would you value AI-powered recommendations?', required: true, type: 'single', options: ['Yes, all of the above', 'Some of the above', 'Not sure yet', 'No'] },
-      { id: 'q18', number: 18, label: 'How important is instant access from any device?', required: true, type: 'select', placeholder: 'Select importance', options: ['1 - Not important', '2 - Slightly important', '3 - Moderately important', '4 - Very important', '5 - Critical'] },
+      { id: 'q16', number: 16, label: 'q16Label', required: true, type: 'multi', options: ['Waste trends by time, day, or season', 'Financial impact (cost per kg wasted)', 'CO₂ equivalents for ESG reporting', 'Predictive alerts (forecasted waste spikes)', 'Comparison vs industry benchmarks', 'Outlet-by-outlet performance'] },
+      { id: 'q17', number: 17, label: 'q17Label', required: true, type: 'single', options: ['Yes, all of the above', 'Some of the above', 'Not sure yet', 'No'] },
+      { id: 'q18', number: 18, label: 'q18Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['1 - Not important', '2 - Slightly important', '3 - Moderately important', '4 - Very important', '5 - Critical'] },
     ],
   },
   {
     id: 'invest',
-    title: 'Section 6 - Investment & Implementation Preferences',
+    title: 'section6',
     questions: [
-      { id: 'q19', number: 19, label: "What's your budget approach for new F&B technology?", required: true, type: 'select', placeholder: 'Select', options: ['No budget allocated yet', 'Less than $1k/month', '$1k - $5k/month', '$5k - $10k/month', '$10k+/month'] },
-      { id: 'q20', number: 20, label: "What's your preferred implementation timeline?", required: true, type: 'select', placeholder: 'Select', options: ['Immediately', '1-3 months', '3-6 months', '6-12 months', 'Just exploring'] },
-      { id: 'q21', number: 21, label: 'How important is avoiding hardware vendor lock-in?', required: true, type: 'select', placeholder: 'Select importance', options: ['1 - Not important', '2 - Slightly important', '3 - Moderately important', '4 - Very important', '5 - Critical'] },
-      { id: 'q22', number: 22, label: 'Who would champion this initiative internally?', required: true, type: 'select', placeholder: 'Select', options: ['F&B Director', 'Executive Chef', 'General Manager', 'Owner', 'Sustainability/ESG Officer', 'Other'] },
+      { id: 'q19', number: 19, label: 'q19Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['No budget allocated yet', 'Less than $1k/month', '$1k - $5k/month', '$5k - $10k/month', '$10k+/month'] },
+      { id: 'q20', number: 20, label: 'q20Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['Immediately', '1-3 months', '3-6 months', '6-12 months', 'Just exploring'] },
+      { id: 'q21', number: 21, label: 'q21Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['1 - Not important', '2 - Slightly important', '3 - Moderately important', '4 - Very important', '5 - Critical'] },
+      { id: 'q22', number: 22, label: 'q22Label', required: true, type: 'select', placeholder: 'selectDefault', options: ['F&B Director', 'Executive Chef', 'General Manager', 'Owner', 'Sustainability/ESG Officer', 'Other'] },
     ],
   },
   {
     id: 'pain',
-    title: 'Section 7 - Pain points ranking',
+    title: 'section7',
     questions: [
-      { id: 'q23', number: 23, label: 'Pick your top 3 priorities', required: true, type: 'multi-limit', max: 3, options: ['Reduce food costs immediately', 'Meet ESG reporting requirements', 'Improve team accountability', 'Achieve sustainability certifications', 'Enhance brand reputation', 'Simplify data collection for staff', 'Get real-time operational insights'] },
+      { id: 'q23', number: 23, label: 'q23Label', required: true, type: 'multi-limit', max: 3, options: ['Reduce food costs immediately', 'Meet ESG reporting requirements', 'Improve team accountability', 'Achieve sustainability certifications', 'Enhance brand reputation', 'Simplify data collection for staff', 'Get real-time operational insights'] },
     ],
   },
 ];
 
 const profileFields = [
-  { id: 'fullName', label: 'Full Name', required: true, placeholder: 'Jane Doe', type: 'text' as const },
-  { id: 'email', label: 'Email', required: true, placeholder: 'jane@property.com', type: 'email' as const },
-  { id: 'propertyName', label: 'Property name', required: true, placeholder: 'The Grand Hotel', type: 'text' as const },
+  { id: 'fullName', label: 'fullNameLabel', required: true, placeholder: 'fullNamePlaceholder', type: 'text' as const },
+  { id: 'email', label: 'emailLabel', required: true, placeholder: 'emailPlaceholder', type: 'email' as const },
+  { id: 'propertyName', label: 'propertyNameLabel', required: true, placeholder: 'propertyNamePlaceholder', type: 'text' as const },
 ];
 
 const letterLabel = (i: number) => String.fromCharCode(65 + i); // A, B, C...
 
 const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
+  const { t } = useI18n();
   const allQuestions = useMemo(() => sections.flatMap(s => s.questions), []);
   const [profile, setProfile] = useState<Record<string, string>>({});
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -179,23 +181,23 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
             </div>
           </div>
           <h1 className="text-2xl sm:text-4xl font-geometric font-black text-brand-gold tracking-widest uppercase">
-            Thank You
+            {t('assessment.successTitle')}
           </h1>
           <p className="text-sm sm:text-lg font-body text-white/80 leading-relaxed">
-            We sincerely appreciate your participation in this survey. Your input is invaluable in helping us explore how Ecometricus and AI can transform the F&B department processes. We invite you to stay engaged for the soon to come launch of the app.
+            {t('assessment.successMessage')}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center pt-4">
             <button
               onClick={() => onNavigate(Page.HOME)}
               className="px-6 sm:px-8 py-3.5 sm:py-4 bg-brand-eco hover:bg-brand-eco/90 text-brand-dark font-geometric font-bold tracking-wide uppercase text-sm rounded-full transition-all shadow-[0_4px_14px_0_rgba(119,177,57,0.39)] hover:-translate-y-0.5"
             >
-              Back to Home
+              {t('assessment.backToHome')}
             </button>
             <button
               onClick={() => { setSubmitted(false); setAnswers({}); setProfile({}); setAttemptedSubmit(false); }}
               className="px-6 sm:px-8 py-3.5 sm:py-4 border-2 border-brand-gold/50 text-brand-gold hover:bg-brand-gold/10 font-geometric font-bold tracking-wide uppercase text-sm rounded-full transition-all"
             >
-              Submit Another
+              {t('assessment.submitAnother')}
             </button>
           </div>
         </div>
@@ -212,7 +214,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
             onClick={() => onNavigate(Page.HOME)}
             className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-white/60 hover:text-brand-gold transition-colors shrink-0"
           >
-            <ChevronLeft size={16} /> Back
+            <ChevronLeft size={16} /> {t('assessment.back')}
           </button>
           <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
             <div
@@ -233,24 +235,24 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
             <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur border border-brand-gold/40 flex items-center justify-center mb-3">
               <Leaf className="text-brand-gold" size={28} />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold/80">Ecometricus by Us+AI Bureau</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand-gold/80">{t('assessment.brand')}</p>
           </div>
         </div>
 
         {/* Header card */}
         <div className="bg-brand-dark/60 border border-brand-gold/20 rounded-b-3xl rounded-t-none px-4 sm:px-10 py-8 sm:py-12 -mt-1 shadow-2xl">
           <h1 className="text-xl sm:text-3xl font-geometric font-black text-white tracking-wide uppercase leading-tight">
-            F&B Sustainability Intelligence Assessment
+            {t('assessment.title')}
           </h1>
           <p className="mt-3 text-sm sm:text-base text-white/70 font-body leading-relaxed">
-            Discover how AI-powered insights can transform your operations
+            {t('assessment.subtitle')}
           </p>
 
           {/* Disclaimer */}
           <div className="mt-6 flex gap-3 rounded-2xl bg-brand-dark border border-brand-gold/15 p-4">
             <ShieldCheck className="text-brand-eco shrink-0 mt-0.5" size={18} />
             <p className="text-xs text-white/60 leading-relaxed">
-              "All information provided in this survey is strictly confidential. The data shared will be used solely for analytical purposes related to the diagnostic study and opportunities with artificial intelligence. Your responses will not be disclosed, transferred, or used for any purpose other than those stated. We are committed to ensuring the privacy and security of all information collected."
+              {t('assessment.disclaimer')}
             </p>
           </div>
 
@@ -262,18 +264,18 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
               return (
                 <div key={field.id}>
                   <label className="block text-sm font-geometric font-bold text-white/90 mb-2">
-                    {field.label} {field.required && <span className="text-brand-alert">*</span>}
+                    {t(`assessment.${field.label}`)} {field.required && <span className="text-brand-alert">*</span>}
                   </label>
                   <input
                     type={field.type}
                     value={value}
-                    placeholder={field.placeholder}
+                    placeholder={t(`assessment.${field.placeholder}`)}
                     onChange={e => setProfile(prev => ({ ...prev, [field.id]: e.target.value }))}
                     className={`w-full bg-brand-dark border rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-all focus:bg-brand-dark/80 focus:border-brand-gold ${
                       showError ? 'border-brand-alert/70' : 'border-brand-gold/25'
                     }`}
                   />
-                  {showError && <p className="mt-1.5 text-xs text-brand-alert">This field is required.</p>}
+                  {showError && <p className="mt-1.5 text-xs text-brand-alert">{t('assessment.requiredField')}</p>}
                 </div>
               );
             })}
@@ -285,7 +287,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
           {sections.map(section => (
             <div key={section.id} className="bg-brand-dark/60 border border-brand-gold/15 rounded-3xl px-4 sm:px-10 py-6 sm:py-10 shadow-xl">
               <h2 className="text-base sm:text-xl font-geometric font-black text-brand-gold tracking-wide uppercase mb-5 sm:mb-6 pb-4 border-b border-brand-gold/15">
-                {section.title}
+                {t(`assessment.${section.title}`)}
               </h2>
               <div className="space-y-8">
                 {section.questions.map(q => (
@@ -296,6 +298,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
                     onSingle={(v) => setSingle(q.id, v)}
                     onMulti={(v) => toggleMulti(q.id, v, (q as MultiQuestion).max)}
                     showError={attemptedSubmit && q.required && !isQuestionAnswered(q)}
+                    t={t}
                   />
                 ))}
               </div>
@@ -306,17 +309,17 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ onNavigate }) => {
         {/* Thank you note + submit */}
         <div className="mt-8 bg-brand-dark/60 border border-brand-gold/20 rounded-3xl px-4 sm:px-10 py-6 sm:py-10 shadow-xl text-center">
           <p className="text-sm text-white/70 leading-relaxed max-w-xl mx-auto">
-            "We sincerely appreciate your participation in this survey. Your input is invaluable in helping us explore how Ecometricus and AI can transform the F&B department processes. We invite you to stay engaged for the soon to come launch of the app."
+            {t('assessment.preSubmitNote')}
           </p>
           <button
             type="submit"
             className="mt-6 inline-flex items-center gap-3 px-8 sm:px-10 py-3.5 sm:py-4 bg-brand-eco hover:bg-brand-eco/90 text-white font-geometric font-bold tracking-widest uppercase text-sm rounded-full transition-all shadow-[0_8px_24px_rgba(119,177,57,0.4)] hover:-translate-y-0.5"
           >
-            <Send size={16} /> Save Questionnaire
+            <Send size={16} /> {t('assessment.submit')}
           </button>
           {attemptedSubmit && !isFormComplete() && (
             <p className="mt-4 text-xs text-brand-alert">
-              Please complete all required fields (marked with *) before submitting.
+              {t('assessment.submitError')}
             </p>
           )}
         </div>
@@ -331,7 +334,8 @@ const QuestionField: React.FC<{
   onSingle: (v: string) => void;
   onMulti: (v: string) => void;
   showError: boolean;
-}> = ({ question: q, value, onSingle, onMulti, showError }) => {
+  t: (key: string) => string;
+}> = ({ question: q, value, onSingle, onMulti, showError, t }) => {
   const selectedArr = (q.type === 'multi' || q.type === 'multi-limit') ? (value as string[] | undefined) || [] : [];
   const atLimit = q.type === 'multi-limit' && !!q.max && selectedArr.length >= q.max;
 
@@ -339,10 +343,10 @@ const QuestionField: React.FC<{
     <div id={`question-${q.id}`}>
       <label className="block text-sm font-geometric font-bold text-white/90 mb-3">
         <span className="text-brand-gold mr-2">{q.number}.</span>
-        {q.label} {q.required && <span className="text-brand-alert">*</span>}
+        {t(`assessment.${q.label}`)} {q.required && <span className="text-brand-alert">*</span>}
         {q.type === 'multi-limit' && q.max && (
           <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-white/60">
-            ({selectedArr.length}/{q.max} selected)
+            ({selectedArr.length}/{q.max}{t('assessment.selectedSuffix')})
           </span>
         )}
       </label>
@@ -368,7 +372,7 @@ const QuestionField: React.FC<{
               (value as string) ? 'text-white' : 'text-white/60'
             } ${showError ? 'border-brand-alert/70' : 'border-brand-gold/25'}`}
           >
-            <option value="" disabled className="bg-brand-dark text-white/60">{(q as SelectQuestion).placeholder || 'Select'}</option>
+            <option value="" disabled className="bg-brand-dark text-white/60">{t(`assessment.${(q as SelectQuestion).placeholder || 'selectDefault'}`)}</option>
             {(q as SelectQuestion).options.map(opt => (
               <option key={opt} value={opt} className="bg-brand-dark text-white">{opt}</option>
             ))}
@@ -408,7 +412,7 @@ const QuestionField: React.FC<{
         </div>
       )}
 
-      {showError && <p className="mt-2 text-xs text-brand-alert">This question is required.</p>}
+      {showError && <p className="mt-2 text-xs text-brand-alert">{t('assessment.requiredQuestion')}</p>}
     </div>
   );
 };

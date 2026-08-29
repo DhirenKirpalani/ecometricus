@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Info, X as XIcon, ShieldCheck } from 'lucide-react';
 import { Outlet } from '../types';
+import { useI18n } from '../lib/useI18n';
 
 export interface ResourceData {
     day: string;
@@ -39,6 +40,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
     allOutlets,
     outletKeys = [],
 }) => {
+    const { t } = useI18n();
     const [selectedDay, setSelectedDay] = useState<ResourceData | null>(null);
 
     const minVal = 0;
@@ -95,12 +97,12 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                 {hasAlert ? (
                     <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg shrink-0">
                         <Info size={11} className="text-brand-alert" />
-                        <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Alert</span>
+                        <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">{t('charts.statusAlert')}</span>
                     </div>
                 ) : (
                     <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg shrink-0">
                         <ShieldCheck size={11} className="text-brand-eco" />
-                        <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">On Target</span>
+                        <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">{t('charts.statusOnTarget')}</span>
                     </div>
                 )}
             </div>
@@ -108,15 +110,15 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
             {/* Stats Row */}
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Benchmark</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statBenchmark')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{benchmark.toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">{unit}</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Weekly</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statWeekly')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{weeklyTotal}<span className="text-[10px] text-white/40 ml-0.5">{unit}</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Avg/Day</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statAvgDay')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{avgDaily}<span className="text-[10px] text-white/40 ml-0.5">{unit}</span></p>
                 </div>
             </div>
@@ -172,7 +174,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                                     const yTop = getY(Math.min(end, maxVal));
                                     const yBottom = getY(Math.max(start, minVal));
                                     return { yTop, h: yBottom - yTop, key: o.key };
-                                }).filter(Boolean);
+                                }).filter((s): s is { yTop: number; h: number; key: string } => s !== null);
 
                                 return (
                                     <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
