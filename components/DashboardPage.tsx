@@ -3520,8 +3520,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                     {/* ── Enroll / Edit card ── */}
                     <div id="enrollment-form" className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.04)]">
-                      {enrollId && (
-                        <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-3 flex items-center justify-end border-b border-brand-gold/15 gap-3">
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between border-b border-brand-gold/15 gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <UserPlus size={18} className="text-brand-gold" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Personnel</p>
+                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">
+                              {enrollId ? 'Edit Role Position' : 'Enroll Personnel'}
+                            </h4>
+                          </div>
+                        </div>
+                        {enrollId && (
                           <button
                             onClick={() => {
                               isEditingUserRef.current = false;
@@ -3533,8 +3544,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           >
                             <X size={10} /> Cancel
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 bg-brand-dark/40">
                         {/* ── Step 1: Identity ── */}
