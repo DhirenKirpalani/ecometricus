@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Info, Cloud, ShieldCheck } from 'lucide-react';
+import { Info, Cloud, ShieldCheck, X as XIcon } from 'lucide-react';
 import { DailyWaste } from '../hooks/useFoodWasteChartData';
 
 interface Co2EmissionsTemplateChartProps {
@@ -145,26 +145,32 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ d
                         const yPct = getY(Math.min(maxVal, total));
                         const isTop = yPct < 30;
                         return (
-                            <div className="absolute bg-brand-dark border border-brand-gold/30 rounded-lg px-3 py-2 shadow-2xl z-50 animate-in fade-in zoom-in duration-200 pointer-events-none min-w-[130px]"
-                                style={{ left: `${xPct}%`, top: isTop ? `${yPct + 8}%` : `${yPct - 8}%`, transform: `translate(-50%, ${isTop ? '0%' : '-100%'})` }}>
-                                <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1.5">{selectedDay.date}</p>
-                                <p className="text-base font-geometric font-black text-white text-center mb-1.5">{Math.round(total)}kg</p>
-                                <div className="space-y-0.5">
-                                    {OUTLET_COLORS.map(o => {
-                                        const val = Math.round((selectedDay as any)[o.key] || 0);
-                                        if (val === 0) return null;
-                                        return (
-                                            <div key={o.key} className="flex justify-between items-center text-[8px] font-bold">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: o.color }} />
-                                                    <span className="text-white/60 uppercase">{o.label}</span>
+                            <>
+                                <div className="absolute inset-0 z-40 cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} />
+                                <div className="absolute bg-brand-dark border border-brand-gold/30 rounded-lg px-3 py-2 shadow-2xl z-50 animate-in fade-in zoom-in duration-200 min-w-[130px]"
+                                    style={{ left: `${xPct}%`, top: isTop ? `${yPct + 8}%` : `${yPct - 8}%`, transform: `translate(-50%, ${isTop ? '0%' : '-100%'})` }}>
+                                    <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-brand-dark border border-brand-gold/30 rounded-full flex items-center justify-center hover:border-brand-gold/60 transition-colors z-10">
+                                        <XIcon size={10} className="text-white/50 hover:text-white" />
+                                    </button>
+                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1.5">{selectedDay.date}</p>
+                                    <p className="text-base font-geometric font-black text-white text-center mb-1.5">{Math.round(total)}kg</p>
+                                    <div className="space-y-0.5">
+                                        {OUTLET_COLORS.map(o => {
+                                            const val = Math.round((selectedDay as any)[o.key] || 0);
+                                            if (val === 0) return null;
+                                            return (
+                                                <div key={o.key} className="flex justify-between items-center text-[8px] font-bold">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: o.color }} />
+                                                        <span className="text-white/60 uppercase">{o.label}</span>
+                                                    </div>
+                                                    <span className="text-white">{val}</span>
                                                 </div>
-                                                <span className="text-white">{val}</span>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         );
                     })()}
                 </div>

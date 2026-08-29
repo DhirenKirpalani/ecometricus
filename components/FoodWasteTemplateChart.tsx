@@ -131,14 +131,20 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
                         const yPct = getY(Math.max(minVal, Math.min(maxVal, selectedDay.waste)));
                         const isTop = yPct < 30;
                         return (
-                            <div className="absolute bg-brand-dark border border-brand-gold/30 rounded-lg px-3 py-2 shadow-2xl z-50 animate-in fade-in zoom-in duration-200 pointer-events-none min-w-[100px]"
-                                style={{ left: `${xPct}%`, top: isTop ? `${yPct + 8}%` : `${yPct - 8}%`, transform: `translate(-50%, ${isTop ? '0%' : '-100%'})` }}>
-                                <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1">{selectedDay.day}</p>
-                                <p className={`text-base font-geometric font-black text-center ${selectedDay.waste <= benchmark ? 'text-brand-eco' : 'text-brand-alert'}`}>{selectedDay.waste}kg</p>
-                                <p className={`text-[7px] font-black uppercase text-center mt-0.5 ${selectedDay.waste <= benchmark ? 'text-brand-eco/70' : 'text-brand-alert/70'}`}>
-                                    {selectedDay.waste <= benchmark ? 'Within Limit' : 'Over Limit'}
-                                </p>
-                            </div>
+                            <>
+                                <div className="absolute inset-0 z-40 cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} />
+                                <div className="absolute bg-brand-dark border border-brand-gold/30 rounded-lg px-3 py-2 shadow-2xl z-50 animate-in fade-in zoom-in duration-200 min-w-[100px]"
+                                    style={{ left: `${xPct}%`, top: isTop ? `${yPct + 8}%` : `${yPct - 8}%`, transform: `translate(-50%, ${isTop ? '0%' : '-100%'})` }}>
+                                <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-brand-dark border border-brand-gold/30 rounded-full flex items-center justify-center hover:border-brand-gold/60 transition-colors z-10">
+                                        <XIcon size={10} className="text-white/50 hover:text-white" />
+                                    </button>
+                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1">{selectedDay.day}</p>
+                                    <p className={`text-base font-geometric font-black text-center ${selectedDay.waste <= benchmark ? 'text-brand-eco' : 'text-brand-alert'}`}>{selectedDay.waste}kg</p>
+                                    <p className={`text-[7px] font-black uppercase text-center mt-0.5 ${selectedDay.waste <= benchmark ? 'text-brand-eco/70' : 'text-brand-alert/70'}`}>
+                                        {selectedDay.waste <= benchmark ? 'Within Limit' : 'Over Limit'}
+                                    </p>
+                                </div>
+                            </>
                         );
                     })()}
                 </div>
