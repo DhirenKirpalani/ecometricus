@@ -787,6 +787,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [laborCostLogs, setLaborCostLogs] = useState<any[]>([]);
   const [profitMarginLogs, setProfitMarginLogs] = useState<any[]>([]);
   const [sentimentLogs, setSentimentLogs] = useState<any[]>([]);
+  const [salesLogs, setSalesLogs] = useState<any[]>([]);
+  const [avgCheckLogs, setAvgCheckLogs] = useState<any[]>([]);
   const [rawWasteLogs, setRawWasteLogs] = useState<any[]>([]);
   const [rawResourceLogs, setRawResourceLogs] = useState<any[]>([]);
 
@@ -1128,11 +1130,80 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       }
       const { data: resourceData } = await resourceQuery;
       if (resourceData) setRawResourceLogs(resourceData);
+
+      // 8. Fetch Sales Logs (Total Outlet Sales)
+      let salesQuery = supabase.from('sales_logs').select('*');
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
+        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
+        if (userOutlet && (userOutlet as any).id) {
+          salesQuery = salesQuery.eq('outlet_id', (userOutlet as any).id);
+        }
+      }
+      const { data: salesData } = await salesQuery;
+      if (salesData) {
+        const mappedSales = salesData.map((log: any) => {
+          const mappedCode = outletMap.get(log.outlet_id) || log.outlet_id;
+          return {
+            day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
+            food: parseFloat(log.food) || 0,
+            bev: parseFloat(log.beverage) || 0,
+            total: (parseFloat(log.food) || 0) + (parseFloat(log.beverage) || 0),
+            outlet_code: mappedCode,
+            created_at: log.created_at
+          };
+        })
+          .filter(log => isValidOutlet(log.outlet_code))
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setSalesLogs(mappedSales);
+      }
+
+      // 9. Fetch Avg Check Logs
+      let avgCheckQuery = supabase.from('avg_check_logs').select('*');
+      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
+        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
+        if (userOutlet && (userOutlet as any).id) {
+          avgCheckQuery = avgCheckQuery.eq('outlet_id', (userOutlet as any).id);
+        }
+      }
+      const { data: avgCheckData } = await avgCheckQuery;
+      if (avgCheckData) {
+        const mappedAvgCheck = avgCheckData.map((log: any) => {
+          const mappedCode = outletMap.get(log.outlet_id) || log.outlet_id;
+          const restaurant = parseFloat(log.restaurant) || 0;
+          const bar = parseFloat(log.bar) || 0;
+          const banquets = parseFloat(log.banquets) || 0;
+          const rollingAverage = (restaurant + bar + banquets) / 3;
+          return {
+            day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
+            restaurant,
+            bar,
+            banquets,
+            rollingAverage: Number(rollingAverage.toFixed(2)),
+            outlet_code: mappedCode,
+            created_at: log.created_at
+          };
+        })
+          .filter(log => isValidOutlet(log.outlet_code))
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setAvgCheckLogs(mappedAvgCheck);
+      }
     };
 
 
 
     fetchOperationalData();
+
+    // Real-time event listeners — re-fetch when waste/resource/KPI data is logged
+    const handleDataUpdate = () => fetchOperationalData();
+    window.addEventListener('ecometricus_waste_updated', handleDataUpdate);
+    window.addEventListener('ecometricus_resource_updated', handleDataUpdate);
+    window.addEventListener('ecometricus_kpi_updated', handleDataUpdate);
+
+    return () => {
+      window.removeEventListener('ecometricus_waste_updated', handleDataUpdate);
+      window.removeEventListener('ecometricus_resource_updated', handleDataUpdate);
+      window.removeEventListener('ecometricus_kpi_updated', handleDataUpdate);
+    };
   }, [user.role, user.outletCode]);
 
   const [auditReport, setAuditReport] = useState({
@@ -2724,7 +2795,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 subtitle="Weekly stacked breakdown"
                                 icon={DollarSign}
                                 iconColor="text-brand-gold"
-                                data={[]}
+                                data={salesLogs}
                                 dataKey="total"
                                 benchmark={effectiveParams.totalSalesTarget}
                                 unitPrefix="$"
@@ -2767,7 +2838,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 subtitle="Rolling monthly average"
                                 icon={Receipt}
                                 iconColor="text-brand-gold"
-                                data={[]}
+                                data={avgCheckLogs}
                                 dataKey="rollingAverage"
                                 benchmark={effectiveParams.avgCheckTarget}
                                 unitPrefix="$"
