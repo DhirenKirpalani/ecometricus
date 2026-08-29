@@ -2660,8 +2660,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {/* KPI Report section */}
                           <div className="w-full max-w-full mt-8 mb-4">
                             <div className="flex items-center gap-4 mb-2">
-                              <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-                                <BarChart3 className="text-brand-gold" size={24} />
+                              <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                                <BarChart3 className="text-brand-eco" size={24} />
                               </div>
                               <div>
                                 <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">

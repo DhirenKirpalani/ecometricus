@@ -53,8 +53,8 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-          <Scale className="text-brand-gold" size={24} />
+        <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+          <Scale className="text-brand-eco" size={24} />
         </div>
         <div>
           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
