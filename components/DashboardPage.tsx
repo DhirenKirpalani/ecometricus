@@ -660,6 +660,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     || (location.pathname === '/dashboard' ? PortalView.DASHBOARD : null)
     || PortalView.DASHBOARD;
 
+  // Admins don't have access to Daily Input — redirect to dashboard if attempted
+  useEffect(() => {
+    if (activeView === PortalView.DAILY_INPUT && user.role.toLowerCase() === 'admin') {
+      routerNavigate('/dashboard/overview');
+    }
+  }, [activeView, user.role, routerNavigate]);
+
   // Navigate to the URL for the selected view
   const setActiveView = (view: PortalView) => {
     if (view === PortalView.DASHBOARD) {
@@ -2225,7 +2232,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-y-auto scrollbar-hide p-2 lg:p-3 lg:pt-6 lg:flex-grow lg:min-h-0">
 
               <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label="Overview" />
-              <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label="Daily Input" />
+              {user.role.toLowerCase() !== 'admin' && (
+                <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label="Daily Input" />
+              )}
               {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin' || user.role.toLowerCase() === 'supervisor') && (
                 <>
                   <SidebarItem view={PortalView.IDENTITY} icon={Building2} label="Company" />
