@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Info, Cloud, X as XIcon } from 'lucide-react';
-
+import { Info, Cloud, ShieldCheck } from 'lucide-react';
 import { DailyWaste } from '../hooks/useFoodWasteChartData';
 
 interface Co2EmissionsTemplateChartProps {
@@ -9,206 +8,183 @@ interface Co2EmissionsTemplateChartProps {
     weeklyTotal: number;
 }
 
+const OUTLET_COLORS = [
+    { key: 'ROYAL', label: 'Royal', color: '#d4af37' },
+    { key: "FISHER'S", label: "Fisher's", color: '#77B139' },
+    { key: "RALPH'S", label: "Ralph's", color: '#F97316' },
+    { key: 'GUSTO', label: 'Gusto', color: '#60A5FA' },
+];
+
 const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({ data, benchmark, weeklyTotal }) => {
     const [selectedDay, setSelectedDay] = useState<DailyWaste | null>(null);
 
-    // Axis Logic: 0 to Max (Dynamic)
     const minVal = 0;
-    const totals = data.map(d => (d.ROYAL || 0) + (d["FISHER'S"] || 0) + (d["RALPH'S"] || 0) + (d.GUSTO || 0));
+    const totals = data.map(d => OUTLET_COLORS.reduce((sum, o) => sum + ((d as any)[o.key] || 0), 0));
     const maxVal = Math.max(benchmark * 1.5, ...totals, 100);
     const range = maxVal - minVal;
 
     const getY = (val: number) => 100 - ((val - minVal) / (range || 1)) * 100;
     const getX = (index: number, total: number) => 10 + (index / (total - 1)) * 80;
 
-    // Logic: Red if current weekly total exceeds a proportional benchmark? 
-    // Proportional weekly target = dailyBenchmark * 7
     const weeklyTarget = benchmark * 7;
     const hasAlert = weeklyTotal > weeklyTarget;
+    const efficiency = weeklyTarget > 0 ? Math.round((1 - weeklyTotal / weeklyTarget) * 100) : 100;
 
     return (
-        <div className="bg-[#0f2420] border border-brand-gold/60 p-6 sm:p-10 rounded-[35px] shadow-2xl space-y-6 relative group w-full h-full flex flex-col overflow-hidden">
-            {/* Header Section - Exactly as shown in the reference image, but now dynamic */}
-            <div className="flex justify-between items-start z-20 relative">
-                <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-brand-gold/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
-                        <Cloud size={22} className="text-white/60" />
+        <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-6 shadow-xl w-full h-full flex flex-col transition-all duration-300 hover:border-brand-gold/40">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                        <Cloud size={18} className="text-white/60" />
                     </div>
                     <div>
-                        <h3 className="text-3xl font-geometric font-black text-white uppercase tracking-tight leading-none">CO2 EMISSIONS</h3>
-                        <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.2em] mt-1">DAILY CARBON FOOTPRINT</p>
-                        <div className="flex items-center gap-3 mt-4">
-                            <div className="flex items-center gap-2 bg-[#1A302B] px-4 py-1.5 rounded-lg border border-brand-gold/30">
-                                <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest leading-none">BENCHMARK: <span className="text-white ml-1">{Math.round(benchmark).toLocaleString()} KG</span></span>
-                            </div>
-                            <div className="flex items-center gap-2 bg-[#1A302B] px-4 py-1.5 rounded-lg border border-brand-gold/30">
-                                <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest leading-none">WEEKLY CO2E: <span className="text-white ml-1">{Math.round(weeklyTotal).toLocaleString()} KG</span></span>
-                            </div>
-                        </div>
+                        <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">CO2 Emissions</h3>
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">Daily Carbon Footprint</p>
                     </div>
                 </div>
-
-                <div className={`animate-in fade-in zoom-in duration-500 ${hasAlert ? 'opacity-100' : 'opacity-40'}`}>
-                    <div className={`bg-[#3D1414] border px-6 py-2.5 rounded-xl flex items-center gap-3 shadow-[0_0_20px_rgba(255,77,77,0.15)] cursor-pointer group/alert ${hasAlert ? 'border-[#FF4D4D]/40' : 'border-brand-gold/10'}`}>
-                        <Info size={14} className={hasAlert ? "text-[#FF4D4D]" : "text-white/40"} />
-                        <span className={`text-[11px] font-black uppercase tracking-widest transition-colors ${hasAlert ? "text-[#FF4D4D] group-hover/alert:text-white" : "text-white/40"}`}>
-                            {hasAlert ? 'ATTENTION' : 'OPTIMAL'}
-                        </span>
+                {hasAlert ? (
+                    <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg">
+                        <Info size={11} className="text-brand-alert" />
+                        <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Attention</span>
                     </div>
+                ) : (
+                    <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg">
+                        <ShieldCheck size={11} className="text-brand-eco" />
+                        <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">Optimal</span>
+                    </div>
+                )}
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Benchmark</p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(benchmark)}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
+                </div>
+                <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Weekly</p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(weeklyTotal)}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
+                </div>
+                <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Efficiency</p>
+                    <p className={`text-sm font-geometric font-black leading-none mt-1 ${efficiency >= 0 ? 'text-brand-eco' : 'text-brand-alert'}`}>{efficiency >= 0 ? efficiency : 0}<span className="text-[10px] text-white/40 ml-0.5">%</span></p>
                 </div>
             </div>
 
-            {/* Chart Container */}
-            <div className="flex-1 w-full relative min-h-0">
-                {/* Y-Axis Labels */}
-                <div className="absolute left-[-15px] lg:left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none">
-                    {[Math.round(maxVal), Math.round(maxVal * 0.75), Math.round(maxVal * 0.5), Math.round(maxVal * 0.25), 0].map((val) => (
-                        <div key={val} className="relative flex items-center justify-end pr-4 h-0">
-                            <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">{val.toLocaleString()}</span>
-                            <div className="absolute right-0 w-2 h-[1px] bg-white/10"></div>
+            {/* Chart */}
+            <div className="flex-1 w-full relative min-h-0 pb-6">
+                {/* Y-Axis */}
+                <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none w-8">
+                    {[maxVal, maxVal * 0.75, maxVal * 0.5, maxVal * 0.25, 0].map((val, i) => (
+                        <div key={i} className="flex items-center justify-end pr-2 h-0">
+                            <span className="text-[8px] font-bold text-white/30">{Math.round(val)}</span>
                         </div>
                     ))}
                 </div>
 
-                {/* Grid Lines */}
-                <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
-                    {[Math.round(maxVal), Math.round(maxVal * 0.75), Math.round(maxVal * 0.5), Math.round(maxVal * 0.25), 0].map((val) => (
-                        <div key={val} className="w-full border-t border-brand-gold/5 h-0"></div>
-                    ))}
-                </div>
+                {/* Grid + Bars */}
+                <div className="absolute left-8 right-0 top-0 bottom-6">
+                    {/* Grid lines */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                        {[0, 1, 2, 3, 4].map(i => (
+                            <div key={i} className="w-full border-t border-white/5" />
+                        ))}
+                    </div>
 
-                {/* Benchmark Line */}
-                <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 z-10 pointer-events-none">
-                    <div
-                        className="absolute w-full border-t-2 border-brand-gold border-dotted opacity-80"
-                        style={{ top: `${getY(benchmark)}%`, transform: 'translateY(-50%)' }}
-                    ></div>
-                </div>
+                    {/* Benchmark line */}
+                    <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute w-full border-t border-dashed border-brand-gold/50" style={{ top: `${getY(benchmark)}%` }} />
+                        <div className="absolute right-0 -translate-y-1/2 bg-brand-gold/20 border border-brand-gold/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-gold uppercase tracking-wider" style={{ top: `${getY(benchmark)}%` }}>
+                            {Math.round(benchmark)}kg
+                        </div>
+                    </div>
 
-                {/* Chart SVG (Outlet-Stacked Columns) */}
-                <div className="absolute left-[30px] lg:left-[40px] right-0 top-0 bottom-6 overflow-visible z-20">
-                    <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    {/* SVG Stacked Bars */}
+                    <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                        <defs>
+                            {OUTLET_COLORS.map(o => (
+                                <linearGradient key={o.key} id={`co2-${o.key}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor={o.color} stopOpacity="0.9" />
+                                    <stop offset="100%" stopColor={o.color} stopOpacity="0.65" />
+                                </linearGradient>
+                            ))}
+                        </defs>
                         {data.map((t, i) => {
                             const x = getX(i, data.length);
-                            
-                            const renderRect = (startVal: number, endVal: number, color: string) => {
-                                const effectiveStart = Math.max(startVal, minVal);
-                                const effectiveEnd = Math.min(endVal, maxVal);
-                                if (effectiveEnd <= effectiveStart) return null;
-
-                                const yTop = getY(effectiveEnd);
-                                const yBottom = getY(effectiveStart);
+                            let cumulative = 0;
+                            const segments = OUTLET_COLORS.map(o => {
+                                const val = (t as any)[o.key] || 0;
+                                const start = cumulative;
+                                cumulative += val;
+                                const end = cumulative;
+                                if (end <= minVal || start >= maxVal) return null;
+                                const yTop = getY(Math.min(end, maxVal));
+                                const yBottom = getY(Math.max(start, minVal));
                                 const h = yBottom - yTop;
-
-                                return (
-                                    <rect
-                                        x={x - 6}
-                                        y={yTop}
-                                        width="12"
-                                        height={h}
-                                        fill={color}
-                                        className="transition-all duration-300 opacity-80 hover:opacity-100"
-                                    />
-                                );
-                            };
-
-                            const v1 = t.ROYAL || 0;
-                            const v2 = v1 + (t["FISHER'S"] || 0);
-                            const v3 = v2 + (t["RALPH'S"] || 0);
-                            const v4 = v3 + (t.GUSTO || 0);
+                                return { yTop, h, color: o.color, key: o.key };
+                            }).filter(Boolean);
 
                             return (
-                                <g key={i} className="cursor-pointer group/point" onClick={(e) => { e.stopPropagation(); setSelectedDay(t); }}>
-                                    {renderRect(0, v1, '#d4af37')}   {/* Royal - Gold */}
-                                    {renderRect(v1, v2, '#77B139')} {/* Fisher's - Green */}
-                                    {renderRect(v2, v3, '#F97316')} {/* Ralph's - Orange */}
-                                    {renderRect(v3, v4, '#60A5FA')} {/* Gusto - Blue */}
-                                    <rect x={x - 12} y="0" width="24" height="100" fill="transparent" />
+                                <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
+                                    {segments.map((s, si) => (
+                                        <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h} fill={`url(#co2-${s.key})`} rx={si === 0 ? "3" : "0"}
+                                            className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.date !== t.date ? 0.4 : 0.85 }} />
+                                    ))}
+                                    <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
                                 </g>
                             );
                         })}
                     </svg>
 
-                    {/* Pop-up Info */}
+                    {/* Tooltip */}
                     {selectedDay && (() => {
                         const index = data.findIndex(d => d.date === selectedDay.date);
                         const xPct = getX(index, data.length);
-                        const total = (selectedDay.ROYAL || 0) + (selectedDay["FISHER'S"] || 0) + (selectedDay["RALPH'S"] || 0) + (selectedDay.GUSTO || 0);
+                        const total = OUTLET_COLORS.reduce((sum, o) => sum + ((selectedDay as any)[o.key] || 0), 0);
                         const yPct = getY(Math.min(maxVal, total));
-
-                        const isTop = yPct < 25;
-                        const topPosition = isTop ? `${yPct + 10}%` : `${yPct - 15}%`;
-                        const verticalTranslate = isTop ? '0%' : '-100%';
-                        const horizontalTranslate = `-${xPct}%`;
-
+                        const isTop = yPct < 30;
                         return (
-                            <div
-                                className="absolute bg-[#152E2A] border border-brand-gold/60 rounded-lg px-3 py-2 shadow-2xl z-[50] animate-in fade-in zoom-in duration-200 min-w-[140px] pointer-events-none"
-                                style={{
-                                    left: `${xPct}%`,
-                                    top: topPosition,
-                                    transform: `translate(${horizontalTranslate}, ${verticalTranslate})`,
-                                    zIndex: 100
-                                }}
-                            >
-                                <div className="flex justify-between items-center mb-1 border-b border-brand-gold/10 pb-1">
-                                    <span className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{selectedDay.date} Detail</span>
-                                    <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="pointer-events-auto">
-                                        <XIcon size={8} className="text-gray-500 hover:text-white transition-colors" />
-                                    </button>
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-[7px] uppercase font-bold text-gray-400">
-                                        <span>Total</span>
-                                        <span className="text-white">{Math.round(total).toLocaleString()} Kg</span>
-                                    </div>
-                                    <div className="w-full h-[1px] bg-white/10 my-1"></div>
-                                    <div className="flex justify-between text-[7px] uppercase font-bold text-[#d4af37]">
-                                        <span>Royal</span>
-                                        <span>{Math.round(selectedDay.ROYAL || 0)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-[7px] uppercase font-bold text-[#77B139]">
-                                        <span>Fisher's</span>
-                                        <span>{Math.round(selectedDay["FISHER'S"] || 0)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-[7px] uppercase font-bold text-[#F97316]">
-                                        <span>Ralph's</span>
-                                        <span>{Math.round(selectedDay["RALPH'S"] || 0)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-[7px] uppercase font-bold text-[#60A5FA]">
-                                        <span>Gusto</span>
-                                        <span>{Math.round(selectedDay.GUSTO || 0)}</span>
-                                    </div>
+                            <div className="absolute bg-brand-dark border border-brand-gold/30 rounded-lg px-3 py-2 shadow-2xl z-50 animate-in fade-in zoom-in duration-200 pointer-events-none min-w-[130px]"
+                                style={{ left: `${xPct}%`, top: isTop ? `${yPct + 8}%` : `${yPct - 8}%`, transform: `translate(-50%, ${isTop ? '0%' : '-100%'})` }}>
+                                <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1.5">{selectedDay.date}</p>
+                                <p className="text-base font-geometric font-black text-white text-center mb-1.5">{Math.round(total)}kg</p>
+                                <div className="space-y-0.5">
+                                    {OUTLET_COLORS.map(o => {
+                                        const val = Math.round((selectedDay as any)[o.key] || 0);
+                                        if (val === 0) return null;
+                                        return (
+                                            <div key={o.key} className="flex justify-between items-center text-[8px] font-bold">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: o.color }} />
+                                                    <span className="text-white/60 uppercase">{o.label}</span>
+                                                </div>
+                                                <span className="text-white">{val}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        )
+                        );
                     })()}
                 </div>
 
-                <div className="absolute left-[30px] lg:left-[40px] right-0 bottom-0 h-6">
+                {/* X-Axis labels */}
+                <div className="absolute left-8 right-0 bottom-0 h-6">
                     {data.map((t, i) => (
-                        <div
-                            key={t.date}
-                            className="absolute bottom-0 -translate-x-1/2 text-[7px] font-black text-gray-500 uppercase tracking-widest text-center"
-                            style={{ left: `${getX(i, data.length)}%` }}
-                        >
+                        <div key={t.date} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white/30 uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
                             {t.date}
                         </div>
                     ))}
                 </div>
             </div>
-            
-            {/* Horizontal Legend - As shown in Image 2 */}
-            <div className="flex justify-center gap-8 pt-4 border-t border-brand-gold/5">
-                {[
-                    { label: 'ROYAL', color: '#d4af37' },
-                    { label: "FISHER'S", color: '#77B139' },
-                    { label: "RALPH'S", color: '#F97316' },
-                    { label: 'GUSTO', color: '#60A5FA' }
-                ].map(item => (
-                    <div key={item.label} className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></div>
-                        <span className="text-[9px] font-black text-white/60 uppercase tracking-widest">{item.label}</span>
+
+            {/* Legend */}
+            <div className="flex flex-wrap justify-center gap-3 pt-3 border-t border-white/5 mt-2">
+                {OUTLET_COLORS.map(o => (
+                    <div key={o.key} className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: o.color }} />
+                        <span className="text-[8px] font-bold text-white/50 uppercase tracking-wider">{o.label}</span>
                     </div>
                 ))}
             </div>
