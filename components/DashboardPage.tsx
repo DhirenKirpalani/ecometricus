@@ -2042,49 +2042,39 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   }, []);
 
   const sessionData = useMemo(() => {
-    // HYBRID SYSTEM: Live Supabase Data for Royal (ROY02) + Simulated Mock Data for remaining 3 Outlets
-    const liveWasteKg = rawWasteLogs.reduce((sum, e) => sum + (parseFloat(e.mass_kg) || 0), 0);
-    const liveWaterUsage = rawResourceLogs.filter(e => e.resource_type === 'water').reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-    const liveEnergyUsage = rawResourceLogs.filter(e => e.resource_type === 'energy').reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-
-    const mockWasteKg = sessionWasteEntries.filter(e => e.outletId !== 'ROY02').reduce((sum, e) => sum + e.amount, 0);
-    const mockWaterUsage = sessionResourceEntries.filter(e => e.type === 'water' && e.outletId !== 'ROY02').reduce((sum, e) => sum + e.amount, 0);
-    const mockEnergyUsage = sessionResourceEntries.filter(e => e.type === 'energy' && e.outletId !== 'ROY02').reduce((sum, e) => sum + e.amount, 0);
-
-    const totalWasteKg = liveWasteKg + mockWasteKg;
-    const totalWaterUsage = liveWaterUsage + mockWaterUsage;
-    const totalEnergyUsage = liveEnergyUsage + mockEnergyUsage;
+    // Live Supabase Data only — no mock/fallback values
+    const totalWasteKg = rawWasteLogs.reduce((sum, e) => sum + (parseFloat(e.mass_kg) || 0), 0);
+    const totalWaterUsage = rawResourceLogs.filter(e => e.resource_type === 'water').reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+    const totalEnergyUsage = rawResourceLogs.filter(e => e.resource_type === 'energy').reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
 
     const carbonCoeff = 2.85;
     const waterCoeff = 3.40;
 
-    // Financial Impact calculation mapping: Hybrid total * $6.50 multiplier
-    const totalCalculatedFinLoss = totalWasteKg * 6.50;
-    const totalFinancialLoss = totalCalculatedFinLoss || 1246.85;
+    // Financial Impact: total waste kg * $6.50 multiplier
+    const totalFinancialLoss = totalWasteKg * 6.50;
 
-    // Exact 85/15 item-loss vs logistics proportional mapping
+    // 85/15 item-loss vs logistics proportional split
     const financialLossItems = totalFinancialLoss * 0.85;
     const financialLossDisposal = totalFinancialLoss * 0.15;
 
-    // Use Admin Parameters for Benchmarks
     const wasteBenchmark = effectiveParams.wasteTarget;
 
     return {
       waste: {
-        kg: totalWasteKg || 142.5,
+        kg: totalWasteKg,
         cost: financialLossItems,
         disposalCost: financialLossDisposal
       },
-      water: totalWaterUsage || 12450,
-      energy: totalEnergyUsage || 480,
+      water: totalWaterUsage,
+      energy: totalEnergyUsage,
       impacts: {
-        carbonImpact: (totalWasteKg || 142.5) * carbonCoeff,
-        waterFootprint: (totalWasteKg || 142.5) * waterCoeff,
-        totalFinancialLoss: totalFinancialLoss,
-        isDeviating: (totalWasteKg || 142.5) > wasteBenchmark
+        carbonImpact: totalWasteKg * carbonCoeff,
+        waterFootprint: totalWasteKg * waterCoeff,
+        totalFinancialLoss,
+        isDeviating: totalWasteKg > wasteBenchmark
       }
     };
-  }, [rawWasteLogs, rawResourceLogs, sessionWasteEntries, sessionResourceEntries, effectiveParams.wasteTarget]);
+  }, [rawWasteLogs, rawResourceLogs, effectiveParams.wasteTarget]);
 
   const impacts = sessionData.impacts;
 
