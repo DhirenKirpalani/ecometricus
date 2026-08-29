@@ -2319,7 +2319,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
-                    {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
                     {activeView === PortalView.AUDIT_LOG && "System Activity & Change Tracking"}
                     {activeView === PortalView.CONTACT && "Get Help & Share Feedback"}
@@ -2327,7 +2326,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
-                    {activeView === PortalView.TEAM && "Staff Registry"}
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
                     {activeView === PortalView.AUDIT_LOG && "Audit Log"}
                     {activeView === PortalView.CONTACT && "Contact Support"}
@@ -3508,6 +3506,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                 {activeView === PortalView.TEAM && (
                   <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
+
+                    {/* Heading */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                        <Users className="text-brand-eco" size={24} />
+                      </div>
+                      <div>
+                        <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                          Staff Registry
+                        </h2>
+                        <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
+                          Role & Permission Registry
+                        </p>
+                      </div>
+                    </div>
 
                     {/* ── Enroll / Edit card ── */}
                     <div id="enrollment-form" className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.04)]">
