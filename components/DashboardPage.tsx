@@ -3747,175 +3747,171 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       </div>
                     </div>
 
-                    <div className="space-y-12">
+                    <div className="space-y-8">
                       <div className="px-6 mb-2">
                         <h5 className="text-[12px] font-black uppercase tracking-[0.4em] text-brand-gold">Active Staff Registry</h5>
                       </div>
 
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-4 px-6">
-                          <UserCheck size={14} className="text-brand-gold" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Management Group (Admin & GM)</span>
+                      {/* Management Group Table */}
+                      {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').length > 0 && (
+                        <div className="px-6">
+                          <div className="flex items-center gap-3 mb-3">
+                            <UserCheck size={14} className="text-brand-gold" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Management Group (Admin & GM)</span>
+                          </div>
+                          <div className="overflow-x-auto rounded-xl border border-brand-gold/20">
+                            <table className="w-full text-left">
+                              <thead>
+                                <tr className="bg-brand-gold/10 border-b border-brand-gold/20">
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">Name</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">Position</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">Role</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">PIN</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80">Access Link</th>
+                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold/80 text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').map((u) => {
+                                  const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                                  return (
+                                  <tr key={u.id} className="border-b border-brand-gold/10 last:border-0 hover:bg-brand-gold/5 transition-colors">
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-gold/30 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                                          <span className="text-brand-gold text-[11px] font-black leading-none">{initials}</span>
+                                        </div>
+                                        <span className="text-sm font-bold text-white tracking-tight">{u.fullName}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <span className="text-[9px] text-white/50 font-bold uppercase tracking-widest px-2 py-1 rounded bg-brand-dark/60">{u.position}</span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <span className="text-[10px] text-brand-gold font-black uppercase tracking-widest px-2 py-1 rounded bg-brand-gold/10 border border-brand-gold/20">{u.role.toUpperCase()}</span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider">{visiblePasswords.has(u.id) ? u.password : '••••••••'}</span>
+                                        <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold transition-colors">
+                                          {visiblePasswords.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
+                                        </button>
+                                        {u.password && (
+                                          <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast('PIN copied.', 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold transition-colors">
+                                            <Copy size={12} />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.password || '').toLowerCase()}` : '••••••••••••••••'}</span>
+                                        <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
+                                          {visibleLinks.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
+                                        </button>
+                                        <button onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }} className="text-brand-eco/50 hover:text-brand-eco transition-colors" title="Copy link">
+                                          <Copy size={11} />
+                                        </button>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex gap-2 justify-end">
+                                        <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                          <Edit2 size={13} />
+                                        </button>
+                                        <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                          <Trash2 size={13} />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );})}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                        <div className="space-y-3">
-                          {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').map((u) => {
-                            const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-                            return (
-                            <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-brand-gold/5 rounded-2xl border border-brand-gold/20 hover:border-brand-gold/40 transition-colors gap-5">
-                              {/* Left: avatar + identity */}
-                              <div className="flex items-center gap-4 min-w-0 flex-1">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-gold/30 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
-                                  <span className="text-brand-gold text-sm font-black leading-none tracking-tight">{initials}</span>
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
-                                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-brand-dark/60">{u.position}</span>
-                                    <span className="text-[11px] text-brand-gold font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-gold/10 border border-brand-gold/20">{u.role.toUpperCase()}</span>
-                                  </div>
-                                </div>
-                              </div>
+                      )}
 
-                              {/* Right: credentials + actions */}
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
-                                {/* Password */}
-                                <div className="flex items-center gap-2 px-3 py-2 bg-brand-dark/60 rounded-lg border border-brand-gold/15 w-full sm:w-auto">
-                                  <Key size={11} className="text-brand-gold/50 shrink-0" />
-                                  <span className="text-[8px] font-bold text-brand-gold/50 uppercase tracking-widest shrink-0">PIN</span>
-                                  <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider truncate">
-                                    {visiblePasswords.has(u.id) ? u.password : '••••••••'}
-                                  </span>
-                                  <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold ml-auto shrink-0 transition-colors">
-                                    {visiblePasswords.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
-                                  </button>
-                                  {u.password && (
-                                    <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast('PIN copied.', 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold shrink-0 transition-colors">
-                                      <Copy size={13} />
-                                    </button>
-                                  )}
-                                </div>
-
-                                {/* Login link */}
-                                <div className="flex items-center gap-2 px-3 py-2 bg-brand-dark/60 rounded-lg border border-brand-eco/15 w-full sm:w-auto">
-                                  <Link2 size={11} className="text-brand-eco/50 shrink-0" />
-                                  <span className="text-[8px] font-bold text-brand-eco/50 uppercase tracking-widest shrink-0">Link</span>
-                                  <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[160px]">
-                                    {visibleLinks.has(u.id)
-                                      ? `access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
-                                      : '••••••••••••••••'}
-                                  </span>
-                                  <div className="flex items-center gap-1 ml-auto shrink-0">
-                                    <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
-                                      {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
-                                    </button>
-                                    <button
-                                      onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
-                                      className="text-brand-eco/50 hover:text-brand-eco transition-colors"
-                                      title="Copy link"
-                                    >
-                                      <Copy size={12} />
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-2 shrink-0">
-                                  <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
-                                    <Edit2 size={14} />
-                                  </button>
-                                  <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );})}
-                        </div>
-                      </div>
-
+                      {/* Outlet Tables */}
                       {outlets.map(outlet => {
                         const members = users.filter(u => u.outletCode === outlet.code && u.role.toLowerCase() !== 'admin' && u.role.toLowerCase() !== 'gm');
                         if (members.length === 0) return null;
 
                         return (
-                          <div key={outlet.code} className="space-y-4">
-                            <div className="flex items-center gap-4 px-6">
+                          <div key={outlet.code} className="px-6">
+                            <div className="flex items-center gap-3 mb-3">
                               <MapPin size={14} className="text-brand-gold" />
-                              <span className="text-[11px] font-black uppercase tracking-widest text-white/60">{outlet.name} Outlet — Registry</span>
+                              <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{outlet.name} Outlet — Registry</span>
                             </div>
-                            <div className="space-y-3">
-                              {members.map((u) => {
-                                const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-                                return (
-                                <div key={u.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-[#1c3933] rounded-2xl border border-brand-gold/20 hover:border-brand-gold/25 transition-colors gap-5">
-                                  {/* Left: avatar + identity */}
-                                  <div className="flex items-center gap-4 min-w-0 flex-1">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-eco/20 to-brand-eco/5 border border-brand-eco/20 flex items-center justify-center shrink-0">
-                                      <span className="text-brand-eco text-sm font-black leading-none tracking-tight">{initials}</span>
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="text-sm font-bold text-white tracking-tight truncate">{u.fullName}</div>
-                                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-brand-dark/60">{u.position}</span>
-                                        <span className="text-[11px] text-brand-eco font-black uppercase tracking-widest px-2 py-0.5 rounded bg-brand-eco/10 border border-brand-eco/20">{u.role.toUpperCase()}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Right: credentials + actions */}
-                                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
-                                    {/* Password */}
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-brand-dark/60 rounded-lg border border-brand-gold/15 w-full sm:w-auto">
-                                      <Key size={11} className="text-brand-gold/50 shrink-0" />
-                                      <span className="text-[8px] font-bold text-brand-gold/50 uppercase tracking-widest shrink-0">PIN</span>
-                                      <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider truncate">
-                                        {visiblePasswords.has(u.id) ? u.password : '••••••••'}
-                                      </span>
-                                      <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold ml-auto shrink-0 transition-colors">
-                                        {visiblePasswords.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
-                                      </button>
-                                      {u.password && (
-                                        <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast('PIN copied.', 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold shrink-0 transition-colors">
-                                          <Copy size={13} />
-                                        </button>
-                                      )}
-                                    </div>
-
-                                    {/* Login link */}
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-brand-dark/60 rounded-lg border border-brand-eco/15 w-full sm:w-auto">
-                                      <Link2 size={11} className="text-brand-eco/50 shrink-0" />
-                                      <span className="text-[8px] font-bold text-brand-eco/50 uppercase tracking-widest shrink-0">Link</span>
-                                      <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[160px]">
-                                        {visibleLinks.has(u.id)
-                                          ? `access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`
-                                          : '••••••••••••••••'}
-                                      </span>
-                                      <div className="flex items-center gap-1 ml-auto shrink-0">
-                                        <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
-                                          {visibleLinks.has(u.id) ? <EyeOff size={13} /> : <Eye size={13} />}
-                                        </button>
-                                        <button
-                                          onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
-                                          className="text-brand-eco/50 hover:text-brand-eco transition-colors"
-                                          title="Copy link"
-                                        >
-                                          <Copy size={12} />
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="flex gap-2 shrink-0">
-                                      <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
-                                        <Edit2 size={14} />
-                                      </button>
-                                      <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              );})}
+                            <div className="overflow-x-auto rounded-xl border border-brand-gold/20">
+                              <table className="w-full text-left">
+                                <thead>
+                                  <tr className="bg-brand-eco/10 border-b border-brand-eco/20">
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">Name</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">Position</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">Role</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">PIN</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80">Access Link</th>
+                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-eco/80 text-right">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {members.map((u) => {
+                                    const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                                    return (
+                                    <tr key={u.id} className="border-b border-brand-gold/10 last:border-0 hover:bg-brand-eco/5 transition-colors">
+                                      <td className="px-4 py-3">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-eco/20 to-brand-eco/5 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                                            <span className="text-brand-eco text-[11px] font-black leading-none">{initials}</span>
+                                          </div>
+                                          <span className="text-sm font-bold text-white tracking-tight">{u.fullName}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <span className="text-[9px] text-white/50 font-bold uppercase tracking-widest px-2 py-1 rounded bg-brand-dark/60">{u.position}</span>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <span className="text-[10px] text-brand-eco font-black uppercase tracking-widest px-2 py-1 rounded bg-brand-eco/10 border border-brand-eco/20">{u.role.toUpperCase()}</span>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider">{visiblePasswords.has(u.id) ? u.password : '••••••••'}</span>
+                                          <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold transition-colors">
+                                            {visiblePasswords.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
+                                          </button>
+                                          {u.password && (
+                                            <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast('PIN copied.', 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold transition-colors">
+                                              <Copy size={12} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.password || '').toLowerCase()}` : '••••••••••••••••'}</span>
+                                          <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
+                                            {visibleLinks.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
+                                          </button>
+                                          <button onClick={() => { navigator.clipboard?.writeText(`https://ecometricus.com/access/${u.outletCode}?token=${(u.password || '').toLowerCase()}`); showToast('Link copied.', 'success'); }} className="text-brand-eco/50 hover:text-brand-eco transition-colors" title="Copy link">
+                                            <Copy size={11} />
+                                          </button>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <div className="flex gap-2 justify-end">
+                                          <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
+                                            <Edit2 size={13} />
+                                          </button>
+                                          <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
+                                            <Trash2 size={13} />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );})}
+                                </tbody>
+                              </table>
                             </div>
                           </div>
                         );
