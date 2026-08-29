@@ -12,7 +12,6 @@ import FAQPage from './components/FAQPage';
 import AuthPage from './components/AuthPage';
 import DashboardPage from './components/DashboardPage';
 import { supabase } from './lib/supabase';
-import StaffPortal from './components/StaffPortal';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import AssessmentForm from './components/AssessmentForm';
 import PrivacyPage from './components/PrivacyPage';
@@ -22,7 +21,7 @@ import TranslationManager from './components/TranslationManager';
 import Footer from './components/Footer';
 
 // ── URL ↔ Page mappings ───────────────────────────────────────────────────────
-const PAGE_TO_PATH: Record<Page, string> = {
+const PAGE_TO_PATH: Partial<Record<Page, string>> = {
   [Page.HOME]:                 '/',
   [Page.ABOUT]:                '/about',
   [Page.FAQ]:                  '/faq',
@@ -30,8 +29,6 @@ const PAGE_TO_PATH: Record<Page, string> = {
   [Page.SIGN_UP]:              '/signup',
   [Page.FORGOT_PASSWORD]:      '/forgot-password',
   [Page.DASHBOARD]:            '/dashboard',
-  [Page.STAFF_PORTAL]:         '/staff',
-  [Page.SUPERVISOR_DASHBOARD]: '/supervisor',
   [Page.ASSESSMENT]:           '/assessment',
   [Page.EARLY_ACCESS]:         '/early-access',
   [Page.PRIVACY]:              '/privacy',
@@ -242,10 +239,6 @@ const App: React.FC = () => {
         return currentUser
           ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
           : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
-      case Page.STAFF_PORTAL:
-        return currentUser
-          ? <StaffPortal user={currentUser} onLogout={handleLogout} />
-          : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
       case Page.SIGN_IN:
       case Page.SIGN_UP:
       case Page.FORGOT_PASSWORD:
@@ -256,7 +249,6 @@ const App: React.FC = () => {
   };
 
   const hideNavigation =
-    currentPage === Page.STAFF_PORTAL ||
     currentPage === Page.SUPER_ADMIN ||
     currentPage === Page.DASHBOARD ||
     currentPage === Page.ASSESSMENT ||
