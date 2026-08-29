@@ -2525,13 +2525,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                                   {/* HEADER SECTION */}
                                   <div className="flex justify-between items-start mb-6">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-9 h-9 rounded-lg bg-brand-eco/10 border border-brand-eco/25 flex items-center justify-center shrink-0">
-                                        <ShieldCheck size={16} className="text-brand-eco" />
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                                        <ShieldCheck size={24} className="text-brand-eco" />
                                       </div>
                                       <div>
-                                        <p className="text-[11px] font-black text-brand-gold/80 uppercase tracking-[0.3em]">Earth Keeper</p>
-                                        <h3 className="text-sm font-geometric font-black text-white leading-tight">Cumulative Engagement</h3>
+                                        <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                                          Earth Keeper
+                                        </h2>
+                                        <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+                                          Cumulative Engagement — outlet performance & staff leaderboard.
+                                        </p>
                                       </div>
                                     </div>
 
@@ -2590,10 +2594,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                           {/* Sustainability Report section */}
                           <div className="w-full max-w-full mt-8 mb-4">
-                            <div className="flex items-center gap-2.5">
-                              <Leaf size={16} className="text-brand-eco/60" />
-                              <h2 className="text-base font-geometric font-black text-white">Sustainability Report</h2>
-                              <div className="flex-grow h-px bg-brand-dark/60 ml-2" />
+                            <div className="flex items-center gap-4 mb-2">
+                              <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                                <Leaf className="text-brand-eco" size={24} />
+                              </div>
+                              <div>
+                                <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                                  Sustainability Report
+                                </h2>
+                                <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+                                  Environmental impact tracking — waste, water & carbon footprint analysis.
+                                </p>
+                              </div>
                             </div>
                           </div>
 
@@ -2627,10 +2639,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                           {/* KPI Report section */}
                           <div className="w-full max-w-full mt-8 mb-4">
-                            <div className="flex items-center gap-2.5">
-                              <BarChart3 size={16} className="text-brand-gold/50" />
-                              <h2 className="text-base font-geometric font-black text-white">KPI Report</h2>
-                              <div className="flex-grow h-px bg-brand-dark/60 ml-2" />
+                            <div className="flex items-center gap-4 mb-2">
+                              <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
+                                <BarChart3 className="text-brand-gold" size={24} />
+                              </div>
+                              <div>
+                                <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                                  KPI Report
+                                </h2>
+                                <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+                                  Key performance indicators — food cost, labor & profit margin trends.
+                                </p>
+                              </div>
                             </div>
                           </div>
 
