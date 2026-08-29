@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Sparkles, User, Loader2, Minimize2, Maximize2, Lightbulb, Wrench, CheckCircle2, AlertCircle, Bell, TrendingDown, AlertTriangle, Info } from 'lucide-react';
+import { MessageSquare, X, Send, User, Loader2, Minimize2, Maximize2, Lightbulb, Wrench, CheckCircle2, AlertCircle, Bell, TrendingDown, AlertTriangle, Info } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { retrieveContext } from '../lib/mila-rag';
 import { getToolsForRole, executeTool, type ToolCall, type ToolResult, type ToolExecutionContext } from '../lib/mila-tools';
@@ -366,17 +366,17 @@ INSTRUCTIONS:
                 aria-label="Open Mila AI"
             >
                 {/* Outer pulsing ring */}
-                <div className="absolute inset-0 rounded-full bg-brand-gold/20 animate-ping-slow" />
+                <div className="absolute inset-0 rounded-full bg-brand-eco/20 animate-ping-slow" />
                 {/* Glow halo */}
-                <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-brand-gold/30 to-brand-eco/20 blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-brand-eco/30 to-brand-eco/10 blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
 
                 {/* Main orb */}
-                <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-brand-gold via-brand-gold/80 to-brand-eco/60 flex items-center justify-center shadow-[0_8px_32px_rgba(200,164,19,0.4)] group-hover:scale-110 group-active:scale-95 transition-transform duration-300 border-2 border-brand-gold/50">
+                <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-brand-dark via-brand-dark to-[#0a1a17] flex items-center justify-center shadow-[0_8px_32px_rgba(74,222,128,0.3)] group-hover:scale-110 group-active:scale-95 transition-transform duration-300 border-2 border-brand-eco/50">
                     {/* Inner shine */}
-                    <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-white/30" />
+                    <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-transparent via-white/5 to-white/10" />
 
-                    {/* AI Avatar — sparkles icon */}
-                    <Sparkles className="text-white drop-shadow-lg" size={26} />
+                    {/* AI Avatar — lightbulb icon */}
+                    <Lightbulb className="text-brand-eco drop-shadow-lg" size={26} />
 
                     {/* Status dot */}
                     <div className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-brand-eco border-2 border-brand-dark" />
@@ -404,9 +404,9 @@ INSTRUCTIONS:
             {/* Header */}
             <div className="p-4 bg-gradient-to-r from-brand-gold/10 to-transparent border-b border-brand-gold/20 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-brand-gold via-brand-gold/80 to-brand-eco/60 flex items-center justify-center border border-brand-gold/50 shadow-[0_4px_16px_rgba(200,164,19,0.3)]">
-                        <div className="absolute inset-0.5 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-white/20" />
-                        <Sparkles className="text-white relative z-10" size={18} />
+                    <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-brand-dark to-[#0a1a17] flex items-center justify-center border border-brand-eco/50 shadow-[0_4px_16px_rgba(74,222,128,0.25)]">
+                        <div className="absolute inset-0.5 rounded-full bg-gradient-to-tr from-transparent via-white/5 to-white/10" />
+                        <Lightbulb className="text-brand-eco relative z-10" size={18} />
                         {activeTool && (
                             <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-brand-alert rounded-full animate-pulse border border-brand-dark"></div>
                         )}
