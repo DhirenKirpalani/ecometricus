@@ -60,7 +60,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
             Food Waste Intelligence
           </h2>
-          <p className="text-[11px] sm:text-xs text-white/50 font-medium mt-1">
+          <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
             Conversion of raw prep and spoilage data into financial impact.
           </p>
         </div>
