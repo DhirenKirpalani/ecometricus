@@ -2319,13 +2319,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
-                    {activeView === PortalView.AUDIT_LOG && "System Activity & Change Tracking"}
                     {activeView === PortalView.CONTACT && "Get Help & Share Feedback"}
                     {activeView === PortalView.SUPER_ADMIN && "Platform Control Center"}
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
-                    {activeView === PortalView.AUDIT_LOG && "Audit Log"}
                     {activeView === PortalView.CONTACT && "Contact Support"}
                     {activeView === PortalView.SUPER_ADMIN && "Super Admin"}
                   </h3>
@@ -3279,13 +3277,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 {activeView === PortalView.AUDIT_LOG && (
                   <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
 
-                    {/* ── Audit Log ── */}
-                    <div className="rounded-2xl overflow-hidden border border-brand-gold/15">
-                      {/* Header */}
-                      <div className="bg-gradient-to-r from-brand-gold/8 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-gold/15 flex items-center gap-3 flex-wrap">
-                        <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
-                          <ScrollText size={18} className="text-brand-gold" />
+                    {/* Heading */}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                          <ScrollText className="text-brand-eco" size={24} />
                         </div>
+                        <div>
+                          <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                            Audit Log
+                          </h2>
+                          <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
+                            System Activity & Change Tracking
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
                         {auditLogs.length > 0 && (
                           <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-brand-dark/60 border border-brand-gold/15">
                             {auditLogs.length} {auditLogs.length === 1 ? 'Entry' : 'Entries'}
@@ -3293,13 +3300,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         )}
                         <button
                           onClick={fetchAuditLogs}
-                          className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors text-[10px] font-bold uppercase tracking-widest"
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors text-[10px] font-bold uppercase tracking-widest"
                           title="Refresh"
                         >
                           <RefreshCcw size={13} />
                           <span className="hidden sm:inline">Refresh</span>
                         </button>
                       </div>
+                    </div>
+
+                    {/* ── Audit Log ── */}
+                    <div className="rounded-2xl overflow-hidden border border-brand-gold/15">
 
                       {/* Filter chips */}
                       {auditLogs.length > 0 && (() => {
