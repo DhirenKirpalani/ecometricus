@@ -2319,7 +2319,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold/70 mb-1.5">
                     {activeView === PortalView.DASHBOARD && "Real-time F&B Sustainability Tracking"}
-                    {activeView === PortalView.IDENTITY && "Manage Profile & Audit Protocols"}
                     {activeView === PortalView.TEAM && "Role & Permission Registry"}
                     {activeView === PortalView.PARAMETERS && "Metric Units & KPI Thresholds"}
                     {activeView === PortalView.AUDIT_LOG && "System Activity & Change Tracking"}
@@ -2328,7 +2327,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   </p>
                   <h3 className="text-lg sm:text-xl font-geometric font-bold text-white leading-tight">
                     {activeView === PortalView.DASHBOARD && "Operational Insights"}
-                    {activeView === PortalView.IDENTITY && "Company Identity"}
                     {activeView === PortalView.TEAM && "Staff Registry"}
                     {activeView === PortalView.PARAMETERS && "Benchmarking Engine"}
                     {activeView === PortalView.AUDIT_LOG && "Audit Log"}
@@ -2852,45 +2850,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                 {activeView === PortalView.IDENTITY && (
                   <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
 
-                    {/* ── Completion Progress Bar ── */}
-                    {(() => {
-                      const steps = [
-                        { done: !!company.region, label: 'Region' },
-                        { done: !!company.city, label: 'City' },
-                        { done: !!company.name, label: 'Company Name' },
-                        { done: outlets.filter(o => o.name && o.code).length > 0, label: 'Outlets' },
-                        { done: !!auditReport.cycle, label: 'Audit Cycle' },
-                      ];
-                      const completed = steps.filter(s => s.done).length;
-                      const pct = Math.round((completed / steps.length) * 100);
-                      return (
-                        <div className="rounded-2xl border border-brand-gold/20 bg-gradient-to-r from-brand-gold/5 to-transparent p-5">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center">
-                                <Trophy size={15} className="text-brand-gold" />
-                              </div>
-                              <div>
-                                <p className="text-[11px] font-black uppercase tracking-widest text-brand-gold/80">Profile Completion</p>
-                                <p className="text-[10px] text-white/50">{completed} of {steps.length} steps complete</p>
-                              </div>
-                            </div>
-                            <span className="text-2xl font-geometric font-black text-brand-gold tabular-nums">{pct}%</span>
-                          </div>
-                          <div className="h-2 rounded-full bg-brand-dark/60 overflow-hidden">
-                            <div className="h-full rounded-full bg-gradient-to-r from-brand-eco to-brand-gold transition-all duration-500" style={{ width: `${pct}%` }} />
-                          </div>
-                          <div className="flex flex-wrap gap-1.5 mt-3">
-                            {steps.map((s, i) => (
-                              <span key={i} className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-all ${s.done ? 'text-brand-eco bg-brand-eco/10 border border-brand-eco/20' : 'text-white/25 bg-[#1c3933] border border-brand-gold/15'}`}>
-                                {s.done ? <CheckCircle2 size={9} /> : <div className="w-2 h-2 rounded-full border border-current" />}
-                                {s.label}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    {/* Heading */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                        <Building2 className="text-brand-eco" size={24} />
+                      </div>
+                      <div>
+                        <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                          Company Identity
+                        </h2>
+                        <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
+                          Manage Profile & Audit Protocols
+                        </p>
+                      </div>
+                    </div>
 
                     {/* ── Company Identity Card ── */}
                     <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.05)]">
