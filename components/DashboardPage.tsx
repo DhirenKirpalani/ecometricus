@@ -3549,9 +3549,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <input type="email" value={enrollEmail} onChange={e => { const val = e.target.value; setEnrollEmail(val); setEnrollEmailError(validateCorporateEmail(val)); }} placeholder="staff@hotel.com"
                                 className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 hover:border-brand-gold/40 transition-all ${enrollEmailError ? 'border-brand-alert' : enrollEmail && !enrollEmailError ? 'border-brand-eco/40' : 'border-brand-gold/15'}`} />
                               {enrollEmailError ? (
-                                <p className="text-[10px] font-bold text-brand-alert ml-1">{enrollEmailError}</p>
+                                <div className="flex items-start gap-2 ml-1 mt-1 px-3 py-2 rounded-lg bg-brand-alert/10 border border-brand-alert/25">
+                                  <AlertTriangle size={13} className="text-brand-alert shrink-0 mt-0.5" />
+                                  <span className="text-[10px] font-bold text-brand-alert leading-tight">{enrollEmailError}</span>
+                                </div>
                               ) : enrollEmail && !enrollEmailError ? (
-                                <p className="text-[10px] font-bold text-brand-eco ml-1">Valid company email</p>
+                                <div className="flex items-center gap-2 ml-1 mt-1 px-3 py-2 rounded-lg bg-brand-eco/10 border border-brand-eco/25">
+                                  <CheckCircle2 size={13} className="text-brand-eco shrink-0" />
+                                  <span className="text-[10px] font-bold text-brand-eco leading-tight">Valid company email</span>
+                                </div>
                               ) : null}
                             </div>
                           </div>
