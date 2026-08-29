@@ -732,24 +732,19 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                 )}
               </label>
 
-              {/* Selected product chips */}
-              {form.products.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {form.products.map(prod => (
-                    <span key={prod} className="inline-flex items-center gap-1.5 bg-brand-gold/15 border border-brand-gold/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-brand-gold">
-                      {prod}
-                      <button type="button" onClick={() => setForm({ ...form, products: form.products.filter(p => p !== prod) })} className="hover:text-white transition-colors">
-                        <Trash2 size={11} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
               <div className="relative">
                 <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 z-10" />
+                  <div className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl pl-10 pr-4 py-2.5 flex flex-wrap items-center gap-1.5 focus-within:border-brand-gold transition-all min-h-[48px]">
+                    {form.products.map(prod => (
+                      <span key={prod} className="inline-flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-brand-eco">
+                        {prod}
+                        <button type="button" onClick={() => setForm({ ...form, products: form.products.filter(p => p !== prod) })} className="hover:text-white transition-colors">
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                    <input
                     ref={productInputRef}
                     type="text"
                     value={form.productSearch}
@@ -768,9 +763,10 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
                         setShowProductDropdown(false);
                       }
                     }}
-                    placeholder="Search, select, or type then press Enter..."
-                    className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none focus:border-brand-gold placeholder:text-white/35 transition-all"
+                    placeholder={form.products.length === 0 ? "Search, select, or type then press Enter..." : ""}
+                    className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm text-white placeholder:text-white/35 py-1"
                   />
+                  </div>
                 </div>
                 {showProductDropdown && form.subCategory && INVENTORY_LOGIC[form.category]?.[form.subCategory] && (
                   <div className="relative bg-brand-dark border border-brand-gold/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-h-48 overflow-y-auto scrollbar-gold mt-1">
