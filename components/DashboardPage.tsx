@@ -2855,16 +2855,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     {/* ── Company Identity Card ── */}
                     <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.05)]">
                       {/* Card header */}
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between border-b border-brand-gold/15 gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
-                            <Building2 size={18} className="text-brand-gold" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Profile Settings</p>
-                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5 truncate">Company Identity</h4>
-                          </div>
-                        </div>
+                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-end border-b border-brand-gold/15 gap-3">
                         <button
                           onClick={() => setIsEditingIdentity(!isEditingIdentity)}
                           className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
