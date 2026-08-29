@@ -2847,7 +2847,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <button
                           onClick={() => setIsEditingIdentity(!isEditingIdentity)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
                         >
                           {isEditingIdentity ? <Unlock size={12} /> : <Edit2 size={12} />}
                           {isEditingIdentity ? 'Lock' : 'Edit'}
