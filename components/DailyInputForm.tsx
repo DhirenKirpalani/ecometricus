@@ -489,7 +489,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, onAuditLog }) => 
           outlet_id: outlet.id,
           outlet_name: outlet.name,
           mass_kg: unit === 'lbs' ? amountNum * 0.4536 : amountNum,
-          cost_per_kg: 6.53,
+          cost_per_kg: 6.50,
           is_mock: false,
           user_id: session?.user?.id || null,
           created_by: user.fullName,

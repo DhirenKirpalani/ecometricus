@@ -385,7 +385,7 @@ const POSITION_TO_ROLE: Record<string, string> = {
   'GM': 'View'
 };
 
-// Mock Data for KPI Charts (Duplicated from SupervisorDashboard)
+// Sparkline component for KPI mini-charts
 const Sparkline: React.FC<{ color: string, data: number[] }> = ({ color, data }) => (
   <div className="w-full h-12 sm:h-16 mt-4 sm:mt-6">
     <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">

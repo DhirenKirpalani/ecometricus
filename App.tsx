@@ -13,7 +13,6 @@ import AuthPage from './components/AuthPage';
 import DashboardPage from './components/DashboardPage';
 import { supabase } from './lib/supabase';
 import StaffPortal from './components/StaffPortal';
-import SupervisorDashboard from './components/SupervisorDashboard';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import AssessmentForm from './components/AssessmentForm';
 import PrivacyPage from './components/PrivacyPage';
@@ -239,10 +238,6 @@ const App: React.FC = () => {
         return currentUser
           ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
           : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
-      case Page.SUPERVISOR_DASHBOARD:
-        return currentUser
-          ? <SupervisorDashboard user={currentUser} onLogout={handleLogout} />
-          : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
       case Page.SUPER_ADMIN:
         return currentUser
           ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
@@ -262,7 +257,6 @@ const App: React.FC = () => {
 
   const hideNavigation =
     currentPage === Page.STAFF_PORTAL ||
-    currentPage === Page.SUPERVISOR_DASHBOARD ||
     currentPage === Page.SUPER_ADMIN ||
     currentPage === Page.DASHBOARD ||
     currentPage === Page.ASSESSMENT ||
