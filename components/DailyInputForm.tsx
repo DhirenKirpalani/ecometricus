@@ -1032,8 +1032,8 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-            <ClipboardListIcon className="text-brand-gold" size={24} />
+          <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+            <ClipboardListIcon className="text-brand-eco" size={24} />
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
@@ -1619,8 +1619,8 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
       {/* ── MILA ACTIONABLE INTELLIGENCE ── */}
       <div>
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-10 h-10 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-            <Cpu className="text-brand-gold" size={20} />
+          <div className="w-10 h-10 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+            <Cpu className="text-brand-eco" size={20} />
           </div>
           <div>
             <h3 className="text-lg font-geometric font-bold text-white tracking-tight uppercase">{t('dailyInput.milaTitle')}</h3>

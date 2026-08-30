@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
@@ -10,7 +11,8 @@ import {
   CheckCircle2, DollarSign, Leaf, Zap, Droplets, Cloud,
   RefreshCcw, Search, Eye, EyeOff, Ban, Unlock,
   BarChart3, Settings, Bell, FileText, Mail, Webhook,
-  ArrowUpRight, ArrowDownRight, Clock, ChevronRight, UserPlus, Trash2, BookOpen
+  ArrowUpRight, ArrowDownRight, Clock, ChevronRight, UserPlus, Trash2, BookOpen,
+  Languages, ExternalLink
 } from 'lucide-react';
 
 interface SuperAdminDashboardProps {
@@ -43,6 +45,7 @@ interface CompanyRow {
 
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +58,24 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   ]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [addingAdmin, setAddingAdmin] = useState(false);
+  const [adminError, setAdminError] = useState('');
+
+  // Load super admins from personnel table
+  useEffect(() => {
+    const loadSuperAdmins = async () => {
+      const { data } = await supabase
+        .from('personnel')
+        .select('email')
+        .ilike('role', '%super_admin%');
+      if (data && data.length > 0) {
+        const emails = data.map((r: any) => r.email?.toLowerCase()).filter(Boolean);
+        // Merge with hardcoded primary
+        const merged = [...new Set(['dhirenkirpalani2308@gmail.com', ...emails])];
+        setSuperAdminEmails(merged);
+      }
+    };
+    loadSuperAdmins();
+  }, []);
 
   // Announcement banner config
   const [bannerEnabled, setBannerEnabled] = useState(false);
@@ -717,6 +738,35 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                   <MilaKnowledgeManager />
                 </div>
 
+                {/* ── Translation Manager ── */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-10 h-10 border border-brand-eco/50 rounded-xl bg-brand-eco/5 flex items-center justify-center shrink-0">
+                      <Languages size={18} className="text-brand-eco" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                        {t('superAdmin.transHeading')}
+                      </h4>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-eco/80">
+                        {t('superAdmin.transSub')}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate('/translations')}
+                    className="flex items-center gap-3 p-5 rounded-2xl border border-brand-eco/20 bg-brand-eco/5 hover:border-brand-eco/40 hover:bg-brand-eco/10 transition-all text-left w-full sm:w-fit"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-brand-eco/10 border border-brand-eco/20 flex items-center justify-center shrink-0">
+                      <Languages size={18} className="text-brand-eco" />
+                    </div>
+                    <div className="flex-grow">
+                      <p className="text-sm font-bold text-white">{t('superAdmin.transButton')}</p>
+                    </div>
+                    <ExternalLink size={16} className="text-brand-eco/60 shrink-0" />
+                  </button>
+                </div>
+
                 {/* ── Super Admin User Management ── */}
                 <div>
                   <div className="flex items-center gap-4 mb-6">
@@ -744,14 +794,44 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         className="flex-grow bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-3.5 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all"
                       />
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           const email = newAdminEmail.trim().toLowerCase();
                           if (!email || !email.includes('@')) return;
                           if (superAdminEmails.includes(email)) return;
+                          setAdminError('');
+
+                          // 1. Check if user exists in personnel table
+                          const { data: existingUser, error: lookupError } = await supabase
+                            .from('personnel')
+                            .select('id, email, role')
+                            .ilike('email', email)
+                            .maybeSingle();
+
+                          if (lookupError) {
+                            setAdminError(`Database error: ${lookupError.message}`);
+                            return;
+                          }
+
+                          if (!existingUser) {
+                            setAdminError(`User "${email}" is not registered. Enroll them as personnel first in the Team tab before granting super admin access.`);
+                            return;
+                          }
+
+                          // 2. Update personnel table role to super_admin
+                          const { error: personnelError } = await supabase
+                            .from('personnel')
+                            .update({ role: 'super_admin' })
+                            .eq('id', existingUser.id);
+
+                          if (personnelError) {
+                            setAdminError(`Failed to update role: ${personnelError.message}`);
+                            return;
+                          }
+
                           setSuperAdminEmails(prev => [...prev, email]);
                           setNewAdminEmail('');
                           setAddingAdmin(true);
-                          setTimeout(() => setAddingAdmin(false), 1000);
+                          setTimeout(() => setAddingAdmin(false), 1500);
                         }}
                         disabled={!newAdminEmail.trim() || !newAdminEmail.includes('@')}
                         className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-alert/15 border border-brand-alert/40 text-brand-alert text-sm font-bold hover:bg-brand-alert/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
@@ -760,8 +840,11 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         {addingAdmin ? t('superAdmin.addedSuperAdmin') : t('superAdmin.addSuperAdmin')}
                       </button>
                     </div>
+                    {adminError && (
+                      <p className="text-[10px] text-brand-alert mt-3">{adminError}</p>
+                    )}
                     <p className="text-[10px] text-white/30 mt-3">
-                      Note: Add the email to the hardcoded override in App.tsx and AuthPage.tsx for persistence.
+                      Updates the user's role to super_admin in the personnel table. The user will have super admin access on next login.
                     </p>
                   </div>
 
@@ -782,7 +865,14 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         </div>
                         {email !== 'dhirenkirpalani2308@gmail.com' && (
                           <button
-                            onClick={() => setSuperAdminEmails(prev => prev.filter(e => e !== email))}
+                            onClick={async () => {
+                              // Revert role to admin in personnel table
+                              await supabase
+                                .from('personnel')
+                                .update({ role: 'admin' })
+                                .ilike('email', email);
+                              setSuperAdminEmails(prev => prev.filter(e => e !== email));
+                            }}
                             className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors shrink-0"
                             title={t('superAdmin.removeSuperAdmin')}
                           >

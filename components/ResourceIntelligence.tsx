@@ -29,18 +29,20 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
   const showAlertWater = waterWeeklyTotal > waterTarget;
   const showAlertEnergy = energyWeeklyTotal > energyTarget;
 
-  // Build outlet breakdown dynamically
+  // Build outlet breakdown dynamically — only include outlets with actual data
   const outletBreakdown = useMemo(() => {
-    return outletKeys.map(key => {
-      const outlet = allOutlets.find(o => o.name.toUpperCase() === key);
-      const water = waterData.reduce((acc, d) => acc + (Number(d[key]) || 0), 0);
-      const energy = energyData.reduce((acc, d) => acc + (Number(d[key]) || 0), 0);
-      return {
-        name: outlet?.name || key.charAt(0) + key.slice(1).toLowerCase(),
-        water,
-        energy,
-      };
-    });
+    return outletKeys
+      .map(key => {
+        const outlet = allOutlets.find(o => o.name.toUpperCase() === key);
+        const water = waterData.reduce((acc, d) => acc + (Number(d[key]) || 0), 0);
+        const energy = energyData.reduce((acc, d) => acc + (Number(d[key]) || 0), 0);
+        return {
+          name: outlet?.name || key.charAt(0) + key.slice(1).toLowerCase(),
+          water,
+          energy,
+        };
+      })
+      .filter(outlet => outlet.water > 0 || outlet.energy > 0);
   }, [outletKeys, waterData, energyData, allOutlets]);
 
   if (isLoading) {
@@ -166,8 +168,8 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
       {outletBreakdown.length > 0 && (
         <div>
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-              <TrendingDown className="text-brand-gold" size={24} />
+            <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+              <TrendingDown className="text-brand-eco" size={24} />
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">

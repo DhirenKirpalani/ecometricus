@@ -181,8 +181,8 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
             {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-brand-gold/10 border border-brand-gold/30 rounded-xl flex items-center justify-center shrink-0">
-                        <Sparkles className="text-brand-gold" size={24} />
+                    <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                        <Sparkles className="text-brand-eco" size={24} />
                     </div>
                     <div>
                         <h1 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">

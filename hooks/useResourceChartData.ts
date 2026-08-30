@@ -43,7 +43,6 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
         if (outletsData && outletsData.length > 0) {
           outletsData.forEach((o: any) => keys.push((o.outlet_name || o.name || '').toUpperCase()));
         }
-        setOutletKeys(keys);
 
         // 1. Fetch all resource logs (current chart week only)
         const settings = await getPlatformSettings();
@@ -128,6 +127,14 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
 
         setWaterWeeklyTotal(Number(wTotal.toFixed(0)));
         setEnergyWeeklyTotal(Number(eTotal.toFixed(0)));
+
+        // 5. Filter outletKeys to only those with actual data
+        const activeKeys = keys.filter(k => {
+          const hasWater = wTransformed.some(d => Number(d[k]) > 0);
+          const hasEnergy = eTransformed.some(d => Number(d[k]) > 0);
+          return hasWater || hasEnergy;
+        });
+        setOutletKeys(activeKeys);
 
       } catch (err) {
         console.error('Error fetching resource data:', err);
