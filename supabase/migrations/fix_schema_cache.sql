@@ -152,19 +152,46 @@ DECLARE
   target_uuid UUID;
   caller_email TEXT;
   caller_role TEXT;
+  caller_uid UUID;
 BEGIN
-  -- Get the caller's email from the current JWT
+  -- Get the caller's email and UID from the current JWT
   caller_email := auth.email()::TEXT;
+  caller_uid := auth.uid();
 
-  -- Look up the caller's role in personnel
+  -- Look up the caller's role in personnel by email OR user_id
   SELECT role INTO caller_role
   FROM public.personnel
-  WHERE email = caller_email
+  WHERE email = caller_email OR id::TEXT = caller_uid::TEXT
   LIMIT 1;
 
+  -- Also check the hardcoded super_admin email
+  IF caller_email = 'dhirenkirpalani2308@gmail.com' THEN
+    caller_role := 'super_admin';
+  END IF;
+
+  -- Debug info in case of failure
+  IF caller_role IS NULL THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'Forbidden: admin access required',
+      'debug', json_build_object(
+        'caller_email', caller_email,
+        'caller_uid', caller_uid,
+        'reason', 'No personnel record found for this email/uid'
+      )
+    );
+  END IF;
+
   -- Only admins and super_admins can delete users
-  IF caller_role IS NULL OR (caller_role NOT ILIKE '%admin%') THEN
-    RETURN json_build_object('success', false, 'error', 'Forbidden: admin access required');
+  IF caller_role NOT ILIKE '%admin%' AND caller_role NOT ILIKE '%super%' THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'Forbidden: admin access required',
+      'debug', json_build_object(
+        'caller_email', caller_email,
+        'caller_role', caller_role
+      )
+    );
   END IF;
 
   -- Find the target user's UUID by email
@@ -174,7 +201,7 @@ BEGIN
   LIMIT 1;
 
   IF target_uuid IS NULL THEN
-    RETURN json_build_object('success', false, 'error', 'User not found in auth.users');
+    RETURN json_build_object('success', false, 'error', 'User not found in auth.users', 'target_email', target_email);
   END IF;
 
   -- Delete related data
