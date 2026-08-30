@@ -2448,7 +2448,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
             {/* Role only — full name is already in the greeting below */}
             <p className="hidden md:block text-[12px] text-brand-gold/70 font-semibold tracking-widest uppercase">
-              {user.position || user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              {user.role.toLowerCase() === 'super_admin' ? 'Super Admin' : user.position || user.role.charAt(0).toUpperCase() + user.role.slice(1)}
             </p>
 
             {/* Divider */}
