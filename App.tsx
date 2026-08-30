@@ -187,39 +187,17 @@ const App: React.FC = () => {
     setCurrentPageState(page);
   }, [navigate]);
 
-  const handleLogin = useCallback(async (user: UserProfile) => {
-    // ── Super Admin check: hardcoded email OR personnel table role ──
-    const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
-    const isHardcodedSuperAdmin = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
-
-    // Only query DB for roles that could be elevated to super_admin
-    const userRole = (user.role || '').toLowerCase();
-    const couldBeSuperAdmin = userRole === 'admin' || userRole === 'supervisor' || userRole === '';
-    let isDbSuperAdmin = false;
-    if (!isHardcodedSuperAdmin && couldBeSuperAdmin) {
-      const { data: personnelRow } = await supabase
-        .from('personnel')
-        .select('role')
-        .ilike('email', user.email?.toLowerCase() || '')
-        .maybeSingle();
-      isDbSuperAdmin = personnelRow?.role?.toLowerCase().includes('super_admin') ?? false;
-    }
-
-    const effectiveUser = (isHardcodedSuperAdmin || isDbSuperAdmin)
-      ? { ...user, role: 'super_admin' as any }
-      : user;
-    setCurrentUser(effectiveUser);
-    const role = effectiveUser.role.toLowerCase();
-    if (role === 'super_admin') {
-      handleNavigate(Page.DASHBOARD);
-    } else if (role === 'admin') {
-      handleNavigate(Page.DASHBOARD);
-    } else if (role === 'supervisor') {
-      handleNavigate(Page.DASHBOARD);
-    } else {
-      // Basic/view roles go to Daily Input on the dashboard
+  const handleLogin = useCallback((user: UserProfile) => {
+    // The onAuthStateChange listener handles super_admin elevation via a DB
+    // query. Here we just set the user from auth metadata and navigate — the
+    // listener fires immediately after sign-in and will update the role if needed.
+    setCurrentUser(user);
+    const role = user.role.toLowerCase();
+    if (role === 'basic' || role === 'view') {
       navigate('/dashboard/daily-input');
       setCurrentPageState(Page.DASHBOARD);
+    } else {
+      handleNavigate(Page.DASHBOARD);
     }
   }, [handleNavigate, navigate]);
 
