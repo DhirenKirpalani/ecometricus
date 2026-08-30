@@ -101,9 +101,11 @@ const App: React.FC = () => {
           const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
           const isHardcodedSuperAdmin = authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
 
-          // Check personnel table for super_admin role
+          // Check personnel table for super_admin role — only for roles that could be elevated
+          const metaRole = (meta.role || '').toLowerCase();
+          const couldBeSuperAdmin = metaRole === 'admin' || metaRole === 'supervisor' || metaRole === '';
           let isDbSuperAdmin = false;
-          if (!isHardcodedSuperAdmin) {
+          if (!isHardcodedSuperAdmin && couldBeSuperAdmin) {
             const { data: personnelRow } = await supabase
               .from('personnel')
               .select('role')
@@ -190,8 +192,11 @@ const App: React.FC = () => {
     const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
     const isHardcodedSuperAdmin = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
 
+    // Only query DB for roles that could be elevated to super_admin
+    const userRole = (user.role || '').toLowerCase();
+    const couldBeSuperAdmin = userRole === 'admin' || userRole === 'supervisor' || userRole === '';
     let isDbSuperAdmin = false;
-    if (!isHardcodedSuperAdmin) {
+    if (!isHardcodedSuperAdmin && couldBeSuperAdmin) {
       const { data: personnelRow } = await supabase
         .from('personnel')
         .select('role')
