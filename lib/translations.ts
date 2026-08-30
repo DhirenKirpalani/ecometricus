@@ -1171,6 +1171,9 @@ export const translations: Record<string, TranslationSection> = {
     saRole: { en: 'Super Admin', es: 'Super Admin' },
     primaryBadge: { en: 'Primary', es: 'Principal' },
     removeSuperAdmin: { en: 'Remove super admin', es: 'Eliminar super admin' },
+    transHeading: { en: 'Translation Manager', es: 'Gestor de Traducciones' },
+    transSub: { en: 'Manage UI Translations', es: 'Gestionar Traducciones de UI' },
+    transButton: { en: 'Open Translation Manager', es: 'Abrir Gestor de Traducciones' },
   },
 
   // ─── Miscellaneous ────────────────────────────────────────────────────────

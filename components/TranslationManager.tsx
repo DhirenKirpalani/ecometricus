@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { translations, getAllTranslationKeys, Lang } from '../lib/translations';
 import { useI18n, saveTranslationToSupabase } from '../lib/useI18n';
 import { Page } from '../types';
@@ -26,6 +27,7 @@ const SECTION_LABELS: Record<string, string> = {
 
 const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) => {
   const { lang, changeLang, t } = useI18n();
+  const navigate = useNavigate();
   const [editingLang, setEditingLang] = useState<Lang>('es');
   const [search, setSearch] = useState('');
   const [activeSection, setActiveSection] = useState<string>('all');
@@ -114,7 +116,7 @@ const TranslationManager: React.FC<TranslationManagerProps> = ({ onNavigate }) =
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => onNavigate(Page.HOME)}
+              onClick={() => navigate('/dashboard/super-admin')}
               className="flex items-center gap-2 text-xs text-white/40 hover:text-white transition-colors"
             >
               <ArrowLeft size={14} /> Back

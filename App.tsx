@@ -35,7 +35,6 @@ const PAGE_TO_PATH: Partial<Record<Page, string>> = {
   [Page.TERMS]:                '/terms',
   [Page.CONTACT]:              '/contact',
   [Page.TRANSLATION_MANAGER]:  '/translations',
-  [Page.SUPER_ADMIN]:           '/super-admin',
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -47,7 +46,6 @@ const pathToPage = (pathname: string): Page => {
   if (pathname.startsWith('/access/')) return Page.SIGN_UP;
   // Dashboard sub-routes: /dashboard/company, /dashboard/team, etc. → all map to DASHBOARD
   if (pathname.startsWith('/dashboard')) return Page.DASHBOARD;
-  if (pathname.startsWith('/super-admin')) return Page.SUPER_ADMIN;
   return PATH_TO_PAGE[pathname] ?? Page.HOME;
 };
 
@@ -99,9 +97,22 @@ const App: React.FC = () => {
           const authUser = session.user;
           const meta = authUser.user_metadata || {};
           const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
-          // ── Super Admin override: hardcode role for specific email ──
+          // ── Super Admin check: hardcoded email OR personnel table role ──
           const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
-          const isSuperAdmin = authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
+          const isHardcodedSuperAdmin = authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
+
+          // Check personnel table for super_admin role
+          let isDbSuperAdmin = false;
+          if (!isHardcodedSuperAdmin) {
+            const { data: personnelRow } = await supabase
+              .from('personnel')
+              .select('role')
+              .ilike('email', authUser.email?.toLowerCase() || '')
+              .maybeSingle();
+            isDbSuperAdmin = personnelRow?.role?.toLowerCase().includes('super_admin') ?? false;
+          }
+
+          const isSuperAdmin = isHardcodedSuperAdmin || isDbSuperAdmin;
           const role = isSuperAdmin ? 'super_admin' : (meta.role || 'admin');
           const rl = role.toLowerCase();
           const position = rl === 'super_admin' ? 'F&B Director' : rl === 'admin' ? 'GM' : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'view' ? (meta.position || 'GM') : 'Supervisor';
@@ -174,10 +185,22 @@ const App: React.FC = () => {
     setCurrentPageState(page);
   }, [navigate]);
 
-  const handleLogin = useCallback((user: UserProfile) => {
-    // ── Super Admin override ──
+  const handleLogin = useCallback(async (user: UserProfile) => {
+    // ── Super Admin check: hardcoded email OR personnel table role ──
     const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
-    const effectiveUser = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL
+    const isHardcodedSuperAdmin = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
+
+    let isDbSuperAdmin = false;
+    if (!isHardcodedSuperAdmin) {
+      const { data: personnelRow } = await supabase
+        .from('personnel')
+        .select('role')
+        .ilike('email', user.email?.toLowerCase() || '')
+        .maybeSingle();
+      isDbSuperAdmin = personnelRow?.role?.toLowerCase().includes('super_admin') ?? false;
+    }
+
+    const effectiveUser = (isHardcodedSuperAdmin || isDbSuperAdmin)
       ? { ...user, role: 'super_admin' as any }
       : user;
     setCurrentUser(effectiveUser);
@@ -229,13 +252,11 @@ const App: React.FC = () => {
         return <ContactPage />;
       case Page.TRANSLATION_MANAGER:
         return currentUser
-          ? <TranslationManager onNavigate={handleNavigate} />
+          ? (currentUser.role.toLowerCase() === 'super_admin'
+            ? <TranslationManager onNavigate={handleNavigate} />
+            : <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />)
           : <AuthPage currentView={Page.SIGN_IN} onNavigate={handleNavigate} onLogin={handleLogin} />;
       case Page.DASHBOARD:
-        return currentUser
-          ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
-          : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
-      case Page.SUPER_ADMIN:
         return currentUser
           ? <DashboardPage user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
           : <LandingPage onNavigate={handleNavigate} isLoggedIn={false} />;
@@ -249,7 +270,6 @@ const App: React.FC = () => {
   };
 
   const hideNavigation =
-    currentPage === Page.SUPER_ADMIN ||
     currentPage === Page.DASHBOARD ||
     currentPage === Page.ASSESSMENT ||
     currentPage === Page.EARLY_ACCESS ||

@@ -2357,6 +2357,31 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     }
   };
 
+  // Context for Basic users (Daily Input view)
+  const basicUserContext = {
+    user: { name: user.fullName || 'User', role: user.role, firstName: user.fullName?.split(' ')[0] ?? 'User' },
+    userProfile: user,
+    company: {
+      name: company.name || 'Your Hotel',
+      outlet: outlets.find(o => o.id === user.outletCode || o.code === user.outletCode || o.outlet_id === user.outletCode)?.name || company.currentOutletName || 'Your Outlet',
+      region: company.region || '',
+      city: company.city || '',
+      totalOutlets: outlets.length,
+    },
+    page: 'Daily Input',
+    benchmarks: {
+      waste: effectiveParams.wasteTarget || 100,
+      foodCost: effectiveParams.foodCostTarget || 28.0,
+      laborCost: effectiveParams.laborCostTarget || 30.0,
+      profitMargin: effectiveParams.profitMarginTarget || 15.0
+    },
+    metrics: {
+      totalOutlets: outlets.length,
+      wasteVolume: sessionData.waste.kg,
+      financials: impacts,
+    }
+  };
+
   // Legal consent is captured at sign-up via the Terms checkbox — no second modal needed.
   const isPendingConsent = false;
 
@@ -3082,14 +3107,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     </div>
 
                     {/* ── Company Identity Card ── */}
-                    <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.05)]">
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-gold/15">
+                    <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_40px_rgba(34,197,94,0.05)]">
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-eco/15">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
-                            <Building2 size={18} className="text-brand-gold" />
+                          <div className="w-10 h-10 rounded-xl bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center shrink-0">
+                            <Building2 size={18} className="text-brand-eco" />
                           </div>
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">{t('dashboard.profile')}</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">{t('dashboard.profile')}</p>
                             <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.companyDetails')}</h4>
                           </div>
                         </div>
@@ -3746,14 +3771,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     </div>
 
                     {/* ── Enroll / Edit card ── */}
-                    <div id="enrollment-form" className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_40px_rgba(200,164,19,0.04)]">
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between border-b border-brand-gold/15 gap-3">
+                    <div id="enrollment-form" className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_40px_rgba(34,197,94,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between border-b border-brand-eco/15 gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shrink-0">
-                            <UserPlus size={18} className="text-brand-gold" />
+                          <div className="w-10 h-10 rounded-xl bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center shrink-0">
+                            <UserPlus size={18} className="text-brand-eco" />
                           </div>
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Personnel</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Personnel</p>
                             <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">
                               {enrollId ? 'Edit Role Position' : 'Enroll Personnel'}
                             </h4>
@@ -3935,7 +3960,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                     <div className="space-y-8">
                       <div className="px-6 mb-2">
-                        <h5 className="text-lg sm:text-xl font-geometric font-black uppercase tracking-[0.3em] text-brand-gold">{t('dashboard.activeStaffRegistry')}</h5>
+                        <h5 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">{t('dashboard.activeStaffRegistry')}</h5>
                       </div>
 
                       {/* Management Group Table */}
@@ -4140,20 +4165,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     </div>
 
                     {/* ── STEP 1: Industry Benchmarking ── */}
-                    <div className="rounded-2xl border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-gold/15 flex-wrap">
+                    <div className="rounded-2xl border border-brand-eco/20 shadow-[0_0_30px_rgba(34,197,94,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-eco/15 flex-wrap">
                         <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-brand-eco/15 text-brand-eco border border-brand-eco/30 flex items-center justify-center shrink-0">
                             <Globe size={18} />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 01</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Step 01</p>
                             <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.industryBenchmarking')}</h4>
                           </div>
                         </div>
                         <button
                           onClick={() => setIsEditingBenchmarks(!isEditingBenchmarks)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingBenchmarks ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingBenchmarks ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
                         >
                           {isEditingBenchmarks ? <Unlock size={12} /> : <Edit2 size={12} />}
                           {isEditingBenchmarks ? t('dashboard.lock') : t('dashboard.edit')}
@@ -4308,21 +4333,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     </div>
 
                     {/* ── STEP 3: F&B KPIs ── */}
-                    <div className="rounded-2xl overflow-hidden border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-gold/15 flex-wrap">
+                    <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_30px_rgba(34,197,94,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-eco/15 flex-wrap">
                         <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-brand-eco/15 text-brand-eco border border-brand-eco/30 flex items-center justify-center shrink-0">
                             <BarChart3 size={18} />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 03</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Step 03</p>
                             <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.fnbKpis')}</h4>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => setIsEditingFnB(!isEditingFnB)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingFnB ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingFnB ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
                           >
                             {isEditingFnB ? <Unlock size={12} /> : <Edit2 size={12} />}
                             {isEditingFnB ? t('dashboard.lock') : t('dashboard.edit')}
@@ -4492,7 +4517,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                             <div>
                               <span className="text-xs font-bold uppercase tracking-tight text-white block">{t('dashboard.suggestionEngine')}</span>
-                              <span className={`text-[10px] font-black uppercase tracking-widest ${params.milaLogic ? 'text-brand-eco' : 'text-white/40'}`}>{params.milaLogic ? 'Active' : 'Disabled'}</span>
+                              <span className={`text-[10px] font-black uppercase tracking-widest ${params.milaLogic ? 'text-brand-gold' : 'text-white/40'}`}>{params.milaLogic ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
                           <button onClick={() => setParams({ ...params, milaLogic: !params.milaLogic })}>
@@ -4503,14 +4528,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                     </div>
 
                     {/* ── STEP 5: APIs Integration ── */}
-                    <div className="rounded-2xl border border-brand-gold/20 shadow-[0_0_30px_rgba(200,164,19,0.04)]">
-                      <div className="bg-gradient-to-r from-brand-gold/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-gold/15 flex-wrap">
+                    <div className="rounded-2xl border border-brand-eco/20 shadow-[0_0_30px_rgba(34,197,94,0.04)]">
+                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-eco/15 flex-wrap">
                         <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-brand-eco/15 text-brand-eco border border-brand-eco/30 flex items-center justify-center shrink-0">
                             <Database size={18} />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-gold/60">Step 05</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">Step 05</p>
                             <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.apisIntegration')}</h4>
                           </div>
                           <div className="relative group ml-1">
@@ -4529,7 +4554,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                         <button
                           onClick={() => setIsEditingApis(!isEditingApis)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingApis ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingApis ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
                         >
                           {isEditingApis ? <Unlock size={12} /> : <Edit2 size={12} />}
                           {isEditingApis ? t('dashboard.lock') : t('dashboard.edit')}
@@ -4588,7 +4613,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             </div>
           </main>
         </div>
-        {user.role.toLowerCase() !== 'basic' && <MilaWidget context={adminContext} />}
+        {user.role.toLowerCase() === 'basic'
+          ? <MilaWidget context={basicUserContext} />
+          : <MilaWidget context={adminContext} />}
       </div>
 
   {/* 🔐 Admin Legal Consent Window (Forensic Gate) */}
