@@ -2194,36 +2194,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           }));
         }
 
-        // ── Audit log: record only the fields that changed since last save ──
-        const prev = prevLoggedParams.current;
-        const changes: Record<string, { from: any; to: any }> = {};
-        const trackedKeys: (keyof typeof params)[] = [
-          'wasteTarget', 'waterTarget', 'energyTarget',
-          'foodCostTarget', 'laborCostTarget', 'wasteUnit',
-          'benchmarkRegion', 'selectedManualOutlet',
-          'posApiKey', 'crmApiKey', 'pmsApiKey',
-          'alertsActive', 'milaLogic'
-        ];
-        for (const k of trackedKeys) {
-          if (prev && prev[k] !== params[k]) {
-            // Don't log raw API key values — just whether it was set/cleared
-            if (k === 'posApiKey' || k === 'crmApiKey' || k === 'pmsApiKey') {
-              changes[k] = { from: prev[k] ? 'set' : 'empty', to: params[k] ? 'set' : 'empty' };
-            } else {
-              changes[k] = { from: prev[k], to: params[k] };
-            }
-          }
-        }
-        if (Object.keys(changes).length > 0) {
-          const changedFields = Object.keys(changes).join(', ');
-          logAction(
-            'benchmarks_updated',
-            'benchmark',
-            params.benchmarkRegion,
-            `Auto-saved benchmark parameters (${params.benchmarkRegion}) — changed: ${changedFields}`,
-            changes
-          );
-        }
         prevLoggedParams.current = { ...params };
 
         const now = new Date();
@@ -2376,17 +2346,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     userProfile: user, // Full profile for Mila agent tools
     company: {
       name: company.name || 'Your Hotel',
-      outlet: company.currentOutletName || t('dashboard.allOutlets'),
+      outlet: isHookAdmin
+        ? (company.currentOutletName || t('dashboard.allOutlets'))
+        : (outlets.find(o => o.id === user.outletCode || o.code === user.outletCode || o.outlet_id === user.outletCode)?.name || userOutletName || company.currentOutletName || t('dashboard.allOutlets')),
       region: company.region || '',
       city: company.city || '',
       totalOutlets: outlets.length,
     },
     page: 'Admin Overview',
     benchmarks: {
-      waste: 100,
-      foodCost: 28.0,
-      laborCost: 30.0,
-      profitMargin: 15.0
+      waste: effectiveParams.wasteTarget || 100,
+      water: effectiveParams.waterTarget || 25000,
+      energy: effectiveParams.energyTarget || 1000,
+      foodCost: effectiveParams.foodCostTarget || 28.0,
+      laborCost: effectiveParams.laborCostTarget || 30.0,
+      profitMargin: effectiveParams.profitMarginTarget || 15.0
     },
     // Real-time aggregate data
     metrics: {
@@ -2399,13 +2373,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       ]).size,
       financials: impacts, // Inherit the calculated impacts
       wasteVolume: sessionData.waste.kg,
+      waterVolume: rawResourceLogs.filter(r => r.resource_type === 'water').reduce((s, r) => s + (Number(r.consumption) || 0), 0),
+      energyVolume: rawResourceLogs.filter(r => r.resource_type === 'energy').reduce((s, r) => s + (Number(r.consumption) || 0), 0),
       efficiencyScore: Math.round((impacts.carbonImpact / (sessionData.waste.kg || 1)) * 100) // Rough metric
     },
     // Pass raw session data for deep reasoning if needed
     recentLogs: [...rawWasteLogs, ...sessionWasteEntries].slice(-10), // Last 10 entries for context
     marketingModality: "Admin-Level Strategic Oversight",
     activeAlerts: {
-      kpi: impacts.totalFinancialLoss > 500, // Mock threshold for Admin
+      kpi: impacts.totalFinancialLoss > 500,
       sustainability: impacts.isDeviating
     }
   };
@@ -2424,6 +2400,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     page: 'Daily Input',
     benchmarks: {
       waste: effectiveParams.wasteTarget || 100,
+      water: effectiveParams.waterTarget || 25000,
+      energy: effectiveParams.energyTarget || 1000,
       foodCost: effectiveParams.foodCostTarget || 28.0,
       laborCost: effectiveParams.laborCostTarget || 30.0,
       profitMargin: effectiveParams.profitMarginTarget || 15.0
@@ -2431,7 +2409,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     metrics: {
       totalOutlets: outlets.length,
       wasteVolume: sessionData.waste.kg,
+      waterVolume: rawResourceLogs.filter(r => r.resource_type === 'water').reduce((s, r) => s + (Number(r.consumption) || 0), 0),
+      energyVolume: rawResourceLogs.filter(r => r.resource_type === 'energy').reduce((s, r) => s + (Number(r.consumption) || 0), 0),
       financials: impacts,
+    },
+    activeAlerts: {
+      kpi: impacts.totalFinancialLoss > 500,
+      sustainability: impacts.isDeviating
     }
   };
 
@@ -2601,10 +2585,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         {greeting}, <span className="text-brand-gold font-bold">{firstName}</span>
                       </h2>
                       <p className="text-[11px] sm:text-[12px] font-medium text-white/50 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
-                        <span className="text-brand-gold/80 font-semibold uppercase tracking-widest text-[10px]">
-                          {user.role.toLowerCase() === 'super_admin' ? 'Super Admin' : user.position || user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                        </span>
-                        <span className="w-1 h-1 rounded-full bg-white/15" />
                         <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
                         <span className="w-1 h-1 rounded-full bg-white/15" />
                         <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -3710,6 +3690,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             personnel_removed: t('dashboard.auditPersonnel'),
                             benchmarks_saved: t('dashboard.auditBenchmarks'),
                             benchmarks_updated: t('dashboard.auditBenchmarks'),
+                            waste_entry_added: t('dashboard.auditDailyInput'),
+                            waste_entry_updated: t('dashboard.auditDailyInput'),
+                            waste_entry_deleted: t('dashboard.auditDailyInput'),
+                            water_entry_added: t('dashboard.auditDailyInput'),
+                            water_entry_updated: t('dashboard.auditDailyInput'),
+                            water_entry_deleted: t('dashboard.auditDailyInput'),
+                            energy_entry_added: t('dashboard.auditDailyInput'),
+                            energy_entry_updated: t('dashboard.auditDailyInput'),
+                            energy_entry_deleted: t('dashboard.auditDailyInput'),
                           };
                           const filtered = auditFilter
                             ? auditLogs.filter((l: any) => (labelMap[l.action] || t('dashboard.other')) === auditFilter)

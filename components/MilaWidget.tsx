@@ -82,29 +82,143 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isOpen]);
 
-    // Check for proactive insights on mount
+    // Generate dynamic insights from live dashboard data + fetch stored insights
     useEffect(() => {
         const fetchInsights = async () => {
             try {
+                // 1. Fetch stored AI-generated insights from database
                 const { data: { session } } = await supabase.auth.getSession();
-                if (!session) return;
-                const { data, error } = await supabase
-                    .from('mila_insights')
-                    .select('*')
-                    .eq('user_id', session.user.id)
-                    .eq('is_read', false)
-                    .order('created_at', { ascending: false })
-                    .limit(10);
-                if (!error && data) {
-                    setProactiveInsights(data as Insight[]);
+                let storedInsights: Insight[] = [];
+                if (session) {
+                    const { data, error } = await supabase
+                        .from('mila_insights')
+                        .select('*')
+                        .eq('user_id', session.user.id)
+                        .eq('is_read', false)
+                        .order('created_at', { ascending: false })
+                        .limit(10);
+                    if (!error && data) {
+                        storedInsights = data as Insight[];
+                    }
                 }
+
+                // 2. Generate dynamic insights from live dashboard context
+                const dynamicInsights: Insight[] = [];
+                const ctx = context;
+                const metrics = ctx?.metrics;
+                const benchmarks = ctx?.benchmarks;
+                const financials = metrics?.financials;
+                const activeAlerts = ctx?.activeAlerts;
+
+                // Waste threshold alert
+                if (metrics?.wasteVolume && benchmarks?.waste && metrics.wasteVolume > benchmarks.waste) {
+                    const overage = metrics.wasteVolume - benchmarks.waste;
+                    const pct = Math.round((overage / benchmarks.waste) * 100);
+                    dynamicInsights.push({
+                        id: `dyn-waste-${Date.now()}`,
+                        severity: pct > 20 ? 'critical' : 'warning',
+                        category: 'Food Waste',
+                        title: `Waste volume ${pct}% over target`,
+                        description: `Current waste: ${Math.round(metrics.wasteVolume)}kg vs target ${benchmarks.waste}kg. Excess of ${Math.round(overage)}kg generating ~${Math.round(overage * 2.85)}kg CO₂e.`,
+                        recommendation: `Review prep processes and portion sizes. Focus on overproduction and spoilage categories.`,
+                        created_at: new Date().toISOString(),
+                    });
+                }
+
+                // Carbon lifecycle alert
+                if (financials?.carbonImpact && financials?.isDeviating) {
+                    dynamicInsights.push({
+                        id: `dyn-carbon-${Date.now()}`,
+                        severity: 'critical',
+                        category: 'Carbon',
+                        title: 'Carbon lifecycle deviation detected',
+                        description: `Total carbon impact: ${financials.carbonImpact.toFixed(1)}kg CO₂e. This exceeds the sustainable threshold for your operation.`,
+                        recommendation: `Prioritize waste reduction — every 1kg waste reduced saves 2.85kg CO₂e. Check energy usage patterns.`,
+                        created_at: new Date().toISOString(),
+                    });
+                }
+
+                // Financial impact alert
+                if (financials?.totalFinancialLoss && financials?.totalFinancialLoss > 500) {
+                    dynamicInsights.push({
+                        id: `dyn-financial-${Date.now()}`,
+                        severity: 'warning',
+                        category: 'Financial',
+                        title: `Financial loss at $${financials.totalFinancialLoss.toFixed(2)}`,
+                        description: `Current waste-related financial impact exceeds $500. Primary drivers: food cost ($7.50/kg) + logistics ($1.25/kg).`,
+                        recommendation: `Target high-waste categories first. A 10% waste reduction saves ~$${Math.round(financials.totalFinancialLoss * 0.10)}/week.`,
+                        created_at: new Date().toISOString(),
+                    });
+                }
+
+                // Water usage alert (if available in context)
+                if (metrics?.waterVolume && benchmarks?.water && metrics.waterVolume > benchmarks.water) {
+                    const overage = metrics.waterVolume - benchmarks.water;
+                    const pct = Math.round((overage / benchmarks.water) * 100);
+                    dynamicInsights.push({
+                        id: `dyn-water-${Date.now()}`,
+                        severity: pct > 30 ? 'critical' : 'warning',
+                        category: 'Water',
+                        title: `Water usage ${pct}% over target`,
+                        description: `Current: ${Math.round(metrics.waterVolume)}L vs target ${benchmarks.water}L. Excess consumption of ${Math.round(overage)}L.`,
+                        recommendation: `Check for leaks, optimize dishwashing schedules, and review irrigation if applicable.`,
+                        created_at: new Date().toISOString(),
+                    });
+                }
+
+                // Energy usage alert (if available in context)
+                if (metrics?.energyVolume && benchmarks?.energy && metrics.energyVolume > benchmarks.energy) {
+                    const overage = metrics.energyVolume - benchmarks.energy;
+                    const pct = Math.round((overage / benchmarks.energy) * 100);
+                    dynamicInsights.push({
+                        id: `dyn-energy-${Date.now()}`,
+                        severity: pct > 30 ? 'critical' : 'warning',
+                        category: 'Energy',
+                        title: `Energy usage ${pct}% over target`,
+                        description: `Current: ${Math.round(metrics.energyVolume)}kWh vs target ${benchmarks.energy}kWh. Excess of ${Math.round(overage)}kWh.`,
+                        recommendation: `Audit HVAC scheduling, switch to LED lighting, and review equipment idle times.`,
+                        created_at: new Date().toISOString(),
+                    });
+                }
+
+                // KPI alert from activeAlerts
+                if (activeAlerts?.kpi) {
+                    dynamicInsights.push({
+                        id: `dyn-kpi-${Date.now()}`,
+                        severity: 'warning',
+                        category: 'KPI',
+                        title: 'KPI variance detected',
+                        description: `One or more KPIs (food cost, labor, profit margin) are deviating from regional benchmarks.`,
+                        recommendation: `Review the KPI Report section for detailed variance analysis and adjust operations accordingly.`,
+                        created_at: new Date().toISOString(),
+                    });
+                }
+
+                // Merge: dynamic insights first, then stored insights (dedup by title)
+                const allInsights = [...dynamicInsights, ...storedInsights];
+                const seen = new Set<string>();
+                const deduped = allInsights.filter(i => {
+                    if (seen.has(i.title)) return false;
+                    seen.add(i.title);
+                    return true;
+                });
+
+                setProactiveInsights(deduped.slice(0, 10));
             } catch {}
         };
         fetchInsights();
-    }, []);
+        // Refresh every 60 seconds
+        const interval = setInterval(fetchInsights, 60000);
+        return () => clearInterval(interval);
+    }, [context]);
 
-    // Mark insight as read
+    // Mark insight as read (handles both DB-stored and dynamic insights)
     const dismissInsight = async (id: string) => {
+        // Dynamic insights start with 'dyn-' — just remove from UI
+        if (id.startsWith('dyn-')) {
+            setProactiveInsights(prev => prev.filter(i => i.id !== id));
+            return;
+        }
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
@@ -185,10 +299,18 @@ ${tools.map(t => `- ${t.function.name}: ${t.function.description}`).join('\n')}
 INSTRUCTIONS:
 1. PERSONALIZATION: Address the user by name (${userFirstName}). They work at ${hotelName}, viewing ${outletName}.
 
-2. TOOL USAGE — YOU ARE AN AGENT:
+2. REASONING — BUILD YOUR OWN LOGIC:
+   - Analyze the user's ACTUAL data from the session context and tool results.
+   - Calculate trends, ratios, and deviations from benchmarks YOURSELF — do not copy-paste from the knowledge base.
+   - When the knowledge base provides frameworks (GHG protocol, GSTC standards), APPLY them to the user's specific numbers.
+   - Example: If waste is 102kg and target is 100kg, reason: "You're 2% over target — this translates to X kg CO2e and $Y financial impact."
+   - NEVER mention other hotels, competitors, or specific company names from the knowledge base. Use the frameworks, not the examples.
+   - Build your reasoning chain: Observation → Root Cause → Impact → Action.
+
+3. TOOL USAGE — YOU ARE AN AGENT:
    - When the user asks you to DO something (log data, generate a report, query data), USE THE APPROPRIATE TOOL.
    - When the user asks about ESG/GHG/GSTC criteria, use search_knowledge_base FIRST, then web_search to find the latest updates and trends.
-   - When the user asks about industry trends, benchmarks, or "what are other hotels doing", use web_search to find current information.
+   - When the user asks about industry trends, benchmarks, or "what are other hotels doing", use web_search to find current information — but present findings as general industry trends, NEVER naming specific hotels.
    - When the user asks "what do you know?", use get_kb_index.
    - When the user asks about KPIs or performance, use get_kpi_summary.
    - When the user says "log X kg of Y" or "I threw out X", use log_waste_entry.
@@ -198,14 +320,15 @@ INSTRUCTIONS:
    - Do NOT just describe what you would do — actually CALL the tools.
    - After receiving tool results, synthesize them into a clear, actionable response.
 
-3. DUAL SOURCE STRATEGY (INTERNAL + EXTERNAL):
+4. DUAL SOURCE STRATEGY (INTERNAL + EXTERNAL):
    - You have TWO knowledge sources: the Ecometricus knowledge base (internal) and web search (external).
    - For ESG/GHG/GSTC questions: search the internal knowledge base first, then use web_search to verify, update, or find newer information.
    - For industry trends and best practices: use web_search to find current data, then cross-reference with internal knowledge.
    - ALWAYS combine both sources when possible for comprehensive, up-to-date answers.
 
-4. SOURCE ATTRIBUTION (CRITICAL):
+5. SOURCE ATTRIBUTION (CRITICAL):
    - NEVER disclose specific file names, document titles, or URLs from your knowledge sources.
+   - NEVER mention other hotels, restaurants, or competitor names — use generic terms like "industry benchmarks" or "best practices".
    - When citing information, refer to sources broadly as:
      * "Based on the Ecometricus knowledge base..." for internal data
      * "According to ESG and GSTC external sources..." for web search results
@@ -213,20 +336,20 @@ INSTRUCTIONS:
    - Do NOT say "according to document X" or "file Y states" — always use broad references.
    - Do NOT include URLs or links in your responses.
 
-5. RESPONSE FORMAT:
+6. RESPONSE FORMAT:
    - LIMIT: 3-4 concise bullet points MAX.
    - WORD COUNT: < 100 words total (unless generating a report).
    - Start with 1 sentence addressing the user by name.
    - Use bullet points with BOLD headers (**Root Cause:**, **Action:**, etc.).
    - Double line break between bullets.
-   - Cite specific numbers from tool results and session context.
+   - Cite specific numbers from tool results and session context — the user's OWN data, not examples.
 
-6. ROLE AWARENESS:
+7. ROLE AWARENESS:
    - ${userProfile.role === 'admin' || userProfile.role === 'super_admin' ? 'You are talking to an ADMIN/GM. They have full access. You can use all tools including audit trail and cross-outlet comparison.' : ''}
    - ${userProfile.role === 'supervisor' ? 'You are talking to a SUPERVISOR. They review data and log entries. Help them validate and triage alerts.' : ''}
    - ${userProfile.role === 'basic' ? 'You are talking to a STAFF member. Help them log entries quickly and give them quick feedback on their performance.' : ''}
 
-7. SAFETY: Never fabricate data. If a tool returns no results, say so honestly.`;
+8. SAFETY: Never fabricate data. If a tool returns no results, say so honestly.`;
 
             // Build conversation messages for the API
             const apiMessages: any[] = [
