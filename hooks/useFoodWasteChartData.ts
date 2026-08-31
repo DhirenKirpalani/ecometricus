@@ -7,7 +7,7 @@ export interface DailyWaste {
   [outletKey: string]: number | string;
 }
 
-export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: number = 4) => {
+export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: number = 4, scopeOutletName?: string) => {
   const [chartData, setChartData] = useState<DailyWaste[]>([]);
   const [outletKeys, setOutletKeys] = useState<string[]>([]);
   const [target, setTarget] = useState(1800);
@@ -44,10 +44,14 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
         setDailyBenchmark(dailyCo2Benchmark);
 
         // 0. Fetch outlets dynamically
-        const { data: outletsData } = await supabase
+        let outletsQuery = supabase
           .from('outlets')
           .select('id, outlet_name, outlet_id, color_hex')
           .order('outlet_name', { ascending: true });
+        if (scopeOutletName) {
+          outletsQuery = outletsQuery.eq('outlet_name', scopeOutletName);
+        }
+        const { data: outletsData } = await outletsQuery;
 
         const keys: string[] = [];
         if (outletsData && outletsData.length > 0) {
@@ -59,10 +63,14 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
         const settings = await getPlatformSettings();
         const weekStartISO = getWeekStartISO(settings.weekly_reset_day);
 
-        const { data: wasteLogs, error: wasteError } = await supabase
+        let wasteQuery = supabase
           .from('food_waste_logs')
           .select('*')
-          .gte('created_at', weekStartISO)
+          .gte('created_at', weekStartISO);
+        if (scopeOutletName) {
+          wasteQuery = wasteQuery.eq('outlet_name', scopeOutletName);
+        }
+        const { data: wasteLogs, error: wasteError } = await wasteQuery
           .order('created_at', { ascending: false })
           .limit(200);
 
@@ -134,7 +142,7 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
       window.removeEventListener('ecometricus_waste_updated', handleStorageChange);
       supabase.removeChannel(channel);
     };
-  }, [targetKg, activeOutletCount]);
+  }, [targetKg, activeOutletCount, scopeOutletName]);
 
   return { chartData, outletKeys, target, dailyBenchmark, weeklyTotal, isLoading };
 };

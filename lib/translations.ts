@@ -102,6 +102,7 @@ export const translations: Record<string, TranslationSection> = {
     errInvalidCredentials:{ en: 'Incorrect email or password.', es: 'Correo o contraseña incorrectos.' },
     errTooManyRequests: { en: 'Too many requests. Please wait and try again.', es: 'Demasiadas solicitudes. Por favor espera e inténtalo de nuevo.' },
     errAuthFailed:      { en: 'Authentication failed.', es: 'Error de autenticación.' },
+    errEmailAlreadyOutlet: { en: 'This email is already registered to another outlet. Each email can only belong to one outlet.', es: 'Este correo ya está registrado en otro establecimiento. Cada correo solo puede pertenecer a un establecimiento.' },
   },
 
   // ─── Auth Branding ────────────────────────────────────────────────────────

@@ -793,16 +793,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [enrollEmailError, setEnrollEmailError] = useState('');
   const [enrollPosition, setEnrollPosition] = useState('');
 
-  // Email validation — company domain only (blocks personal providers)
-  const BLOCKED_EMAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'yahoo.co', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'aol.com', 'icloud.com', 'me.com', 'mac.com', 'protonmail.com', 'proton.me', 'zoho.com', 'mail.com', 'gmx.com', 'yandex.com'];
+  // Email validation — accepts both personal and company emails
   const validateCorporateEmail = (email: string): string => {
     if (!email) return '';
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) return 'Please enter a valid email address.';
-    const domain = email.split('@')[1]?.toLowerCase() || '';
-    if (BLOCKED_EMAIL_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
-      return 'Please use a company email address (personal email providers are not accepted).';
-    }
     return '';
   };
   const [enrollOutlet, setEnrollOutlet] = useState('');
@@ -1089,208 +1084,133 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // Helper to validate if a code exists in our current known outlets
       const isValidOutlet = (code: string) => outlets.some(o => o.code === code);
 
-      // 2. Fetch Food Cost Logs based on Role
-      let query = supabase.from('food_cost_logs').select('*');
+      // Build role-scoped query helpers
+      const isAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin';
+      const userOutlet = !isAdmin && user.outletCode ? outlets.find((o: any) => o.code === user.outletCode || o.id === user.outletCode) : null;
+      const userOutletId = userOutlet?.id;
+      const userOutletName = userOutlet?.name;
 
-      // Supervisor Restriction: Only see own outlet
-      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
-        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
-        if (userOutlet && (userOutlet as any).id) {
-          query = query.eq('outlet_id', (userOutlet as any).id);
-        }
-      }
+      // Build query filters — admin: all outlets, supervisor/basic: own outlet only
+      const scopeQuery = (base: any, useOutletName = false) => {
+        if (isAdmin || !userOutletId) return base;
+        if (useOutletName && userOutletName) return base.eq('outlet_name', userOutletName);
+        return base.eq('outlet_id', userOutletId);
+      };
 
-      const { data: logs } = await query;
+      // 2. Fire ALL queries in parallel (was 9 sequential → now 1 round-trip)
+      const [
+        foodCostRes, laborRes, profitRes, sentimentRes,
+        wasteRes, resourceRes, salesRes, avgCheckRes
+      ] = await Promise.all([
+        scopeQuery(supabase.from('food_cost_logs').select('*')),
+        scopeQuery(supabase.from('labor_cost_logs').select('*')),
+        scopeQuery(supabase.from('profit_margins_logs').select('*')),
+        scopeQuery(supabase.from('sentiment_logs').select('*')),
+        scopeQuery(supabase.from('food_waste_logs').select('*')),
+        scopeQuery(supabase.from('resource_logs').select('*'), true),
+        scopeQuery(supabase.from('sales_logs').select('*')),
+        scopeQuery(supabase.from('avg_check_logs').select('*')),
+      ]);
 
-      if (logs) {
-        const mappedLogs = logs.map(log => {
-          const mappedCode = outletMap.get(log.outlet_id) || log.outlet_id;
-          return {
+      // 3. Process food cost logs
+      if (foodCostRes.data) {
+        const mapped = foodCostRes.data
+          .map((log: any) => ({
             day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
             foodCost: parseFloat(log.value),
-            outlet_code: mappedCode,
+            outlet_code: outletMap.get(log.outlet_id) || log.outlet_id,
             created_at: log.created_at
-          };
-        })
-          .filter(log => isValidOutlet(log.outlet_code))
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          }))
+          .filter((log: any) => isValidOutlet(log.outlet_code))
+          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setFoodCostLogs(mapped);
+      } else { setFoodCostLogs([]); }
 
-        setFoodCostLogs(mappedLogs);
-      } else {
-        setFoodCostLogs([]);
-      }
-
-      // 3. Fetch Labor Cost Logs based on Role
-      let laborQuery = supabase.from('labor_cost_logs').select('*');
-
-      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
-        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
-        if (userOutlet && (userOutlet as any).id) {
-          laborQuery = laborQuery.eq('outlet_id', (userOutlet as any).id);
-        }
-      }
-
-      const { data: laborLogs } = await laborQuery;
-
-      if (laborLogs) {
-        const mappedLaborLogs = laborLogs.map(log => {
-          const mappedCode = outletMap.get(log.outlet_id) || log.outlet_id;
-          return {
+      // 4. Process labor cost logs
+      if (laborRes.data) {
+        const mapped = laborRes.data
+          .map((log: any) => ({
             day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
             laborCost: parseFloat(log.value),
-            outlet_code: mappedCode,
+            outlet_code: outletMap.get(log.outlet_id) || log.outlet_id,
             created_at: log.created_at
-          };
-        })
-          .filter(log => isValidOutlet(log.outlet_code))
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          }))
+          .filter((log: any) => isValidOutlet(log.outlet_code))
+          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setLaborCostLogs(mapped);
+      } else { setLaborCostLogs([]); }
 
-        setLaborCostLogs(mappedLaborLogs);
-      } else {
-        setLaborCostLogs([]);
-      }
-
-      // 4. Fetch Profit Margin Logs based on Role
-      let profitQuery = supabase.from('profit_margins_logs').select('*');
-
-      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
-        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
-        if (userOutlet && (userOutlet as any).id) {
-          profitQuery = profitQuery.eq('outlet_id', (userOutlet as any).id);
-        }
-      }
-
-      const { data: profitLogs, error: profitError } = await profitQuery;
-
-      if (profitLogs && profitLogs.length > 0) {
-        const mappedProfitLogs = profitLogs.map(log => {
-          const mappedCode = outletMap.get(log.outlet_id) || log.outlet_id;
-          return {
+      // 5. Process profit margin logs
+      if (profitRes.data && profitRes.data.length > 0) {
+        const mapped = profitRes.data
+          .map((log: any) => ({
             day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
             profitMargin: parseFloat(log.value as any) || 0,
-            outlet_code: mappedCode,
+            outlet_code: outletMap.get(log.outlet_id) || log.outlet_id,
             created_at: log.created_at
-          };
-        })
-          .filter(log => isValidOutlet(log.outlet_code))
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          }))
+          .filter((log: any) => isValidOutlet(log.outlet_code))
+          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setProfitMarginLogs(mapped);
+      } else { setProfitMarginLogs([]); }
 
-        if (mappedProfitLogs.length > 0) {
-          setProfitMarginLogs(mappedProfitLogs);
-        } else {
-          setProfitMarginLogs([]);
-        }
-      } else {
-        setProfitMarginLogs([]);
-      }
-
-      // 5. Fetch Customer Sentiment Logs based on Role
-      let sentimentQuery = supabase.from('sentiment_logs').select('*');
-      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
-        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
-        if (userOutlet && (userOutlet as any).id) {
-          sentimentQuery = sentimentQuery.eq('outlet_id', (userOutlet as any).id);
-        }
-      }
-      const { data: sentimentData } = await sentimentQuery;
-      if (sentimentData && sentimentData.length > 0) {
-        const mappedSentiment = sentimentData.map(log => {
-          const mappedCode = outletMap.get(log.outlet_id) || log.outlet_id;
-          return {
+      // 6. Process sentiment logs
+      if (sentimentRes.data && sentimentRes.data.length > 0) {
+        const mapped = sentimentRes.data
+          .map((log: any) => ({
             day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
             rating_value: parseFloat(log.value || log.rating_value) || 0,
-            outlet_code: mappedCode,
+            outlet_code: outletMap.get(log.outlet_id) || log.outlet_id,
             created_at: log.created_at
-          };
-        })
-          .filter(log => isValidOutlet(log.outlet_code))
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        setSentimentLogs(mappedSentiment);
-      } else {
-        setSentimentLogs([]);
+          }))
+          .filter((log: any) => isValidOutlet(log.outlet_code))
+          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setSentimentLogs(mapped);
+      } else { setSentimentLogs([]); }
+
+      // 7. Process waste logs
+      if (wasteRes.data) {
+        setRawWasteLogs(wasteRes.data.filter((w: any) => !w.is_mock));
       }
 
-      // 6. Fetch Raw Waste Logs for Mila KPI Sync
-      let wasteQuery = supabase.from('food_waste_logs').select('*');
-      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
-        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
-        if (userOutlet && (userOutlet as any).id) {
-          wasteQuery = wasteQuery.eq('outlet_id', (userOutlet as any).id);
-        }
-      }
-      const { data: wasteData, error: wasteErr } = await wasteQuery;
-      if (wasteData) {
-        // Filter out mock data if strictly needed, or just let it map
-        setRawWasteLogs(wasteData.filter((w: any) => !w.is_mock));
-      }
+      // 8. Process resource logs
+      if (resourceRes.data) setRawResourceLogs(resourceRes.data);
 
-      // 7. Fetch Raw Resource Logs for Mila KPI Sync
-      let resourceQuery = supabase.from('resource_logs').select('*');
-      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
-        const userOutlet = outlets.find((o: any) => o.code === user.outletCode || o.id === user.outletCode);
-        if (userOutlet) {
-          // Table uses outlet_name, not outlet_id
-          resourceQuery = resourceQuery.eq('outlet_name', userOutlet.name);
-        }
-      }
-      const { data: resourceData } = await resourceQuery;
-      if (resourceData) setRawResourceLogs(resourceData);
-
-      // 8. Fetch Sales Logs (Total Outlet Sales)
-      let salesQuery = supabase.from('sales_logs').select('*');
-      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
-        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
-        if (userOutlet && (userOutlet as any).id) {
-          salesQuery = salesQuery.eq('outlet_id', (userOutlet as any).id);
-        }
-      }
-      const { data: salesData } = await salesQuery;
-      if (salesData) {
-        const mappedSales = salesData.map((log: any) => {
-          const mappedCode = outletMap.get(log.outlet_id) || log.outlet_id;
-          return {
+      // 9. Process sales logs
+      if (salesRes.data) {
+        const mapped = salesRes.data
+          .map((log: any) => ({
             day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
             food: parseFloat(log.food) || 0,
             bev: parseFloat(log.beverage) || 0,
             total: (parseFloat(log.food) || 0) + (parseFloat(log.beverage) || 0),
-            outlet_code: mappedCode,
+            outlet_code: outletMap.get(log.outlet_id) || log.outlet_id,
             created_at: log.created_at
-          };
-        })
-          .filter(log => isValidOutlet(log.outlet_code))
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        setSalesLogs(mappedSales);
+          }))
+          .filter((log: any) => isValidOutlet(log.outlet_code))
+          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setSalesLogs(mapped);
       }
 
-      // 9. Fetch Avg Check Logs
-      let avgCheckQuery = supabase.from('avg_check_logs').select('*');
-      if (user.role?.toLowerCase() !== 'admin' && user.role?.toLowerCase() !== 'super_admin' && user.outletCode) {
-        const userOutlet = outlets.find((o: any) => o.code === user.outletCode);
-        if (userOutlet && (userOutlet as any).id) {
-          avgCheckQuery = avgCheckQuery.eq('outlet_id', (userOutlet as any).id);
-        }
-      }
-      const { data: avgCheckData } = await avgCheckQuery;
-      if (avgCheckData) {
-        const mappedAvgCheck = avgCheckData.map((log: any) => {
-          const mappedCode = outletMap.get(log.outlet_id) || log.outlet_id;
-          const restaurant = parseFloat(log.restaurant) || 0;
-          const bar = parseFloat(log.bar) || 0;
-          const banquets = parseFloat(log.banquets) || 0;
-          const rollingAverage = (restaurant + bar + banquets) / 3;
-          return {
-            day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
-            restaurant,
-            bar,
-            banquets,
-            rollingAverage: Number(rollingAverage.toFixed(2)),
-            outlet_code: mappedCode,
-            created_at: log.created_at
-          };
-        })
-          .filter(log => isValidOutlet(log.outlet_code))
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        setAvgCheckLogs(mappedAvgCheck);
+      // 10. Process avg check logs
+      if (avgCheckRes.data) {
+        const mapped = avgCheckRes.data
+          .map((log: any) => {
+            const restaurant = parseFloat(log.restaurant) || 0;
+            const bar = parseFloat(log.bar) || 0;
+            const banquets = parseFloat(log.banquets) || 0;
+            const rollingAverage = (restaurant + bar + banquets) / 3;
+            return {
+              day: new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
+              restaurant, bar, banquets,
+              rollingAverage: Number(rollingAverage.toFixed(2)),
+              outlet_code: outletMap.get(log.outlet_id) || log.outlet_id,
+              created_at: log.created_at
+            };
+          })
+          .filter((log: any) => isValidOutlet(log.outlet_code))
+          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setAvgCheckLogs(mapped);
       }
     };
 
@@ -1363,12 +1283,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   const [paramsUpdatedAt, setParamsUpdatedAt] = useState<string | null>(null);
 
-  // Real chart data from hooks
+  // Real chart data from hooks — scoped to user's outlet for supervisor/basic
+  const isHookAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin';
+  const hookScopeOutlet = !isHookAdmin && user.outletCode ? (outlets.find((o: any) => o.code === user.outletCode || o.id === user.outletCode)?.name || userOutletName) : undefined;
   const { chartData: wasteChartData, outletKeys: wasteOutletKeys, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData(
     params.wasteTarget,
-    outlets.length || 1
+    outlets.length || 1,
+    hookScopeOutlet
   );
-  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget);
+  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet);
 
   // Transform hook data for template charts (aggregate all outlets per day dynamically)
   const sumOutletKeys = (row: Record<string, any>, keys: string[]) => keys.reduce((s, k) => s + (Number(row[k]) || 0), 0);
@@ -4073,11 +3996,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     </td>
                                     <td className="px-4 py-3">
                                       <div className="flex gap-2 justify-end">
-                                        <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
-                                          <Edit2 size={13} />
+                                        <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all" title="Edit">
+                                          <Edit2 size={13} className="text-brand-gold" />
                                         </button>
-                                        <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
-                                          <Trash2 size={13} />
+                                        <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all" title="Remove">
+                                          <Trash2 size={13} className="text-brand-alert" />
                                         </button>
                                       </div>
                                     </td>
@@ -4161,11 +4084,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       </td>
                                       <td className="px-4 py-3">
                                         <div className="flex gap-2 justify-end">
-                                          <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-gold hover:border-brand-gold/30 transition-colors" title="Edit">
-                                            <Edit2 size={13} />
+                                          <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all" title="Edit">
+                                            <Edit2 size={13} className="text-brand-gold" />
                                           </button>
-                                          <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors" title="Remove">
-                                            <Trash2 size={13} />
+                                          <button onClick={() => handleDeletePersonnel(u.id)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all" title="Remove">
+                                            <Trash2 size={13} className="text-brand-alert" />
                                           </button>
                                         </div>
                                       </td>

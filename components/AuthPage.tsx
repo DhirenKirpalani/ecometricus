@@ -321,6 +321,29 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
     if (isSignUp && password.length < 6)        { setError(t('auth.errPwTooShort')); return; }
     if (isSignUp && !fullName.trim())            { setError(t('auth.errNameRequired')); return; }
 
+    // ── Email-outlet uniqueness check (sign-up only, not invite) ──
+    // An email registered to one outlet cannot join another outlet
+    if (isSignUp && !isInvite) {
+      const { data: existingPersonnel } = await supabase
+        .from('personnel')
+        .select('outlet_id, role')
+        .ilike('email', email.toLowerCase())
+        .maybeSingle();
+      if (existingPersonnel?.outlet_id) {
+        setError(t('auth.errEmailAlreadyOutlet'));
+        return;
+      }
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('outlet_id')
+        .ilike('email', email.toLowerCase())
+        .maybeSingle();
+      if (existingProfile?.outlet_id) {
+        setError(t('auth.errEmailAlreadyOutlet'));
+        return;
+      }
+    }
+
     if (!canAttemptAuth()) return;
     setIsLoading(true);
 
@@ -384,11 +407,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       if (!authUser) throw new Error(t('auth.errAuthFailed'));
 
       const dynamicFullName = fullName || authUser.user_metadata?.full_name || 'Admin User';
-      // ── Super Admin override ──
-      const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
-      const isSuperAdmin = (authUser.email || email).toLowerCase() === SUPER_ADMIN_EMAIL;
+      // ── Super Admin override (from DB/personnel, not hardcoded) ──
+      const metaRole = (authUser.user_metadata?.role || '').toLowerCase();
+      const isSuperAdmin = metaRole === 'super_admin';
       const finalRole = isSuperAdmin ? 'super_admin' : (authUser.user_metadata?.role || inviteData?.role || 'admin');
-      const finalPosition = isSuperAdmin ? 'Admin' : (authUser.user_metadata?.position || inviteData?.position || 'Admin');
+      const finalPosition = isSuperAdmin ? 'Super Admin' : (authUser.user_metadata?.position || inviteData?.position || 'Admin');
       const finalOutletCode = authUser.user_metadata?.outlet_code || inviteData?.outletCode || 'ROY02';
 
       onLogin({
