@@ -7,7 +7,7 @@ export interface ResourceData {
   [outletKey: string]: number | string;
 }
 
-export const useResourceChartData = (waterTargetParam?: number, energyTargetParam?: number) => {
+export const useResourceChartData = (waterTargetParam?: number, energyTargetParam?: number, scopeOutletName?: string) => {
   const [waterData, setWaterData] = useState<ResourceData[]>([]);
   const [energyData, setEnergyData] = useState<ResourceData[]>([]);
   const [outletKeys, setOutletKeys] = useState<string[]>([]);
@@ -34,10 +34,14 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
       setIsLoading(true);
       try {
         // 0. Fetch outlets dynamically
-        const { data: outletsData } = await supabase
+        let outletsQuery = supabase
           .from('outlets')
           .select('id, outlet_name, outlet_id, color_hex')
           .order('outlet_name', { ascending: true });
+        if (scopeOutletName) {
+          outletsQuery = outletsQuery.eq('outlet_name', scopeOutletName);
+        }
+        const { data: outletsData } = await outletsQuery;
 
         const keys: string[] = [];
         if (outletsData && outletsData.length > 0) {
@@ -48,10 +52,14 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
         const settings = await getPlatformSettings();
         const weekStartISO = getWeekStartISO(settings.weekly_reset_day);
 
-        const { data: resourceLogs, error } = await supabase
+        let resourceQuery = supabase
           .from('resource_logs')
           .select('*')
-          .gte('created_at', weekStartISO)
+          .gte('created_at', weekStartISO);
+        if (scopeOutletName) {
+          resourceQuery = resourceQuery.eq('outlet_name', scopeOutletName);
+        }
+        const { data: resourceLogs, error } = await resourceQuery
           .order('created_at', { ascending: false })
           .limit(200);
 
@@ -157,7 +165,7 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
       window.removeEventListener('ecometricus_resource_updated', handleStorageChange);
       supabase.removeChannel(channel);
     };
-  }, [waterTarget, energyTarget]);
+  }, [waterTarget, energyTarget, scopeOutletName]);
 
   return {
     waterData,

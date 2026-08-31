@@ -132,6 +132,9 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                   </div>
                 )}
 
+                {/* Divider */}
+                <div className="hidden sm:block w-px h-7 bg-white/8" />
+
                 {/* Avatar — matches dashboard */}
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
                   <span className="text-brand-gold text-xs font-black leading-none tracking-tight">
@@ -139,8 +142,15 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                   </span>
                 </div>
 
+                {/* Role — right of avatar, matches dashboard header */}
+                {userRole && (
+                  <p className="hidden md:block text-[12px] text-brand-gold/70 font-semibold tracking-widest uppercase">
+                    {userRole.toLowerCase() === 'super_admin' ? 'Super Admin' : userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                  </p>
+                )}
+
                 {/* Divider */}
-                <div className="hidden sm:block w-px h-7 bg-white/8" />
+                <div className="hidden md:block w-px h-7 bg-white/8" />
 
                 {/* Logout — matches dashboard */}
                 <button
@@ -239,6 +249,11 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                     <span className="text-xs font-black text-brand-gold tabular-nums">{points.toLocaleString()}</span>
                     <span className="text-[9px] font-bold text-brand-gold/50 uppercase">pts</span>
                   </div>
+                )}
+                {userRole && (
+                  <p className="text-[10px] text-brand-gold/70 font-semibold tracking-widest uppercase">
+                    {userRole.toLowerCase() === 'super_admin' ? 'Super Admin' : userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                  </p>
                 )}
                 <button
                   onClick={() => handleNavigate(Page.DASHBOARD)}

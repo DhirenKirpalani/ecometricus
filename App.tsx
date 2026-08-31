@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Page, UserProfile } from './types';
 import { useSeo } from './lib/useSeo';
@@ -90,6 +91,11 @@ const App: React.FC = () => {
         // Clear user on sign-out
         if (event === 'SIGNED_OUT') {
           setCurrentUser(null);
+          // Ensure we leave the dashboard URL so the navbar shows
+          if (window.location.pathname.startsWith('/dashboard')) {
+            navigate('/');
+            setCurrentPageState(Page.HOME);
+          }
           return;
         }
 
@@ -97,27 +103,24 @@ const App: React.FC = () => {
           const authUser = session.user;
           const meta = authUser.user_metadata || {};
           const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
-          // ── Super Admin check: hardcoded email OR personnel table role ──
-          const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
-          const isHardcodedSuperAdmin = authUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
 
-          // Check personnel table for super_admin role — only for roles that could be elevated
+          // ── Super Admin check: via personnel table or auth metadata ──
           const metaRole = (meta.role || '').toLowerCase();
-          const couldBeSuperAdmin = metaRole === 'admin' || metaRole === 'supervisor' || metaRole === '';
-          let isDbSuperAdmin = false;
-          if (!isHardcodedSuperAdmin && couldBeSuperAdmin) {
+          let isSuperAdmin = metaRole === 'super_admin';
+
+          // If not already super_admin in metadata, check personnel table
+          if (!isSuperAdmin && (metaRole === 'admin' || metaRole === 'supervisor' || metaRole === '')) {
             const { data: personnelRow } = await supabase
               .from('personnel')
               .select('role')
               .ilike('email', authUser.email?.toLowerCase() || '')
               .maybeSingle();
-            isDbSuperAdmin = personnelRow?.role?.toLowerCase().includes('super_admin') ?? false;
+            isSuperAdmin = personnelRow?.role?.toLowerCase().includes('super_admin') ?? false;
           }
 
-          const isSuperAdmin = isHardcodedSuperAdmin || isDbSuperAdmin;
           const role = isSuperAdmin ? 'super_admin' : (meta.role || 'admin');
           const rl = role.toLowerCase();
-          const position = rl === 'super_admin' ? 'Admin' : rl === 'admin' ? (meta.position || 'Admin') : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'supervisor' ? (meta.position || 'Exec Chef') : (meta.position || 'GM');
+          const position = rl === 'super_admin' ? 'Super Admin' : rl === 'admin' ? (meta.position || 'Admin') : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'supervisor' ? (meta.position || 'Exec Chef') : (meta.position || 'GM');
 
           const hasAuthHash = window.location.hash.includes('access_token');
           const isSignupConfirmation = window.location.hash.includes('type=signup');
@@ -211,6 +214,60 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // ── Inactivity auto-logout with renewal modal ──
+  const [showTimeoutModal, setShowTimeoutModal] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const showTimeoutModalRef = useRef(false);
+  useEffect(() => { showTimeoutModalRef.current = showTimeoutModal; }, [showTimeoutModal]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 min idle → show warning
+    const GRACE_PERIOD = 60; // 60s countdown to auto-logout
+
+    const startCountdown = () => {
+      if (showTimeoutModalRef.current) return; // already counting
+      setShowTimeoutModal(true);
+      setCountdown(GRACE_PERIOD);
+      countdownTimerRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownTimerRef.current);
+            handleLogout();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
+    const resetIdleTimer = () => {
+      if (showTimeoutModalRef.current) return; // don't reset while modal is open
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(startCountdown, IDLE_TIMEOUT);
+    };
+
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(e => window.addEventListener(e, resetIdleTimer, { passive: true }));
+    resetIdleTimer();
+
+    return () => {
+      clearTimeout(idleTimerRef.current);
+      clearInterval(countdownTimerRef.current);
+      events.forEach(e => window.removeEventListener(e, resetIdleTimer));
+    };
+  }, [currentUser, handleLogout]); // ← showTimeoutModal removed from deps
+
+  const renewSession = useCallback(() => {
+    clearInterval(countdownTimerRef.current);
+    setShowTimeoutModal(false);
+    setCountdown(60);
+    // Reset idle timer by dispatching a user activity event
+    window.dispatchEvent(new MouseEvent('mousedown'));
+  }, []);
+
   const handleUpdateUser = useCallback((updatedFields: Partial<UserProfile>) => {
     setCurrentUser(prev => prev ? { ...prev, ...updatedFields } : null);
   }, []);
@@ -268,6 +325,39 @@ const App: React.FC = () => {
         {renderPage()}
       </main>
       {!hideNavigation && <Footer onNavigate={handleNavigate} currentPage={currentPage} />}
+
+      {/* Inactivity timeout modal */}
+      {showTimeoutModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+          <div className="bg-[#1c3933] border border-brand-gold/30 rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-brand-alert/15 border border-brand-alert/30 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3131" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">Session Expiring</h3>
+            <p className="text-sm text-white/60 mb-1">You've been inactive for 15 minutes.</p>
+            <p className="text-sm text-white/60 mb-5">You'll be automatically signed out in:</p>
+            <div className="text-4xl font-black text-brand-alert tabular-nums mb-6">{countdown}s</div>
+            <div className="flex gap-3">
+              <button
+                onClick={renewSession}
+                className="flex-1 py-3 rounded-xl bg-brand-eco text-brand-dark font-black text-xs uppercase tracking-widest hover:brightness-110 transition-all"
+              >
+                Stay Signed In
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex-1 py-3 rounded-xl border border-white/15 text-white/50 font-black text-xs uppercase tracking-widest hover:border-brand-alert/50 hover:text-brand-alert transition-all"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
