@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
+  XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceDot,
   AreaChart, Area, ComposedChart,
 } from 'recharts';
 import { AlertTriangle, TrendingUp, TrendingDown, Minus, ShieldCheck } from 'lucide-react';
@@ -154,7 +154,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
 
   const renderBenchmark = () =>
     benchmark !== undefined && (
-      <ReferenceLine y={benchmark} stroke={COLORS.gold} strokeDasharray="4 4" strokeOpacity={0.4} />
+      <ReferenceDot y={benchmark} x={data.length - 1} r={5} fill={COLORS.alert} stroke={COLORS.alert} strokeOpacity={0.8} />
     );
 
   const renderChart = () => {

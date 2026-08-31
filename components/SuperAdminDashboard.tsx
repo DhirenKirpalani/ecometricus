@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
+import { createPortal } from 'react-dom';
 import { getPlatformSettings, savePlatformSettings } from '../lib/platformSettings';
 import MilaKnowledgeManager from './MilaKnowledgeManager';
 import {
@@ -12,7 +13,7 @@ import {
   RefreshCcw, Search, Eye, EyeOff, Ban, Unlock,
   BarChart3, Settings, Bell, FileText, Mail, Webhook,
   ArrowUpRight, ArrowDownRight, Clock, ChevronRight, UserPlus, Trash2, BookOpen,
-  Languages, ExternalLink
+  Languages, ExternalLink, PieChart, Target, Rocket, Percent, Award, Gauge
 } from 'lucide-react';
 
 interface SuperAdminDashboardProps {
@@ -43,22 +44,60 @@ interface CompanyRow {
   created_at: string;
 }
 
+interface PlatformUser {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  position: string;
+  outlet_name: string;
+  company_name: string;
+  created_at: string;
+}
+
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  const [platformUsers, setPlatformUsers] = useState<PlatformUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'users' | 'system'>('overview');
 
   // Super admin user management
-  const [superAdminEmails, setSuperAdminEmails] = useState<string[]>([
-    'dhirenkirpalani2308@gmail.com',
-  ]);
+  const [superAdminEmails, setSuperAdminEmails] = useState<string[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [adminError, setAdminError] = useState('');
+
+  // Delete user confirmation
+  const [userToDelete, setUserToDelete] = useState<PlatformUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setDeletingUser(true);
+    try {
+      // Delete from profiles
+      await supabase.from('profiles').delete().eq('id', userToDelete.id);
+      // Delete from personnel
+      await supabase.from('personnel').delete().eq('user_id', userToDelete.id);
+      // Delete from auth.users (via RPC if available, otherwise just remove from tables)
+      try {
+        await supabase.rpc('delete_user_account', { user_id: userToDelete.id });
+      } catch (e) {
+        console.warn('Auth user deletion RPC not available:', e);
+      }
+      // Remove from local state
+      setPlatformUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      setUserToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+    } finally {
+      setDeletingUser(false);
+    }
+  };
 
   // Load super admins from personnel table
   useEffect(() => {
@@ -69,9 +108,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
         .ilike('role', '%super_admin%');
       if (data && data.length > 0) {
         const emails = data.map((r: any) => r.email?.toLowerCase()).filter(Boolean);
-        // Merge with hardcoded primary
-        const merged = [...new Set(['dhirenkirpalani2308@gmail.com', ...emails])];
-        setSuperAdminEmails(merged);
+        setSuperAdminEmails(emails);
       }
     };
     loadSuperAdmins();
@@ -91,20 +128,42 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
     setIsLoading(true);
     try {
       // Fetch companies (company_settings table — one row per admin/company)
-      const { data: companyData } = await supabase
+      const companyRes = await supabase
         .from('company_settings')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+      const companyData = companyRes.data;
+      if (companyRes.error) console.error('company_settings query error:', companyRes.error);
 
       // Fetch outlets (linked to companies via user_id)
-      const { data: outletData } = await supabase
+      const outletRes = await supabase
         .from('outlets')
         .select('*');
+      const outletData = outletRes.data;
+      if (outletRes.error) console.error('outlets query error:', outletRes.error);
 
-      // Fetch personnel (users/staff registered per company)
-      const { data: personnelData } = await supabase
+      // Fetch personnel (staff invited by admins)
+      const personnelRes = await supabase
         .from('personnel')
         .select('*');
+      const personnelData = personnelRes.data;
+      if (personnelRes.error) console.error('personnel query error:', personnelRes.error);
+
+      // Fetch profiles (all registered users on the platform)
+      // Try with updated_at first, fall back to without it
+      let profilesData: any[] | null = null;
+      const profilesRes = await supabase
+        .from('profiles')
+        .select('id, email, role, full_name, created_at, updated_at');
+      if (profilesRes.error) {
+        console.warn('profiles query with updated_at failed, retrying without:', profilesRes.error);
+        const profilesFallback = await supabase
+          .from('profiles')
+          .select('id, email, role, full_name, created_at');
+        profilesData = profilesFallback.data;
+        if (profilesFallback.error) console.error('profiles fallback query error:', profilesFallback.error);
+      } else {
+        profilesData = profilesRes.data;
+      }
 
       // Fetch waste logs count
       const { count: wasteCount } = await supabase
@@ -127,8 +186,22 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
         .select('water_liters, energy_kwh, resource_type, amount');
 
       const totalOutlets = outletData?.length || 0;
-      const totalUsers = (personnelData?.length || 0) + (companyData?.length || 0);
-      const totalCompanies = companyData?.length || 0;
+      // Count ALL unique users: profiles + personnel (matching the table logic)
+      const profileIds = new Set((profilesData || []).map((p: any) => p.id));
+      // Personnel: use user_id if available, otherwise use id
+      const personnelIds = new Set(
+        (personnelData || []).map((p: any) => (p.user_id || p.id)).filter(Boolean)
+      );
+      // Merge: anyone in profiles OR personnel
+      const allUserIds = new Set([...profileIds, ...personnelIds]);
+      const totalUsers = allUserIds.size;
+      // Count companies: company_settings rows + admins in profiles without company_settings
+      const companySettingUserIds = new Set((companyData || []).map((c: any) => c.user_id));
+      const adminProfileCount = (profilesData || []).filter((p: any) => {
+        const rl = (p.role || '').toLowerCase();
+        return (rl === 'admin' || rl === 'super_admin') && !companySettingUserIds.has(p.id);
+      }).length;
+      const totalCompanies = (companyData?.length || 0) + adminProfileCount;
 
       // Calculate ESG impact from actual data
       const carbonImpact = (wasteLogs || []).reduce((sum: number, log: any) =>
@@ -156,23 +229,125 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
         totalWaterFootprint: waterFootprint,
       });
 
-      // Build company rows — match outlets by user_id
-      const rows: CompanyRow[] = (companyData || []).map((c: any) => {
+      // Build company rows — from company_settings, plus fallback from profiles (admins without company_settings)
+      const rows: CompanyRow[] = [];
+
+      // Build a lookup map: user_id → company_settings (for fallback companies)
+      const companySettingsByUserId = new Map<string, any>();
+      (companyData || []).forEach((c: any) => {
+        if (c.user_id) companySettingsByUserId.set(c.user_id, c);
+      });
+
+      // First: companies with company_settings rows
+      (companyData || []).forEach((c: any) => {
         const companyOutlets = outletData?.filter((o: any) => o.user_id === c.user_id) || [];
         const companyPersonnel = personnelData?.filter((p: any) => p.user_id === c.user_id) || [];
-        return {
+        rows.push({
           id: c.id,
           name: c.company_name || c.admin_name || 'Unnamed',
           region: c.region || '—',
           city: c.city_country || c.city || '—',
           outlets: companyOutlets.length,
-          users: companyPersonnel.length + 1, // +1 for the admin themselves
+          users: companyPersonnel.length + 1,
           status: 'active' as const,
-          created_at: c.created_at || '',
-        };
+          created_at: c.updated_at || c.created_at || '',
+        });
+      });
+
+      // Fallback: admins/super_admins in profiles that don't have company_settings yet
+      const companyUserIds = new Set((companyData || []).map((c: any) => c.user_id));
+      (profilesData || []).forEach((p: any) => {
+        const rl = (p.role || '').toLowerCase();
+        if ((rl === 'admin' || rl === 'super_admin') && !companyUserIds.has(p.id)) {
+          const adminOutlets = outletData?.filter((o: any) => o.user_id === p.id) || [];
+          const adminPersonnel = personnelData?.filter((per: any) => per.user_id === p.id) || [];
+          // Try to find company_settings by matching personnel email to admin email
+          const adminEmail = p.email?.toLowerCase();
+          const matchingSettings = (companyData || []).find((c: any) => {
+            const personnel = (personnelData || []).find((per: any) => per.user_id === c.user_id && per.email?.toLowerCase() === adminEmail);
+            return personnel || c.user_id === p.id;
+          });
+          // Derive location from company_settings (if found) or outlets
+          const region = matchingSettings?.region || '—';
+          const city = matchingSettings?.city_country || matchingSettings?.city || adminOutlets.map((o: any) => o.location).filter(Boolean)[0] || '—';
+          rows.push({
+            id: p.id,
+            name: p.full_name ? `${p.full_name}'s Company` : 'Unnamed',
+            region,
+            city,
+            outlets: adminOutlets.length,
+            users: adminPersonnel.length + 1,
+            status: 'active' as const,
+            created_at: p.updated_at || p.created_at || '',
+          });
+        }
+      });
+
+      // Sort all companies by created_at descending (newest first)
+      rows.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
       });
 
       setCompanies(rows);
+
+      // Build platform-wide user list from profiles + personnel
+      const outletMap = new Map<string, string>();
+      (outletData || []).forEach((o: any) => {
+        if (o.id && o.outlet_name) outletMap.set(o.id, o.outlet_name);
+      });
+      const companyMap = new Map<string, string>();
+      (companyData || []).forEach((c: any) => {
+        if (c.user_id) companyMap.set(c.user_id, c.company_name || 'Unnamed');
+      });
+
+      const users: PlatformUser[] = [];
+      const seenIds = new Set<string>();
+
+      // From profiles (registered auth users)
+      (profilesData || []).forEach((p: any) => {
+        if (seenIds.has(p.id)) return;
+        seenIds.add(p.id);
+        const userOutlets = (outletData || []).filter((o: any) => o.user_id === p.id);
+        users.push({
+          id: p.id,
+          full_name: p.full_name || '—',
+          email: p.email || '—',
+          role: p.role || 'admin',
+          position: p.position || '—',
+          outlet_name: userOutlets.map((o: any) => o.outlet_name).join(', ') || '—',
+          company_name: companyMap.get(p.id) || (p.full_name ? `${p.full_name}'s Company` : '—'),
+          created_at: p.updated_at || p.created_at || '',
+        });
+      });
+
+      // From personnel (invited staff, may not be in profiles yet)
+      (personnelData || []).forEach((p: any) => {
+        const uid = p.user_id || p.id;
+        if (seenIds.has(uid)) return;
+        seenIds.add(uid);
+        const outletName = p.outlet_id ? (outletMap.get(p.outlet_id) || '—') : '—';
+        const adminCompany = companyData?.find((c: any) => c.user_id === p.user_id);
+        users.push({
+          id: uid,
+          full_name: p.full_name || '—',
+          email: p.email || '—',
+          role: p.role || '—',
+          position: p.position || '—',
+          outlet_name: outletName,
+          company_name: adminCompany?.company_name || '—',
+          created_at: p.updated_at || p.created_at || '',
+        });
+      });
+
+      // Sort users by created_at descending (newest first)
+      users.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      });
+      setPlatformUsers(users);
     } catch (err) {
       console.error('Failed to fetch platform data:', err);
     } finally {
@@ -197,18 +372,32 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
   const handleSuspendCompany = async (companyId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
     try {
-      await supabase.from('company_settings').update({ status: newStatus }).eq('id', companyId);
+      // Try company_settings first
+      const { error: csError } = await supabase.from('company_settings').update({ status: newStatus }).eq('id', companyId);
+      // If no row was updated (company derived from profiles), update profiles
+      if (csError || true) {
+        await supabase.from('profiles').update({ status: newStatus }).eq('id', companyId);
+      }
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, status: newStatus as any } : c));
     } catch (err) {
       console.error('Failed to update company status:', err);
     }
   };
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
   const filteredCompanies = companies.filter(c =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.city.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const totalPages = Math.ceil(filteredCompanies.length / ITEMS_PER_PAGE);
+  const paginatedCompanies = filteredCompanies.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  // Reset to page 1 when search changes
+  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
 
   const StatCard: React.FC<{
     icon: React.ElementType;
@@ -285,97 +474,159 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
             {/* ── Overview Tab ── */}
             {activeTab === 'overview' && (
               <div className="space-y-8 animate-in fade-in duration-500">
-                {/* Platform KPIs */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                  <StatCard icon={Building2} label={t('superAdmin.kpiTotalCompanies')} value={stats?.totalCompanies || 0} sublabel={t('superAdmin.kpiTotalCompaniesSub')} color="brand-gold" />
-                  <StatCard icon={Building2} label={t('superAdmin.kpiTotalOutlets')} value={stats?.totalOutlets || 0} sublabel={t('superAdmin.kpiTotalOutletsSub')} color="brand-gold" />
-                  <StatCard icon={Users} label={t('superAdmin.kpiTotalUsers')} value={stats?.totalUsers || 0} sublabel={`${stats?.activeUsers || 0}${t('superAdmin.kpiTotalUsersSub')}`} color="brand-eco" trend="up" />
-                  <StatCard icon={Database} label={t('superAdmin.kpiDataPoints')} value={stats?.totalDataPoints || 0} sublabel={t('superAdmin.kpiDataPointsSub')} color="brand-gold" />
-                </div>
-
-                {/* ESG Impact Summary */}
+                {/* Market Penetration */}
                 <div>
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-10 h-10 border border-brand-eco/50 rounded-xl bg-brand-eco/5 flex items-center justify-center shrink-0">
-                      <Leaf size={18} className="text-brand-eco" />
+                    <div className="w-10 h-10 border border-brand-gold/50 rounded-xl bg-brand-gold/5 flex items-center justify-center shrink-0">
+                      <Building2 size={18} className="text-brand-gold" />
                     </div>
                     <div>
                       <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                        {t('superAdmin.esgHeading')}
+                        Market Penetration
                       </h4>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-                        {t('superAdmin.esgSublabel')}
+                        Tenant Acquisition & Footprint
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                    <StatCard icon={Building2} label="Companies Onboarded" value={stats?.totalCompanies || 0} sublabel="Active tenants" color="brand-gold" trend="up" />
+                    <StatCard icon={Building2} label="Outlets Deployed" value={stats?.totalOutlets || 0} sublabel="Locations live" color="brand-gold" />
+                    <StatCard icon={Users} label="Users Acquired" value={stats?.totalUsers || 0} sublabel={`${stats?.activeUsers || 0} active`} color="brand-eco" trend="up" />
+                    <StatCard icon={Database} label="Data Captured" value={stats?.totalDataPoints || 0} sublabel="Total entries logged" color="brand-gold" trend="up" />
+                  </div>
+                </div>
+
+                {/* Revenue Risk & ESG Liability */}
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-10 h-10 border border-brand-alert/50 rounded-xl bg-brand-alert/5 flex items-center justify-center shrink-0">
+                      <DollarSign size={18} className="text-brand-alert" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                        Revenue Risk & ESG Liability
+                      </h4>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-alert/80">
+                        Financial Exposure Across Portfolio
                       </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                    <StatCard icon={Cloud} label={t('superAdmin.esgCarbon')} value={stats?.totalCarbonImpact.toFixed(1) || '0'} sublabel={t('superAdmin.esgCarbonSub')} color="brand-gold" />
-                    <StatCard icon={Droplets} label={t('superAdmin.esgWater')} value={stats?.totalWaterFootprint.toFixed(1) || '0'} sublabel={t('superAdmin.esgWaterSub')} color="brand-gold" />
-                    <StatCard icon={DollarSign} label={t('superAdmin.esgFinancial')} value={`$${stats?.totalFinancialLoss.toFixed(2) || '0'}`} sublabel={t('superAdmin.esgFinancialSub')} color="brand-alert" />
+                    <StatCard icon={Cloud} label="Carbon Liability" value={stats?.totalCarbonImpact.toFixed(1) || '0'} sublabel="kg CO₂e — exposure" color="brand-gold" />
+                    <StatCard icon={Droplets} label="Water Risk" value={stats?.totalWaterFootprint.toFixed(1) || '0'} sublabel="Liters — portfolio wide" color="brand-gold" />
+                    <StatCard icon={DollarSign} label="Financial Loss" value={`$${stats?.totalFinancialLoss.toFixed(2) || '0'}`} sublabel="Tracked waste value" color="brand-alert" />
                   </div>
                 </div>
 
-                {/* Data Breakdown */}
+                {/* Operational Throughput */}
                 <div>
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-10 h-10 border border-brand-gold/50 rounded-xl bg-brand-gold/5 flex items-center justify-center shrink-0">
-                      <BarChart3 size={18} className="text-brand-gold" />
+                    <div className="w-10 h-10 border border-brand-eco/50 rounded-xl bg-brand-eco/5 flex items-center justify-center shrink-0">
+                      <BarChart3 size={18} className="text-brand-eco" />
                     </div>
                     <div>
                       <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                        {t('superAdmin.dataBreakdown')}
+                        Operational Throughput
                       </h4>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-                        {t('superAdmin.dataBreakdownSub')}
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-eco/80">
+                        Data Pipeline Volume
                       </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                    <StatCard icon={Leaf} label={t('superAdmin.dataWaste')} value={stats?.totalWasteEntries || 0} sublabel={t('superAdmin.dataWasteSub')} color="brand-eco" />
-                    <StatCard icon={Zap} label={t('superAdmin.dataResource')} value={stats?.totalResourceEntries || 0} sublabel={t('superAdmin.dataResourceSub')} color="brand-energy" />
+                    <StatCard icon={Leaf} label="Waste Logs" value={stats?.totalWasteEntries || 0} sublabel="Food waste entries" color="brand-eco" />
+                    <StatCard icon={Zap} label="Resource Logs" value={stats?.totalResourceEntries || 0} sublabel="Energy + water entries" color="brand-energy" />
                   </div>
                 </div>
 
-                {/* Recent Companies */}
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 border border-brand-gold/50 rounded-xl bg-brand-gold/5 flex items-center justify-center shrink-0">
-                        <Building2 size={18} className="text-brand-gold" />
+                {/* Investor Metrics */}
+                {(() => {
+                  const totalCompanies = stats?.totalCompanies || 0;
+                  const totalOutlets = stats?.totalOutlets || 0;
+                  const totalUsers = stats?.totalUsers || 0;
+                  const activeUsers = stats?.activeUsers || 0;
+                  const dataPoints = stats?.totalDataPoints || 0;
+                  const wasteEntries = stats?.totalWasteEntries || 0;
+                  const resourceEntries = stats?.totalResourceEntries || 0;
+                  const carbonImpact = stats?.totalCarbonImpact || 0;
+                  const financialLoss = stats?.totalFinancialLoss || 0;
+                  const waterFootprint = stats?.totalWaterFootprint || 0;
+
+                  // Derived investor metrics
+                  const avgUsersPerCompany = totalCompanies > 0 ? (totalUsers / totalCompanies).toFixed(1) : '0';
+                  const avgOutletsPerCompany = totalCompanies > 0 ? (totalOutlets / totalCompanies).toFixed(1) : '0';
+                  const engagementRate = totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0;
+                  const avgDataPerCompany = totalCompanies > 0 ? Math.round(dataPoints / totalCompanies) : 0;
+                  const avgCarbonPerOutlet = totalOutlets > 0 ? (carbonImpact / totalOutlets).toFixed(1) : '0';
+                  const avgFinancialPerOutlet = totalOutlets > 0 ? `$${(financialLoss / totalOutlets).toFixed(2)}` : '$0';
+                  const wasteToResourceRatio = resourceEntries > 0 ? `${wasteEntries}:${resourceEntries}` : '—';
+                  const waterPerUser = totalUsers > 0 ? Math.round(waterFootprint / totalUsers).toLocaleString() : '0';
+                  const carbonPerUser = totalUsers > 0 ? (carbonImpact / totalUsers).toFixed(1) : '0';
+                  const dataPerUser = totalUsers > 0 ? (dataPoints / totalUsers).toFixed(1) : '0';
+                  const financialPerUser = totalUsers > 0 ? `$${(financialLoss / totalUsers).toFixed(2)}` : '$0';
+                  const esgScore = totalUsers > 0 ? Math.min(100, Math.round((dataPoints / totalUsers) * 10)) : 0;
+
+                  return (
+                    <div>
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-10 h-10 border border-brand-gold/50 rounded-xl bg-brand-gold/5 flex items-center justify-center shrink-0">
+                          <PieChart size={18} className="text-brand-gold" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                            Unit Economics
+                          </h4>
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
+                            Per-Tenant & Per-Seat Margins
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                          {t('superAdmin.recentCompanies')}
-                        </h4>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-                          {t('superAdmin.recentCompaniesSub')}
-                        </p>
+
+                      {/* Row 1: Density & Expansion */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+                        <StatCard icon={Users} label="Seats/Tenant" value={avgUsersPerCompany} sublabel="User density" color="brand-eco" />
+                        <StatCard icon={Building2} label="Locations/Tenant" value={avgOutletsPerCompany} sublabel="Expansion ratio" color="brand-eco" />
+                        <StatCard icon={Percent} label="Seat Utilization" value={`${engagementRate}%`} sublabel="Active / total seats" color="brand-gold" trend={engagementRate > 50 ? 'up' : 'down'} />
+                        <StatCard icon={Database} label="Data/Tenant" value={avgDataPerCompany} sublabel="Records per company" color="brand-gold" />
+                      </div>
+
+                      {/* Row 2: Cost Per Unit */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+                        <StatCard icon={Cloud} label="Carbon/Location" value={avgCarbonPerOutlet} sublabel="kg CO₂e per outlet" color="brand-gold" />
+                        <StatCard icon={DollarSign} label="Loss/Location" value={avgFinancialPerOutlet} sublabel="$ waste per outlet" color="brand-alert" />
+                        <StatCard icon={Cloud} label="Carbon/Seat" value={carbonPerUser} sublabel="kg CO₂e per user" color="brand-gold" />
+                        <StatCard icon={Droplets} label="Water/Seat" value={waterPerUser} sublabel="Liters per user" color="brand-gold" />
+                      </div>
+
+                      {/* Row 3: Business Health */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                        <StatCard icon={Gauge} label="Sustainability Index" value={esgScore} sublabel="ESG health score" color={esgScore > 50 ? 'brand-eco' : 'brand-alert'} trend={esgScore > 50 ? 'up' : 'down'} />
+                        <StatCard icon={Target} label="Data/Seat" value={dataPerUser} sublabel="Records per user" color="brand-gold" />
+                        <StatCard icon={DollarSign} label="Loss/Seat" value={financialPerUser} sublabel="$ waste per user" color="brand-alert" />
+                        <StatCard icon={Activity} label="Waste:Resource" value={wasteToResourceRatio} sublabel="Entry mix ratio" color="brand-eco" />
+                      </div>
+
+                      {/* Executive Summary */}
+                      <div className="mt-6 rounded-2xl border border-brand-gold/20 bg-gradient-to-r from-brand-gold/5 to-brand-eco/5 p-5 sm:p-6">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                            <Award size={18} className="text-brand-gold" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-bold text-white mb-1">Executive Summary</p>
+                            <p className="text-xs text-white/50 leading-relaxed">
+                              {totalCompanies} tenants operating {totalOutlets} locations with {totalUsers} seats generating {dataPoints} data records.
+                              Portfolio exposure: {carbonImpact.toFixed(1)} kg CO₂e, {waterFootprint.toLocaleString()} L water, ${financialLoss.toFixed(2)} in tracked waste value.
+                              {engagementRate >= 80 ? ' Seat utilization is excellent.' : engagementRate >= 50 ? ' Seat utilization is healthy.' : ' Seat utilization requires attention.'}
+                              {esgScore >= 70 ? ' Strong sustainability performance.' : esgScore >= 40 ? ' Moderate sustainability performance.' : ' Sustainability performance needs improvement.'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <button onClick={() => setActiveTab('companies')} className="flex items-center gap-1 text-[11px] font-bold text-brand-gold hover:text-brand-gold/80 transition-colors">
-                      {t('superAdmin.viewAll')} <ChevronRight size={14} />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredCompanies.slice(0, 6).map(c => (
-                      <div key={c.id} className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5 hover:border-brand-gold/30 transition-all">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-sm font-black text-white uppercase tracking-wider truncate">{c.name}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                            c.status === 'active' ? 'bg-brand-eco/15 text-brand-eco border-brand-eco/30' :
-                            c.status === 'suspended' ? 'bg-brand-alert/15 text-brand-alert border-brand-alert/30' :
-                            'bg-brand-gold/15 text-brand-gold border-brand-gold/30'
-                          }`}>{c.status}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-[10px] font-bold text-white/50 uppercase tracking-widest">
-                          <span className="flex items-center gap-1"><Building2 size={11} /> {c.outlets} outlets</span>
-                          <span className="flex items-center gap-1"><Users size={11} /> {c.users} users</span>
-                        </div>
-                        <p className="text-[10px] text-white/30 mt-2">{c.region} · {c.city}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -409,24 +660,30 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                           <th className="text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thLocation')}</th>
                           <th className="text-center px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thOutlets')}</th>
                           <th className="text-center px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thUsers')}</th>
+                          <th className="text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">Created</th>
                           <th className="text-center px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thStatus')}</th>
                           <th className="text-right px-5 py-3 text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('superAdmin.thActions')}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredCompanies.map(c => (
+                        {paginatedCompanies.map(c => (
                           <tr key={c.id} className="border-b border-brand-gold/10 hover:bg-brand-gold/5 transition-colors">
                             <td className="px-5 py-4">
                               <span className="text-sm font-bold text-white">{c.name}</span>
                             </td>
                             <td className="px-5 py-4">
-                              <span className="text-xs text-white/50">{c.region} · {c.city}</span>
+                              <span className="text-xs text-white/50">{[c.region, c.city].filter(v => v && v !== '—').join(' · ') || '—'}</span>
                             </td>
                             <td className="px-5 py-4 text-center">
                               <span className="text-sm font-bold text-white">{c.outlets}</span>
                             </td>
                             <td className="px-5 py-4 text-center">
                               <span className="text-sm font-bold text-white">{c.users}</span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className="text-xs text-white/50">
+                                {c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                              </span>
                             </td>
                             <td className="px-5 py-4 text-center">
                               <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
@@ -451,7 +708,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                         ))}
                         {filteredCompanies.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="px-5 py-16 text-center">
+                            <td colSpan={7} className="px-5 py-16 text-center">
                               <p className="text-sm text-white/30">{t('superAdmin.noCompanies')}</p>
                             </td>
                           </tr>
@@ -459,6 +716,44 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-5 py-3 border-t border-brand-gold/10">
+                      <p className="text-[10px] text-white/40 uppercase tracking-widest">
+                        Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredCompanies.length)} of {filteredCompanies.length}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-brand-gold/20 text-white/60 hover:border-brand-gold/40 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          Prev
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 rounded-lg text-[10px] font-bold transition-all ${
+                              currentPage === page
+                                ? 'bg-brand-gold text-brand-dark'
+                                : 'border border-brand-gold/20 text-white/50 hover:border-brand-gold/40 hover:text-white'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                          className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-brand-gold/20 text-white/60 hover:border-brand-gold/40 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -471,10 +766,150 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                   <StatCard icon={CheckCircle2} label={t('superAdmin.usersActive')} value={stats?.activeUsers || 0} sublabel={t('superAdmin.usersActiveSub')} color="brand-eco" />
                   <StatCard icon={Ban} label={t('superAdmin.usersSuspended')} value={(stats?.totalUsers || 0) - (stats?.activeUsers || 0)} sublabel={t('superAdmin.usersSuspendedSub')} color="brand-alert" />
                 </div>
-                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-8 text-center">
-                  <Users size={32} className="text-white/20 mx-auto mb-3" />
-                  <p className="text-sm text-white/40">{t('superAdmin.usersInfo1')}</p>
-                  <p className="text-xs text-white/25 mt-1">{t('superAdmin.usersInfo2')}</p>
+
+                {/* Search */}
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="relative flex-grow">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Search by name, email, role, or outlet..."
+                      className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl py-2.5 pl-9 pr-4 text-sm text-white outline-none focus:border-brand-gold transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* User table */}
+                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-brand-gold/15">
+                          <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-brand-gold/70">User</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Email</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Role</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Outlet</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Company</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Created</th>
+                          <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-brand-gold/70">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {platformUsers
+                          .filter(u => {
+                            if (!searchQuery) return true;
+                            const q = searchQuery.toLowerCase();
+                            return u.full_name.toLowerCase().includes(q) ||
+                                   u.email.toLowerCase().includes(q) ||
+                                   u.role.toLowerCase().includes(q) ||
+                                   u.outlet_name.toLowerCase().includes(q) ||
+                                   u.company_name.toLowerCase().includes(q);
+                          })
+                          .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                          .map(u => {
+                            const initials = u.full_name !== '—'
+                              ? u.full_name.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()
+                              : '?';
+                            const rl = (u.role || '').toLowerCase();
+                            const roleColor = rl === 'super_admin' ? 'text-brand-gold' : rl === 'admin' ? 'text-brand-eco' : rl === 'supervisor' ? 'text-[#3b82f6]' : 'text-white/50';
+                            return (
+                              <tr key={u.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/25 to-brand-gold/5 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                                      <span className="text-brand-gold text-[10px] font-black">{initials}</span>
+                                    </div>
+                                    <span className="text-sm font-semibold text-white">{u.full_name}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-white/60">{u.email}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`text-[10px] font-black uppercase tracking-widest ${roleColor}`}>
+                                    {u.role.replace('_', ' ')}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-white/50">{u.outlet_name}</td>
+                                <td className="px-4 py-3 text-sm text-white/50">{u.company_name}</td>
+                                <td className="px-4 py-3">
+                                  <span className="text-xs text-white/40">
+                                    {u.created_at ? new Date(u.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  {u.id !== user.id && (
+                                    <button
+                                      onClick={() => setUserToDelete(u)}
+                                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all"
+                                      title="Remove user"
+                                    >
+                                      <Trash2 size={13} className="text-brand-alert" />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        {platformUsers.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-8 text-center text-sm text-white/30">No users found.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {(() => {
+                    const filteredUsers = platformUsers.filter(u => {
+                      if (!searchQuery) return true;
+                      const q = searchQuery.toLowerCase();
+                      return u.full_name.toLowerCase().includes(q) ||
+                             u.email.toLowerCase().includes(q) ||
+                             u.role.toLowerCase().includes(q) ||
+                             u.outlet_name.toLowerCase().includes(q) ||
+                             u.company_name.toLowerCase().includes(q);
+                    });
+                    const userTotalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+                    if (userTotalPages <= 1) return null;
+                    return (
+                      <div className="flex items-center justify-between px-4 py-3 border-t border-brand-gold/10">
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest">
+                          Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-brand-gold/20 text-white/60 hover:border-brand-gold/40 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            Prev
+                          </button>
+                          {Array.from({ length: userTotalPages }, (_, i) => i + 1).map(page => (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={`w-8 h-8 rounded-lg text-[10px] font-bold transition-all ${
+                                currentPage === page
+                                  ? 'bg-brand-gold text-brand-dark'
+                                  : 'border border-brand-gold/20 text-white/50 hover:border-brand-gold/40 hover:text-white'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setCurrentPage(p => Math.min(userTotalPages, p + 1))}
+                            disabled={currentPage === userTotalPages}
+                            className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-brand-gold/20 text-white/60 hover:border-brand-gold/40 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -863,7 +1298,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                             </p>
                           </div>
                         </div>
-                        {email !== 'dhirenkirpalani2308@gmail.com' && (
+                        {email !== user.email?.toLowerCase() && (
                           <button
                             onClick={async () => {
                               // Revert role to admin in personnel table
@@ -873,13 +1308,13 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
                                 .ilike('email', email);
                               setSuperAdminEmails(prev => prev.filter(e => e !== email));
                             }}
-                            className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-dark/60 border border-brand-gold/20 text-white/40 hover:text-brand-alert hover:border-brand-alert/30 transition-colors shrink-0"
+                            className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-alert/10 border border-brand-alert/30 hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all shrink-0"
                             title={t('superAdmin.removeSuperAdmin')}
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={16} className="text-brand-alert" />
                           </button>
                         )}
-                        {email === 'dhirenkirpalani2308@gmail.com' && (
+                        {email === user.email?.toLowerCase() && (
                           <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-brand-eco/15 text-brand-eco border border-brand-eco/30 shrink-0">
                             {t('superAdmin.primaryBadge')}
                           </span>
@@ -891,6 +1326,39 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
               </div>
             )}
           </>
+        )}
+
+        {/* Delete user confirmation modal */}
+        {userToDelete && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+            <div className="bg-[#1c3933] border border-brand-alert/30 rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl">
+              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-brand-alert/15 border border-brand-alert/30 flex items-center justify-center">
+                <Trash2 size={24} className="text-brand-alert" />
+              </div>
+              <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">Remove User</h3>
+              <p className="text-sm text-white/60 mb-1">Are you sure you want to remove</p>
+              <p className="text-sm font-bold text-white mb-1">{userToDelete.full_name}</p>
+              <p className="text-xs text-white/40 mb-6">{userToDelete.email}</p>
+              <p className="text-[11px] text-white/30 mb-6">This will delete the user from profiles, personnel, and auth. This action cannot be undone.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteUser}
+                  disabled={deletingUser}
+                  className="flex-1 py-3 rounded-xl bg-brand-alert text-white font-black text-xs uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
+                >
+                  {deletingUser ? 'Removing...' : 'Remove User'}
+                </button>
+                <button
+                  onClick={() => setUserToDelete(null)}
+                  disabled={deletingUser}
+                  className="flex-1 py-3 rounded-xl border border-white/15 text-white/50 font-black text-xs uppercase tracking-widest hover:border-white/30 hover:text-white/70 transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
         )}
     </div>
   );
