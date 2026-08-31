@@ -32,11 +32,12 @@ export async function awardPoints(
       return;
     }
 
-    // Insert without action_id (column may not exist in some deployments)
+    // Insert with action_key for activity feed
     await supabase.from('gamification_ledger').insert({
       profile_id: userId,
       points_awarded: actionRow.points,
       outlet_id: outletId,
+      action_key: action.toLowerCase().replace(/\s+/g, '_'),
     });
   } catch (err) {
     console.error('[Gamification] awardPoints failed:', err);

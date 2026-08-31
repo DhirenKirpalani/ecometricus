@@ -7,7 +7,7 @@ export interface ResourceData {
   [outletKey: string]: number | string;
 }
 
-export const useResourceChartData = (waterTargetParam?: number, energyTargetParam?: number, scopeOutletName?: string) => {
+export const useResourceChartData = (waterTargetParam?: number, energyTargetParam?: number, scopeOutletName?: string, scopeUserId?: string, scopeOutletId?: string) => {
   const [waterData, setWaterData] = useState<ResourceData[]>([]);
   const [energyData, setEnergyData] = useState<ResourceData[]>([]);
   const [outletKeys, setOutletKeys] = useState<string[]>([]);
@@ -40,6 +40,8 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
           .order('outlet_name', { ascending: true });
         if (scopeOutletName) {
           outletsQuery = outletsQuery.eq('outlet_name', scopeOutletName);
+        } else if (scopeUserId) {
+          outletsQuery = outletsQuery.eq('user_id', scopeUserId);
         }
         const { data: outletsData } = await outletsQuery;
 
@@ -165,7 +167,7 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
       window.removeEventListener('ecometricus_resource_updated', handleStorageChange);
       supabase.removeChannel(channel);
     };
-  }, [waterTarget, energyTarget, scopeOutletName]);
+  }, [waterTarget, energyTarget, scopeOutletName, scopeUserId]);
 
   return {
     waterData,

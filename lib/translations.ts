@@ -584,6 +584,7 @@ export const translations: Record<string, TranslationSection> = {
     participation:         { en: 'Participation', es: 'Participación' },
     engaged:               { en: 'Engaged', es: 'Participando' },
     cumulativeTracking:    { en: 'Cumulative tracking of sustainability reporting across all active outlets.', es: 'Seguimiento acumulado de reportes de sostenibilidad en todos los outlets activos.' },
+    cumulativeTrackingOutlet: { en: 'Sustainability reporting tracking for your assigned outlet.', es: 'Seguimiento de reportes de sostenibilidad para tu outlet asignado.' },
     cumulativeEngagement:  { en: 'Cumulative Engagement', es: 'Participación Acumulada' },
 
     // ── Mila ──

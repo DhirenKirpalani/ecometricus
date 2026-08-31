@@ -13,16 +13,17 @@ interface NavbarProps {
   userInitial?: string;
   onLogout?: () => void;
   userRole?: string;
+  userPosition?: string;
   userId?: string;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = false, userInitial = 'A', onLogout, userRole, userId }) => {
+const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = false, userInitial = 'A', onLogout, userRole, userPosition, userId }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [points, setPoints] = useState(0);
   const { t, lang, changeLang } = useI18n();
 
-  const isBasicUser = isLoggedIn && !!userId && (userRole?.toLowerCase() === 'basic' || userRole?.toLowerCase() === 'supervisor');
+  const isBasicUser = isLoggedIn && !!userId && userRole?.toLowerCase() === 'basic';
 
   const loadPoints = useCallback(async () => {
     if (!userId) return;
@@ -142,10 +143,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                   </span>
                 </div>
 
-                {/* Role — right of avatar, matches dashboard header */}
-                {userRole && (
+                {/* Position/Role — right of avatar, matches dashboard header */}
+                {(userPosition || userRole) && (
                   <p className="hidden md:block text-[12px] text-brand-gold/70 font-semibold tracking-widest uppercase">
-                    {userRole.toLowerCase() === 'super_admin' ? 'Super Admin' : userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                    {userRole?.toLowerCase() === 'super_admin' ? 'Super Admin' : userPosition || (userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : '')}
                   </p>
                 )}
 
@@ -250,9 +251,9 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
                     <span className="text-[9px] font-bold text-brand-gold/50 uppercase">pts</span>
                   </div>
                 )}
-                {userRole && (
+                {(userPosition || userRole) && (
                   <p className="text-[10px] text-brand-gold/70 font-semibold tracking-widest uppercase">
-                    {userRole.toLowerCase() === 'super_admin' ? 'Super Admin' : userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                    {userRole?.toLowerCase() === 'super_admin' ? 'Super Admin' : userPosition || (userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : '')}
                   </p>
                 )}
                 <button

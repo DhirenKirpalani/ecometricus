@@ -61,8 +61,8 @@ export const useFoodWasteData = (
     
     let totalMass = hasData ? data.reduce((acc, curr) => acc + (Number(curr.mass_kg) || 0), 0) : 0;
     
-    // Aggregation Logic: Carbon = Mass * 1.8, Financial = Mass * 6.53 (consistent with benchmarks)
-    let carbonImpact = totalMass * 1.8;
+    // Aggregation Logic: Carbon = Mass * 2.85 (matching Mila CO2 coefficient), Financial = Mass * 6.53 (consistent with benchmarks)
+    let carbonImpact = totalMass * 2.85;
     let financialLoss = hasData ? data.reduce((acc, curr) => acc + ((Number(curr.mass_kg) || 0) * (Number(curr.cost_per_kg) || 6.53)), 0) : 0;
 
     // Unit Conversion

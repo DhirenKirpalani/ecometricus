@@ -59,6 +59,7 @@ const App: React.FC = () => {
     pathToPage(location.pathname)
   );
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   // Ref to track currentUser inside the onAuthStateChange closure
   // (which has [] deps and would otherwise capture a stale null value)
@@ -85,11 +86,67 @@ const App: React.FC = () => {
   }, [currentPage]);
 
   // ── Handle session restore & email confirmation redirect ──
+  // Explicitly check for existing session on mount (fixes refresh sign-out bug)
+  useEffect(() => {
+    const log = (...args: any[]) => console.log('%c[AUTH MOUNT]', 'color: #77B139; font-weight: bold;', ...args);
+    log('App mounted — checking for existing session...');
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) log('getSession error:', error.message);
+
+      // Check if session is expired
+      const expiresAt = session?.expires_at || 0;
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (session && expiresAt && expiresAt < nowSec) {
+        log(`Session EXPIRED (expired ${new Date(expiresAt * 1000).toISOString()}) — signing out`);
+        supabase.auth.signOut();
+        setAuthReady(true);
+        return;
+      }
+
+      if (session?.user?.email_confirmed_at) {
+        const authUser = session.user;
+        const meta = authUser.user_metadata || {};
+        const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
+        const metaRole = (meta.role || '').toLowerCase();
+        const role = metaRole || 'admin';
+        const rl = role.toLowerCase();
+        const position = rl === 'super_admin' ? 'Super Admin' : rl === 'admin' ? (meta.position || 'Admin') : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'supervisor' ? (meta.position || 'Exec Chef') : (meta.position || 'GM');
+        log(`Session restored: ${authUser.email} (${role}) | Path: ${window.location.pathname}`);
+        setCurrentUser({
+          id: authUser.id,
+          fullName,
+          email: authUser.email || '',
+          role: role as any,
+          position: position as any,
+          outletCode: meta.outlet_code || 'ROY02',
+          legal_consent: true,
+        });
+      } else {
+        log('No valid session found on mount');
+      }
+      setAuthReady(true);
+      log('authReady = true');
+    });
+  }, []);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        const DEBUG = true;
+        const log = (...args: any[]) => DEBUG && console.log('%c[AUTH STATE]', 'color: #60A5FA; font-weight: bold;', ...args);
+        log(`Event: ${event} | Session: ${!!session} | Path: ${window.location.pathname} | Hash: ${window.location.hash || '(none)'}`);
+        if (session?.user) {
+          log(`  User: ${session.user.email} | Confirmed: ${!!session.user.email_confirmed_at} | Expires: ${new Date((session.expires_at || 0) * 1000).toISOString()}`);
+        }
+        if (currentUserRef.current) {
+          log(`  Current user in state: ${currentUserRef.current.email} | Role: ${currentUserRef.current.role}`);
+        } else {
+          log(`  Current user in state: (null)`);
+        }
+
         // Clear user on sign-out
         if (event === 'SIGNED_OUT') {
+          log('→ SIGNED_OUT: clearing currentUser, redirecting from dashboard if needed');
           setCurrentUser(null);
           // Ensure we leave the dashboard URL so the navbar shows
           if (window.location.pathname.startsWith('/dashboard')) {
@@ -101,44 +158,72 @@ const App: React.FC = () => {
 
         if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
           const authUser = session.user;
+
+          // ── Expired session guard ──
+          // If the token is expired, sign out immediately — don't attempt DB queries
+          // with an invalid token (they'll hang or fail silently)
+          const expiresAt = session.expires_at || 0;
+          const nowSec = Math.floor(Date.now() / 1000);
+          if (expiresAt && expiresAt < nowSec) {
+            log(`→ ${event}: SESSION EXPIRED (expired ${new Date(expiresAt * 1000).toISOString()}, now ${new Date(nowSec * 1000).toISOString()}) — signing out`);
+            setCurrentUser(null);
+            await supabase.auth.signOut();
+            return;
+          }
+
           const meta = authUser.user_metadata || {};
           const fullName = meta.full_name || authUser.email?.split('@')[0] || 'Admin User';
+          log(`→ ${event}: building profile for ${authUser.email}`);
+          log(`  Metadata: role=${meta.role}, position=${meta.position}, outlet_code=${meta.outlet_code}`);
+          log(`  Email confirmed: ${!!authUser.email_confirmed_at}`);
 
           // ── Super Admin check: via personnel table or auth metadata ──
           const metaRole = (meta.role || '').toLowerCase();
           let isSuperAdmin = metaRole === 'super_admin';
 
           // If not already super_admin in metadata, check personnel table
+          // But add a 3-second timeout so we don't hang forever
           if (!isSuperAdmin && (metaRole === 'admin' || metaRole === 'supervisor' || metaRole === '')) {
-            const { data: personnelRow } = await supabase
-              .from('personnel')
-              .select('role')
-              .ilike('email', authUser.email?.toLowerCase() || '')
-              .maybeSingle();
-            isSuperAdmin = personnelRow?.role?.toLowerCase().includes('super_admin') ?? false;
+            log('  Querying personnel table for super_admin check...');
+            const personnelStart = Date.now();
+            try {
+              const personnelPromise = supabase
+                .from('personnel')
+                .select('role')
+                .ilike('email', authUser.email?.toLowerCase() || '')
+                .maybeSingle();
+
+              const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
+                setTimeout(() => resolve({ data: null, error: { message: 'timeout' } }), 3000)
+              );
+
+              const { data: personnelRow, error: personnelErr } = await Promise.race([personnelPromise, timeoutPromise]);
+              log(`  Personnel query took ${Date.now() - personnelStart}ms | result: ${personnelRow ? JSON.stringify(personnelRow) : '(none)'}${personnelErr ? ' | error: ' + personnelErr.message : ''}`);
+              isSuperAdmin = personnelRow?.role?.toLowerCase().includes('super_admin') ?? false;
+            } catch (e: any) {
+              log(`  Personnel query FAILED after ${Date.now() - personnelStart}ms:`, e?.message);
+            }
           }
 
           const role = isSuperAdmin ? 'super_admin' : (meta.role || 'admin');
           const rl = role.toLowerCase();
           const position = rl === 'super_admin' ? 'Super Admin' : rl === 'admin' ? (meta.position || 'Admin') : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'supervisor' ? (meta.position || 'Exec Chef') : (meta.position || 'GM');
+          log(`  Final role: ${role} | Position: ${position} | isSuperAdmin: ${isSuperAdmin}`);
 
           const hasAuthHash = window.location.hash.includes('access_token');
           const isSignupConfirmation = window.location.hash.includes('type=signup');
+          log(`  hasAuthHash: ${hasAuthHash} | isSignupConfirmation: ${isSignupConfirmation}`);
 
           // ── Unconfirmed user guard ──────────────────────────────────────────
-          // Supabase JS v2 fires SIGNED_IN during signUp() even when email
-          // confirmation is required and no real session exists yet.
-          // Never treat an unconfirmed user as logged in.
           if (!authUser.email_confirmed_at) {
+            log('  → UNCONFIRMED USER: signing out and returning');
             await supabase.auth.signOut();
             return;
           }
 
           // ── Email signup confirmation link ──────────────────────────────────
-          // Supabase auto-signs the user in after they click the confirm link.
-          // We don't want that — sign them out and redirect to login with a
-          // success banner so they explicitly sign in themselves.
           if (event === 'SIGNED_IN' && hasAuthHash && isSignupConfirmation) {
+            log('  → SIGNUP CONFIRMATION LINK: signing out, redirecting to /login?confirmed=true');
             await supabase.auth.signOut();
             navigate('/login?confirmed=true');
             setCurrentPageState(Page.SIGN_IN);
@@ -158,6 +243,7 @@ const App: React.FC = () => {
 
           // Always restore the user profile into state (so protected pages
           // like /translations and /dashboard work on reload)
+          log(`  → Setting currentUser: ${profile.email} (${profile.role})`);
           setCurrentUser(profile);
 
           // Only auto-redirect for other auth hash types (e.g. password reset).
@@ -170,6 +256,7 @@ const App: React.FC = () => {
               rl === 'admin' ? (PAGE_TO_PATH[Page.DASHBOARD] ?? '/dashboard') :
               rl === 'supervisor' ? (PAGE_TO_PATH[Page.DASHBOARD] ?? '/dashboard') :
               '/dashboard/daily-input';
+            log(`  → AUTH HASH redirect: navigating to ${targetPath}`);
             navigate(targetPath);
             setCurrentPageState(Page.DASHBOARD);
             // Clean the hash so it doesn't trigger again on refresh
@@ -191,25 +278,31 @@ const App: React.FC = () => {
   }, [navigate]);
 
   const handleLogin = useCallback((user: UserProfile) => {
+    console.log('%c[AUTH LOGIN]', 'color: #C8A413; font-weight: bold;', 'handleLogin called:', user.email, `(${user.role})`);
     // The onAuthStateChange listener handles super_admin elevation via a DB
     // query. Here we just set the user from auth metadata and navigate — the
     // listener fires immediately after sign-in and will update the role if needed.
     setCurrentUser(user);
     const role = user.role.toLowerCase();
     if (role === 'basic' || role === 'view') {
+      console.log('%c[AUTH LOGIN]', 'color: #C8A413; font-weight: bold;', 'Navigating to /dashboard/daily-input (basic/view)');
       navigate('/dashboard/daily-input');
       setCurrentPageState(Page.DASHBOARD);
     } else {
+      console.log('%c[AUTH LOGIN]', 'color: #C8A413; font-weight: bold;', 'Navigating to /dashboard (admin/supervisor/super_admin)');
       handleNavigate(Page.DASHBOARD);
     }
   }, [handleNavigate, navigate]);
 
   const handleLogout = useCallback(async () => {
+    console.log('%c[AUTH LOGOUT]', 'color: #FF3131; font-weight: bold;', 'handleLogout called');
     try {
       await supabase.auth.signOut();
+      console.log('%c[AUTH LOGOUT]', 'color: #FF3131; font-weight: bold;', 'signOut completed');
     } catch (e) {
-      console.warn("Supabase signout failed", e);
+      console.warn('%c[AUTH LOGOUT]', 'color: #FF3131; font-weight: bold;', 'Supabase signout failed', e);
     } finally {
+      console.log('%c[AUTH LOGOUT]', 'color: #FF3131; font-weight: bold;', 'Redirecting to /');
       window.location.href = '/';
     }
   }, []);
@@ -217,8 +310,8 @@ const App: React.FC = () => {
   // ── Inactivity auto-logout with renewal modal ──
   const [showTimeoutModal, setShowTimeoutModal] = useState(false);
   const [countdown, setCountdown] = useState(60);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const countdownTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const showTimeoutModalRef = useRef(false);
   useEffect(() => { showTimeoutModalRef.current = showTimeoutModal; }, [showTimeoutModal]);
 
@@ -320,11 +413,22 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-brand-dark text-white font-body selection:bg-brand-gold/30 selection:text-brand-gold">
-      {!hideNavigation && <Navbar currentPage={currentPage} onNavigate={handleNavigate} isLoggedIn={!!currentUser} userInitial={currentUser?.fullName?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('') ?? 'A'} onLogout={handleLogout} userRole={currentUser?.role} userId={currentUser?.id} />}
+      {!authReady ? (
+        <div className="flex-grow flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-brand-gold/30 border-t-brand-gold rounded-full animate-spin" />
+            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Loading…</p>
+          </div>
+        </div>
+      ) : (
+        <>
+      {!hideNavigation && <Navbar currentPage={currentPage} onNavigate={handleNavigate} isLoggedIn={!!currentUser} userInitial={currentUser?.fullName?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('') ?? 'A'} onLogout={handleLogout} userRole={currentUser?.role} userPosition={currentUser?.position} userId={currentUser?.id} />}
       <main className="flex-grow">
         {renderPage()}
       </main>
       {!hideNavigation && <Footer onNavigate={handleNavigate} currentPage={currentPage} />}
+        </>
+      )}
 
       {/* Inactivity timeout modal */}
       {showTimeoutModal && createPortal(
