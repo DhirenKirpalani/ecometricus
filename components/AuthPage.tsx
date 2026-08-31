@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
+import { sha256 } from '../lib/hash';
 
 interface AuthPageProps {
   currentView: Page;
@@ -196,11 +197,17 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       setInviteLoading(true);
       // Extract outlet code from path: /access/OUTL01 → OUTL01
       const outletCode = path.replace('/access/', '').split('/')[0] || '';
-      // Look up personnel by access_code (URL-safe code), fall back to pincode
+      // Look up personnel by access_code (URL-safe code), fall back to hashed pincode
       const lookupPersonnel = async () => {
         // Try access_code first
         let { data } = await supabase.from('personnel').select('*').eq('access_code', token.toUpperCase()).maybeSingle();
-        // Fallback: try pincode (for records created before access_code column existed)
+        // Fallback: try hashed pincode
+        if (!data) {
+          const hashedToken = await sha256(token);
+          const res = await supabase.from('personnel').select('*').eq('pincode', hashedToken).maybeSingle();
+          data = res.data;
+        }
+        // Legacy fallback: try plaintext pincode (for records created before hashing was added)
         if (!data) {
           const res = await supabase.from('personnel').select('*').eq('pincode', token.toUpperCase()).maybeSingle();
           data = res.data;
@@ -332,7 +339,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
             data: {
               full_name: fullName,
               role,
-              position: inviteData?.position || 'GM',
+              position: inviteData?.position || 'Admin',
               outlet_code: inviteData?.outletCode || '',
               auth_origin: inviteData ? 'invite' : 'registration',
             },
@@ -354,7 +361,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
               id: authUser.id,
               full_name: fullName,
               role, // From invite or default 'admin'
-              position: inviteData?.position || 'GM',
+              position: inviteData?.position || 'Admin',
               legal_consent: false,
             }, { onConflict: 'id' });
             // Only create company_settings for direct sign-ups (admins), not invited staff
@@ -381,7 +388,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       const SUPER_ADMIN_EMAIL = 'dhirenkirpalani2308@gmail.com';
       const isSuperAdmin = (authUser.email || email).toLowerCase() === SUPER_ADMIN_EMAIL;
       const finalRole = isSuperAdmin ? 'super_admin' : (authUser.user_metadata?.role || inviteData?.role || 'admin');
-      const finalPosition = isSuperAdmin ? 'F&B Director' : (authUser.user_metadata?.position || inviteData?.position || 'GM');
+      const finalPosition = isSuperAdmin ? 'Admin' : (authUser.user_metadata?.position || inviteData?.position || 'Admin');
       const finalOutletCode = authUser.user_metadata?.outlet_code || inviteData?.outletCode || 'ROY02';
 
       onLogin({

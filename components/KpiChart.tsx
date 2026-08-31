@@ -42,7 +42,7 @@ const COLORS = {
   purple: '#A855F7',
   grid: 'rgba(255,255,255,0.04)',
   axis: 'rgba(255,255,255,0.15)',
-  text: 'rgba(255,255,255,0.35)',
+  text: 'rgba(255,255,255,1)',
 };
 
 const SERIES_COLORS = ['#C8A413', '#77B139', '#3B82F6', '#FF914D', '#A855F7', '#FF3131'];

@@ -500,9 +500,9 @@ export const translations: Record<string, TranslationSection> = {
     benchmarkingEngineSubtitle: { en: 'Metric Units & KPI Thresholds', es: 'Unidades de Métricas y Umbrales de KPIs' },
 
     // ── Greeting ──
-    greetingMorning:       { en: 'Good morning', es: 'Buenos días' },
-    greetingAfternoon:     { en: 'Good afternoon', es: 'Buenas tardes' },
-    greetingEvening:       { en: 'Good evening', es: 'Buenas noches' },
+    greetingMorning:       { en: 'Hi', es: 'Hola' },
+    greetingAfternoon:     { en: 'Hi', es: 'Hola' },
+    greetingEvening:       { en: 'Hi', es: 'Hola' },
     greetingFallback:      { en: 'there', es: 'hola' },
 
     // ── Card titles ──
@@ -807,6 +807,10 @@ export const translations: Record<string, TranslationSection> = {
     carbonUnit:              { en: 'KG CO₂E', es: 'KG CO₂E' },
     operationalDeviation:    { en: 'Operational Deviation Impact', es: 'Impacto de Desviación Operativa' },
     avertedLoss:             { en: 'Averted Loss Footprint', es: 'Huella de Pérdida Evitada' },
+    notified:                { en: 'Notified', es: 'Notificado' },
+    onTarget:                { en: 'On Target', es: 'En Objetivo' },
+    supervisorNotified:      { en: 'Supervisor notified', es: 'Supervisor notificado' },
+    withinFinancialCap:      { en: 'Within financial cap', es: 'Dentro del límite financiero' },
     waterResource:           { en: 'Water Resource', es: 'Recurso Hídrico' },
     waterLossUnit:           { en: 'L LOSS', es: 'L PÉRDIDA' },
     financialImpact:         { en: 'Financial Impact', es: 'Impacto Financiero' },
@@ -954,9 +958,9 @@ export const translations: Record<string, TranslationSection> = {
     greetingFallback:    { en: 'there', es: 'hola' },
     hotelFallback:       { en: 'your hotel', es: 'tu hotel' },
     outletFallback:      { en: 'All Outlets', es: 'Todos los Outlets' },
-    greetingMorning:     { en: 'Good morning', es: 'Buenos días' },
-    greetingAfternoon:   { en: 'Good afternoon', es: 'Buenas tardes' },
-    greetingEvening:     { en: 'Good evening', es: 'Buenas noches' },
+    greetingMorning:     { en: 'Hi', es: 'Hola' },
+    greetingAfternoon:   { en: 'Hi', es: 'Hola' },
+    greetingEvening:     { en: 'Hi', es: 'Hola' },
     headerTitle:         { en: 'Mila AI', es: 'Mila AI' },
     headerWorking:       { en: 'Working...', es: 'Trabajando...' },
     headerAgent:         { en: 'ESG Agent', es: 'Agente ESG' },

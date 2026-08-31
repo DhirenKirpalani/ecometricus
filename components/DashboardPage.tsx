@@ -6,6 +6,8 @@ import MilaWidget from './MilaWidget';
 import GamificationHub from './GamificationHub';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
+import { sha256 } from '../lib/hash';
+import { fetchUserStats } from '../lib/gamification';
 import {
   Building2,
   Users,
@@ -758,6 +760,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [showApiInfo, setShowApiInfo] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // Gamification points for basic/supervisor users
+  const [navPoints, setNavPoints] = useState(0);
+  const isBasicOrSupervisor = user.role?.toLowerCase() === 'basic' || user.role?.toLowerCase() === 'supervisor';
+  useEffect(() => {
+    if (!isBasicOrSupervisor || !user.id) return;
+    const load = async () => { const s = await fetchUserStats(user.id); setNavPoints(s.totalPoints); };
+    load();
+    const handler = () => load();
+    window.addEventListener('ecometricus_points_updated', handler);
+    return () => window.removeEventListener('ecometricus_points_updated', handler);
+  }, [isBasicOrSupervisor, user.id]);
+
   // Update clock every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -798,6 +812,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   // Shared Administrative Core State
   const [outlets, setOutlets] = useState<Outlet[]>([]);
+  // For basic/supervisor users: their specific outlet name (outlets[] is empty for non-admins)
+  const [userOutletName, setUserOutletName] = useState('');
+
+  useEffect(() => {
+    if (!user.outletCode) return;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.outletCode);
+    const fetchUserOutlet = async () => {
+      let q = supabase.from('outlets').select('outlet_name');
+      if (isUuid) q = (q as any).eq('id', user.outletCode);
+      else q = (q as any).eq('outlet_id', user.outletCode);
+      const { data } = await (q as any).maybeSingle();
+      if (data?.outlet_name) setUserOutletName(data.outlet_name);
+    };
+    fetchUserOutlet();
+  }, [user.outletCode]);
 
   const [sequenceCounter, setSequenceCounter] = useState(0);
 
@@ -1545,6 +1574,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const existingUser = enrollId ? users.find(u => u.id === enrollId) : null;
     const password = existingUser?.password || genPin();
     const accessCode = existingUser?.accessCode || genAccessCode();
+    // Hash the pincode before storing — never save plaintext
+    const hashedPin = await sha256(password);
 
     const link = `${window.location.origin}/access/${enrollOutlet}?token=${accessCode.toLowerCase()}`;
     const upsertId = enrollId || Date.now().toString();
@@ -1564,7 +1595,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       email: enrollEmail,
       role: enrollRole.toLowerCase(),
       position: enrollPosition,
-      pincode: password,
+      pincode: hashedPin,
       access_code: accessCode,
       invited_by: user.fullName,
       permissions: enrollPermissions
@@ -2548,13 +2579,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         {greeting}, <span className="text-brand-gold font-bold">{firstName}</span>
                       </h2>
                       <p className="text-[11px] sm:text-[12px] font-medium text-white/50 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
-                        <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                        <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
                         <span className="w-1 h-1 rounded-full bg-white/15" />
                         <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="w-1 h-1 rounded-full bg-white/15" />
-                        <span className="truncate">{company.currentOutletName || t('dashboard.allOutlets')}</span>
+                        <span className="truncate">
+                          {user.outletCode
+                            ? (outlets.find(o => o.id === user.outletCode || o.code === user.outletCode || o.outlet_id === user.outletCode)?.name || userOutletName || user.outletCode)
+                            : (company.currentOutletName || t('dashboard.allOutlets'))}
+                        </span>
                       </p>
                     </div>
+                    {isBasicOrSupervisor && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-gold/10 border border-brand-gold/25 shrink-0">
+                        <Trophy size={14} className="text-brand-gold" />
+                        <span className="text-sm font-black text-brand-gold tabular-nums">{navPoints.toLocaleString()}</span>
+                        <span className="text-[9px] font-bold text-brand-gold/50 uppercase tracking-wider">pts</span>
+                      </div>
+                    )}
                   </div>
                 );
               })()}

@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { retrieveContext } from '../lib/mila-rag';
 import { getToolsForRole, executeTool, type ToolCall, type ToolResult, type ToolExecutionContext } from '../lib/mila-tools';
 import { supabase } from '../lib/supabase';
+import { awardPoints } from '../lib/gamification';
 import { useI18n } from '../lib/useI18n';
 import type { UserProfile } from '../types';
 
@@ -127,13 +128,22 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
         setInputValue('');
         setIsLoading(true);
 
-        // GAMIFICATION: Reward for Interaction
+        // GAMIFICATION: +5pts for Mila comment/recommendation
         try {
-            const currentPoints = parseInt(localStorage.getItem('ecometricus_user_points') || '1250');
-            localStorage.setItem('ecometricus_user_points', (currentPoints + 5).toString());
-            window.dispatchEvent(new Event('gamification_update'));
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && userProfile.outletCode) {
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userProfile.outletCode);
+                const { data: outletRow } = await (isUuid
+                    ? supabase.from('outlets').select('id').eq('id', userProfile.outletCode).maybeSingle()
+                    : supabase.from('outlets').select('id').eq('outlet_id', userProfile.outletCode).maybeSingle()
+                );
+                if (outletRow?.id) {
+                    await awardPoints(session.user.id, 'Mila Comment', outletRow.id);
+                    window.dispatchEvent(new Event('ecometricus_points_updated'));
+                }
+            }
         } catch (e) {
-            console.error("Gamification sync error", e);
+            console.error('[Mila] Gamification award failed:', e);
         }
 
         try {

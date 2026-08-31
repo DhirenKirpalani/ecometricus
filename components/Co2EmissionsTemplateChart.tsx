@@ -102,7 +102,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                 <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none w-8">
                     {[maxVal, maxVal * 0.75, maxVal * 0.5, maxVal * 0.25, 0].map((val, i) => (
                         <div key={i} className="flex items-center justify-end pr-2 h-0">
-                            <span className="text-[8px] font-bold text-white/30">{Math.round(val)}</span>
+                            <span className="text-[8px] font-bold text-white">{Math.round(val)}</span>
                         </div>
                     ))}
                 </div>
@@ -203,7 +203,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                 {/* X-Axis labels */}
                 <div className="absolute left-8 right-0 bottom-0 h-6">
                     {data.map((t, i) => (
-                        <div key={t.date} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white/30 uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
+                        <div key={t.date} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
                             {t.date}
                         </div>
                     ))}
