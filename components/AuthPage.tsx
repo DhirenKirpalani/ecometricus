@@ -233,7 +233,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
       Promise.resolve(lookupPersonnel())
         .then((data) => {
           if (data) {
-            const pin = data.pincode || '';
             setInviteData({
               role: data.role || 'supervisor',
               position: data.position || 'Staff',
@@ -241,13 +240,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
               fullName: data.full_name || '',
               outletCode: data.outlet_id || outletCode,
               outletName: data.outlet_name || '',
-              pincode: pin,
+              pincode: data.pincode || '',
               invitedBy: data.invited_by || '',
             });
-            // Pre-fill the form
+            // Pre-fill the form — email, name, and the generated password
             if (data.email) setEmail(data.email);
             if (data.full_name) setFullName(data.full_name);
-            if (pin) { setPassword(pin); setVerifyPassword(pin); }
+            if (data.plaintext_pin) { setPassword(data.plaintext_pin); setVerifyPassword(data.plaintext_pin); }
           }
           setInviteLoading(false);
         })

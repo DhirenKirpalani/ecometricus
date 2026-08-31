@@ -15,6 +15,7 @@ interface FoodWasteTemplateChartProps {
 const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, benchmark }) => {
     const { t } = useI18n();
     const [selectedDay, setSelectedDay] = useState<FoodWasteData | null>(null);
+    const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
     const minVal = 0;
     const maxVal = Math.max(25, ...data.map(d => d.waste), benchmark * 1.3);
@@ -73,16 +74,16 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
             {/* Chart */}
             <div className="flex-1 w-full relative min-h-0 pb-6">
                 {/* Y-Axis */}
-                <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none w-8">
+                <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none w-12">
                     {[maxVal, maxVal * 0.75, maxVal * 0.5, maxVal * 0.25, 0].map((val, i) => (
                         <div key={i} className="flex items-center justify-end pr-2 h-0">
-                            <span className="text-[8px] font-bold text-white">{Math.round(val)}</span>
+                            <span className="text-[9px] font-bold text-white/50 tabular-nums">{Math.round(val)}</span>
                         </div>
                     ))}
                 </div>
 
                 {/* Grid + Bars area */}
-                <div className="absolute left-8 right-0 top-0 bottom-6">
+                <div className="absolute left-12 right-0 top-0 bottom-6">
                     {/* Grid lines */}
                     <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                         {[0, 1, 2, 3, 4].map(i => (
@@ -90,11 +91,13 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
                         ))}
                     </div>
 
-                    {/* Benchmark line with label */}
+                    {/* Benchmark dot with label */}
                     <div className="absolute inset-0 pointer-events-none">
-                        <div className="absolute w-full border-t border-dashed border-brand-gold/50" style={{ top: `${getY(benchmark)}%` }} />
-                        <div className="absolute right-0 -translate-y-1/2 bg-brand-gold/20 border border-brand-gold/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-gold uppercase tracking-wider" style={{ top: `${getY(benchmark)}%` }}>
-                            {benchmark.toFixed(2)}kg
+                        <div className="absolute right-0 -translate-y-1/2 flex items-center gap-1" style={{ top: `${getY(benchmark)}%` }}>
+                            <div className="w-2 h-2 rounded-full bg-brand-alert border border-brand-alert" />
+                            <div className="bg-brand-alert/20 border border-brand-alert/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-alert uppercase tracking-wider">
+                                {benchmark.toFixed(2)}kg
+                            </div>
                         </div>
                     </div>
 
@@ -126,6 +129,30 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
                         })}
                     </svg>
 
+                    {/* Data point dots with hover labels */}
+                    {data.map((t, i) => {
+                        const xPct = getX(i, data.length);
+                        const yPct = getY(Math.max(minVal, Math.min(maxVal, t.waste)));
+                        const isGood = t.waste <= benchmark;
+                        const isHovered = hoveredDay === i;
+                        return (
+                            <div key={`dot-${i}`} className="absolute z-20" style={{ left: `${xPct}%`, top: `${yPct}%`, transform: 'translate(-50%, -50%)' }}>
+                                <div
+                                    className={`w-2.5 h-2.5 rounded-full border-2 cursor-pointer transition-all ${isGood ? 'bg-brand-eco border-brand-eco' : 'bg-brand-alert border-brand-alert'} ${isHovered ? 'scale-150 shadow-lg' : 'hover:scale-125'}`}
+                                    onMouseEnter={() => setHoveredDay(i)}
+                                    onMouseLeave={() => setHoveredDay(null)}
+                                    onClick={() => setSelectedDay(t)}
+                                />
+                                {isHovered && (
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-brand-dark border border-brand-gold/30 rounded-lg px-2 py-1 shadow-xl whitespace-nowrap z-30 pointer-events-none animate-in fade-in zoom-in duration-150">
+                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{t.day}</p>
+                                        <p className={`text-[10px] font-black ${isGood ? 'text-brand-eco' : 'text-brand-alert'}`}>{t.waste}kg</p>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+
                     {/* Tooltip */}
                     {selectedDay && (() => {
                         const index = data.findIndex(d => d.day === selectedDay.day);
@@ -152,7 +179,7 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
                 </div>
 
                 {/* X-Axis labels */}
-                <div className="absolute left-8 right-0 bottom-0 h-6">
+                <div className="absolute left-12 right-0 bottom-0 h-6">
                     {data.map((t, i) => (
                         <div key={t.day} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
                             {t.day}

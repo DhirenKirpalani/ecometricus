@@ -963,11 +963,36 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         const authUser = session.user;
 
         // Strict live database queries (Hybrid Path)
+        // For supervisor/basic users, fetch their admin's data (outlets, company_settings, benchmarks)
+        // by looking up their personnel record to find the admin's user_id
+        const roleLower = user.role?.toLowerCase() || '';
+        const isNonAdmin = roleLower !== 'admin' && roleLower !== 'super_admin';
+
+        let targetUserId = authUser.id;
+        if (isNonAdmin) {
+          // Find this user's personnel record to get the admin's user_id
+          const { data: myPersonnel } = await supabase
+            .from('personnel')
+            .select('user_id, outlet_id')
+            .eq('user_id', authUser.id)
+            .maybeSingle();
+          // If personnel record exists with a different user_id (the admin), use that
+          // Otherwise, find the admin who owns the outlet this user belongs to
+          if (myPersonnel?.outlet_id) {
+            const { data: outletOwner } = await supabase
+              .from('outlets')
+              .select('user_id')
+              .eq('id', myPersonnel.outlet_id)
+              .maybeSingle();
+            if (outletOwner?.user_id) targetUserId = outletOwner.user_id;
+          }
+        }
+
         const [parametersRes, personnelRes, companyRes, outletsRes] = await Promise.all([
-          supabase.from('benchmarks').select('*').eq('user_id', authUser.id).eq('outlet_name', 'Unknown Outlet').maybeSingle(),
-          supabase.from('personnel').select('*').eq('user_id', authUser.id),
-          supabase.from('company_settings').select('*').eq('user_id', authUser.id).maybeSingle(),
-          supabase.from('outlets').select('*').eq('user_id', authUser.id)
+          supabase.from('benchmarks').select('*').eq('user_id', targetUserId).eq('outlet_name', 'Unknown Outlet').maybeSingle(),
+          supabase.from('personnel').select('*').eq('user_id', targetUserId),
+          supabase.from('company_settings').select('*').eq('user_id', targetUserId).maybeSingle(),
+          supabase.from('outlets').select('*').eq('user_id', targetUserId)
         ]);
 
         if (companyRes.data) {
@@ -1519,6 +1544,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       role: enrollRole.toLowerCase(),
       position: enrollPosition,
       pincode: hashedPin,
+      plaintext_pin: password,
       access_code: accessCode,
       invited_by: user.fullName,
       permissions: enrollPermissions
@@ -2507,9 +2533,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="w-1 h-1 rounded-full bg-white/15" />
                         <span className="truncate">
-                          {user.outletCode
-                            ? (outlets.find(o => o.id === user.outletCode || o.code === user.outletCode || o.outlet_id === user.outletCode)?.name || userOutletName || user.outletCode)
-                            : (company.currentOutletName || t('dashboard.allOutlets'))}
+                          {isHookAdmin
+                            ? (company.currentOutletName || t('dashboard.allOutlets'))
+                            : user.outletCode
+                              ? (outlets.find(o => o.id === user.outletCode || o.code === user.outletCode || o.outlet_id === user.outletCode)?.name || userOutletName || user.outletCode)
+                              : (company.currentOutletName || t('dashboard.allOutlets'))}
                         </span>
                       </p>
                     </div>
@@ -3061,13 +3089,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
                           {saveStatus === 'saving' ? t('dashboard.saving') : saveStatus === 'success' ? t('dashboard.saved') : t('dashboard.autoSaveOn')}
                         </div>
-                        <button
-                          onClick={() => setIsEditingIdentity(!isEditingIdentity)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
-                        >
-                          {isEditingIdentity ? <Unlock size={12} /> : <Edit2 size={12} />}
-                          {isEditingIdentity ? t('dashboard.lock') : t('dashboard.edit')}
-                        </button>
+                        {/* Edit button — admin/super_admin only */}
+                        {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin') && (
+                          <button
+                            onClick={() => setIsEditingIdentity(!isEditingIdentity)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingIdentity ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
+                          >
+                            {isEditingIdentity ? <Unlock size={12} /> : <Edit2 size={12} />}
+                            {isEditingIdentity ? t('dashboard.lock') : t('dashboard.edit')}
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -3163,36 +3194,41 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
-                            <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.addOutletName')}</label>
-                              <input
-                                type="text"
-                                value={company.currentOutletName}
-                                onChange={e => {
-                                  const name = e.target.value;
-                                  const prefix = name.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'XXX';
-                                  const seq = String(outlets.filter(o => o.name).length + 1).padStart(2, '0');
-                                  setCompany({ ...company, currentOutletName: name, currentOutletCode: prefix + seq });
-                                }}
-                                className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
-                                placeholder={t('dashboard.addOutletPlaceholder')}
-                                readOnly={!isEditingIdentity}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.generatedCode')}</label>
-                              <div className="flex items-center gap-2">
-                                <input type="text" value={company.currentOutletCode} className="flex-grow bg-brand-dark/80 border border-brand-gold/20 rounded-xl py-3 px-4 text-sm text-brand-gold font-bold font-mono outline-none" readOnly />
-                                <button
-                                  onClick={handleAddOutlet}
-                                  disabled={!isEditingIdentity}
-                                  className={`flex items-center gap-1.5 px-4 h-[46px] rounded-xl bg-brand-eco text-brand-dark text-[10px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shrink-0 ${!isEditingIdentity ? 'opacity-40' : ''}`}
-                                >
-                                  <Plus size={16} strokeWidth={3} />
-                                  Add
-                                </button>
-                              </div>
-                            </div>
+                            {/* Add outlet form — admin/super_admin only */}
+                            {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin') && (
+                              <>
+                                <div className="space-y-1.5">
+                                  <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.addOutletName')}</label>
+                                  <input
+                                    type="text"
+                                    value={company.currentOutletName}
+                                    onChange={e => {
+                                      const name = e.target.value;
+                                      const prefix = name.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'XXX';
+                                      const seq = String(outlets.filter(o => o.name).length + 1).padStart(2, '0');
+                                      setCompany({ ...company, currentOutletName: name, currentOutletCode: prefix + seq });
+                                    }}
+                                    className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-brand-gold transition-all placeholder:text-white/35 ${!isEditingIdentity ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
+                                    placeholder={t('dashboard.addOutletPlaceholder')}
+                                    readOnly={!isEditingIdentity}
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.generatedCode')}</label>
+                                  <div className="flex items-center gap-2">
+                                    <input type="text" value={company.currentOutletCode} className="flex-grow bg-brand-dark/80 border border-brand-gold/20 rounded-xl py-3 px-4 text-sm text-brand-gold font-bold font-mono outline-none" readOnly />
+                                    <button
+                                      onClick={handleAddOutlet}
+                                      disabled={!isEditingIdentity}
+                                      className={`flex items-center gap-1.5 px-4 h-[46px] rounded-xl bg-brand-eco text-brand-dark text-[10px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shrink-0 ${!isEditingIdentity ? 'opacity-40' : ''}`}
+                                    >
+                                      <Plus size={16} strokeWidth={3} />
+                                      Add
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
 
                           {/* Active outlets — gamified cards */}
@@ -3211,9 +3247,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       <span className="text-[10px] text-white/40 uppercase tracking-widest">Outlet #{String(idx + 1).padStart(2, '0')}</span>
                                     </div>
                                   </div>
-                                  <button onClick={() => handleRemoveOutlet(o.code)} className="relative w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-brand-alert hover:bg-brand-alert/10 transition-all shrink-0">
-                                    <Trash2 size={13} />
-                                  </button>
+                                  {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin') && (
+                                    <button onClick={() => handleRemoveOutlet(o.code)} className="relative w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-brand-alert hover:bg-brand-alert/10 transition-all shrink-0">
+                                      <Trash2 size={13} />
+                                    </button>
+                                  )}
                                 </div>
                               ))}
                             </div>
