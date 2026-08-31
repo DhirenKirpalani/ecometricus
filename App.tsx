@@ -117,7 +117,7 @@ const App: React.FC = () => {
           const isSuperAdmin = isHardcodedSuperAdmin || isDbSuperAdmin;
           const role = isSuperAdmin ? 'super_admin' : (meta.role || 'admin');
           const rl = role.toLowerCase();
-          const position = rl === 'super_admin' ? 'F&B Director' : rl === 'admin' ? 'GM' : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'view' ? (meta.position || 'GM') : 'Supervisor';
+          const position = rl === 'super_admin' ? 'Admin' : rl === 'admin' ? (meta.position || 'Admin') : rl === 'basic' ? (meta.position || 'Chef Prep') : rl === 'supervisor' ? (meta.position || 'Exec Chef') : (meta.position || 'GM');
 
           const hasAuthHash = window.location.hash.includes('access_token');
           const isSignupConfirmation = window.location.hash.includes('type=signup');
@@ -263,7 +263,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-brand-dark text-white font-body selection:bg-brand-gold/30 selection:text-brand-gold">
-      {!hideNavigation && <Navbar currentPage={currentPage} onNavigate={handleNavigate} isLoggedIn={!!currentUser} userInitial={currentUser?.fullName?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('') ?? 'A'} onLogout={handleLogout} />}
+      {!hideNavigation && <Navbar currentPage={currentPage} onNavigate={handleNavigate} isLoggedIn={!!currentUser} userInitial={currentUser?.fullName?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('') ?? 'A'} onLogout={handleLogout} userRole={currentUser?.role} userId={currentUser?.id} />}
       <main className="flex-grow">
         {renderPage()}
       </main>

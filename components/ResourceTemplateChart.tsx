@@ -45,6 +45,8 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
 
     const minVal = 0;
     const range = maxVal - minVal;
+    // SVG gradient IDs cannot contain spaces — sanitize the title
+    const safeId = title.replace(/\s+/g, '-');
 
     const getY = (val: number) => 100 - ((val - minVal) / (range || 1)) * 100;
     const getX = (index: number, total: number) => 10 + (index / (total - 1)) * 80;
@@ -129,7 +131,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                 <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none w-10">
                     {yAxisLabels.map((val, i) => (
                         <div key={i} className="flex items-center justify-end pr-2 h-0">
-                            <span className="text-[8px] font-bold text-white/30">{val.toLocaleString()}</span>
+                            <span className="text-[8px] font-bold text-white">{val.toLocaleString()}</span>
                         </div>
                     ))}
                 </div>
@@ -156,7 +158,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                         <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
                             <defs>
                                 {outletMeta.map(o => (
-                                    <linearGradient key={o.key} id={`res-${title}-${o.key}`} x1="0" y1="0" x2="0" y2="1">
+                                    <linearGradient key={o.key} id={`res-${safeId}-${o.key}`} x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor={o.color} stopOpacity="0.9" />
                                         <stop offset="100%" stopColor={o.color} stopOpacity="0.65" />
                                     </linearGradient>
@@ -179,7 +181,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                                 return (
                                     <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
                                         {segments.map((s, si) => (
-                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h} fill={`url(#res-${title}-${s.key})`} rx={si === 0 ? "3" : "0"}
+                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h} fill={`url(#res-${safeId}-${s.key})`} rx={si === 0 ? "3" : "0"}
                                                 className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.day !== t.day ? 0.4 : 0.85 }} />
                                         ))}
                                         <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
@@ -230,7 +232,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                 {/* X-Axis labels */}
                 <div className="absolute left-10 right-0 bottom-0 h-6">
                     {data.map((t, i) => (
-                        <div key={t.day} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white/30 uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
+                        <div key={t.day} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
                             {t.day}
                         </div>
                     ))}

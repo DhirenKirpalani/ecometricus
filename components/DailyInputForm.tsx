@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Trash2, Edit2, Plus, RotateCcw, CheckCircle2, AlertTriangle,
+  Trash2, Edit2, Plus, RotateCcw, CheckCircle2, AlertTriangle, ShieldCheck,
   Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown,
   ImagePlus, X, Loader2
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
+import { awardPoints } from '../lib/gamification';
+import GamificationCard from './GamificationCard';
 import { useI18n } from '../lib/useI18n';
 
 interface DailyInputFormProps {
@@ -397,19 +399,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
     fetchCompanyAndOutlet();
   }, [companyName, outletName, user.outletCode]);
 
-  const [wasteEntries, setWasteEntries] = useState<WasteEntry[]>(() => {
-    const saved = localStorage.getItem('ecometricus_waste_entries');
-    let entries: WasteEntry[] = saved ? JSON.parse(saved) : [];
-    if (user.role === 'basic') {
-      entries = entries.filter(e => e.outletCode === user.outletCode);
-    }
-    return entries;
-  });
-
-  const [resourceEntries, setResourceEntries] = useState<ResourceEntry[]>(() => {
-    const saved = localStorage.getItem('ecometricus_resource_entries');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Always sourced from Supabase — never localStorage
+  const [wasteEntries, setWasteEntries] = useState<WasteEntry[]>([]);
+  const [resourceEntries, setResourceEntries] = useState<ResourceEntry[]>([]);
 
   const [form, setForm] = useState<{
     category: string;
@@ -451,6 +443,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const productInputRef = useRef<HTMLInputElement>(null);
+  const resourceSectionRef = useRef<HTMLDivElement>(null);
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const showConfirm = (message: string, onConfirm: () => void) => setConfirmModal({ message, onConfirm });
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -545,17 +538,80 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
     }
   }, [confirmModal]);
 
+  // ── Hydrate from DB on mount ──────────────────────────────────────────────
+  // Supabase is the single source of truth — no localStorage for entries.
   useEffect(() => {
-    localStorage.setItem('ecometricus_waste_entries', JSON.stringify(wasteEntries));
-  }, [wasteEntries]);
+    const hydrateFromDb = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
 
-  useEffect(() => {
-    localStorage.setItem('ecometricus_resource_entries', JSON.stringify(resourceEntries));
-  }, [resourceEntries]);
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
 
-  useEffect(() => {
-    localStorage.setItem('ecometricus_daily_form', JSON.stringify(form));
-  }, [form]);
+        // Fetch today's waste entries for this user
+        const { data: wasteData } = await supabase
+          .from('food_waste_logs')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .gte('created_at', todayStart.toISOString())
+          .eq('is_mock', false);
+
+        if (wasteData && wasteData.length > 0) {
+          const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return iso; } };
+          const fmtTime = (iso: string) => { try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return iso; } };
+          const dbEntries: WasteEntry[] = wasteData.map(log => ({
+            id: log.id,
+            dbId: log.id,
+            category: log.category || 'Food Waste',
+            subCategory: log.sub_category || '',
+            product: log.product || `${parseFloat(log.mass_kg).toFixed(1)} kg entry`,
+            reason: log.reason || '',
+            destination: log.destination || '',
+            amount: parseFloat(log.mass_kg) || 0,
+            unit: 'kg' as const,
+            timestamp: fmtTime(log.created_at),
+            date: fmtDate(log.created_at),
+            imageUrl: log.image_url || undefined,
+            images: log.images ? (typeof log.images === 'string' ? JSON.parse(log.images) : log.images) : undefined,
+            outletCode: user.outletCode,
+          }));
+          setWasteEntries(dbEntries);
+        }
+
+        // Fetch today's resource entries for this user
+        const { data: resourceData } = await supabase
+          .from('resource_logs')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .gte('created_at', todayStart.toISOString())
+          .eq('is_mock', false);
+
+        if (resourceData && resourceData.length > 0) {
+          const fmtRDate = (iso: string) => { try { return new Date(iso).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return iso; } };
+          const fmtRTime = (iso: string) => { try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return iso; } };
+          const dbResourceEntries: ResourceEntry[] = [];
+          resourceData.forEach(log => {
+            const water = parseFloat(log.water_liters) || 0;
+            const energy = parseFloat(log.energy_kwh) || 0;
+            if (water > 0) {
+              dbResourceEntries.push({ id: `${log.id}-water`, dbId: log.id, type: 'water', amount: water, timestamp: fmtRTime(log.created_at), date: fmtRDate(log.created_at) });
+            }
+            if (energy > 0) {
+              dbResourceEntries.push({ id: `${log.id}-energy`, dbId: log.id, type: 'energy', amount: energy, timestamp: fmtRTime(log.created_at), date: fmtRDate(log.created_at) });
+            }
+          });
+          if (dbResourceEntries.length > 0) {
+            setResourceEntries(dbResourceEntries);
+          }
+        }
+      } catch (err) {
+        console.error('[DailyInput] DB hydration failed:', err);
+      }
+    };
+
+    hydrateFromDb();
+  }, [user.id]); // re-run if the logged-in user changes
 
   const totals = useMemo(() => {
     const wasteTotal = wasteEntries.reduce((sum, e) => sum + e.amount, 0);
@@ -691,6 +747,11 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
         // ── UPDATE existing record ──
         const { error: updateError } = await supabase.from('food_waste_logs').update({
           mass_kg: unit === 'lbs' ? amountNum * 0.4536 : amountNum,
+          category: form.category,
+          sub_category: form.subCategory,
+          product: productStr,
+          reason: finalReason,
+          destination: form.destination,
           image_url: finalImageUrls.length > 0 ? finalImageUrls[0] : null,
           images: finalImageUrls.length > 0 ? finalImageUrls : null,
         }).eq('id', editingEntry.dbId);
@@ -708,6 +769,11 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
           outlet_name: (outlet as any).outlet_name || user.outletCode,
           mass_kg: unit === 'lbs' ? amountNum * 0.4536 : amountNum,
           cost_per_kg: 8.75,
+          category: form.category,
+          sub_category: form.subCategory,
+          product: productStr,
+          reason: finalReason,
+          destination: form.destination,
           is_mock: false,
           user_id: session.user.id,
           created_by: user.fullName,
@@ -730,6 +796,11 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
           outlet_name: user.outletCode || 'Unknown',
           mass_kg: unit === 'lbs' ? amountNum * 0.4536 : amountNum,
           cost_per_kg: 8.75,
+          category: form.category,
+          sub_category: form.subCategory,
+          product: productStr,
+          reason: finalReason,
+          destination: form.destination,
           is_mock: false,
           user_id: session.user.id,
           created_by: user.fullName,
@@ -746,15 +817,31 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
       // ── Record daily check-in (streak tracking, non-fatal) ──
       try {
-        const { error: checkinErr } = await supabase.rpc('record_daily_checkin', {
+        const { data: checkinData, error: checkinErr } = await supabase.rpc('record_daily_checkin', {
           p_user_id: session.user.id,
           p_user_name: user.fullName,
           p_user_role: user.role,
           p_outlet_code: user.outletCode,
           p_entry_type: 'waste',
         });
-        if (!checkinErr) window.dispatchEvent(new Event('ecometricus_checkin_updated'));
+        if (!checkinErr) {
+          window.dispatchEvent(new Event('ecometricus_checkin_updated'));
+          // Check if a 5-day streak milestone was just reached
+          const streak = Array.isArray(checkinData) ? checkinData[0]?.streak_days : checkinData?.streak_days;
+          if (streak && streak % 5 === 0 && outlet?.id) {
+            await awardPoints(session.user.id, '5-Day Streak Bonus', outlet.id);
+          }
+        }
       } catch (e) { /* non-fatal — streak tracking is optional */ }
+
+      // ── Award gamification points for new entries only ──
+      if (!editingId && outlet?.id) {
+        await awardPoints(session.user.id, 'On-Time Entry', outlet.id);
+        if (finalImageUrls.length > 0) {
+          await awardPoints(session.user.id, 'Entry with Image', outlet.id);
+        }
+        window.dispatchEvent(new Event('ecometricus_points_updated'));
+      }
     } catch (err) {
       console.error('[DailyInput] Failed to sync waste entry to Supabase:', err);
     }
@@ -844,7 +931,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
       if (editingResEntry && editingResEntry.dbId) {
         // ── UPDATE existing record ──
-        const updatePayload: any = {};
+        const updatePayload: any = { resource_type: type };
         if (type === 'water') {
           updatePayload.water_liters = amountNum;
         } else {
@@ -861,6 +948,8 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
         // ── INSERT new record ──
         const insertPayload: any = {
           outlet_name: (outlet as any).outlet_name || user.outletCode,
+          outlet_code: (outlet as any).outlet_id || user.outletCode || null,
+          resource_type: type,
           is_mock: false,
           user_id: session.user.id,
           created_by: user.fullName,
@@ -887,6 +976,8 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
         console.error('[DailyInput] No outlet found for code:', user.outletCode);
         const insertPayload: any = {
           outlet_name: user.outletCode || 'Unknown',
+          outlet_code: user.outletCode || null,
+          resource_type: type,
           is_mock: false,
           user_id: session.user.id,
           created_by: user.fullName,
@@ -908,15 +999,30 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
       // ── Record daily check-in (streak tracking, non-fatal) ──
       try {
-        const { error: checkinErr } = await supabase.rpc('record_daily_checkin', {
+        const { data: checkinData, error: checkinErr } = await supabase.rpc('record_daily_checkin', {
           p_user_id: session.user.id,
           p_user_name: user.fullName,
           p_user_role: user.role,
           p_outlet_code: user.outletCode,
           p_entry_type: type,
         });
-        if (!checkinErr) window.dispatchEvent(new Event('ecometricus_checkin_updated'));
+        if (!checkinErr) {
+          window.dispatchEvent(new Event('ecometricus_checkin_updated'));
+          const streak = Array.isArray(checkinData) ? checkinData[0]?.streak_days : checkinData?.streak_days;
+          if (streak && streak % 5 === 0 && outlet?.id) {
+            await awardPoints(session.user.id, '5-Day Streak Bonus', outlet.id);
+          }
+        }
       } catch (e) { /* non-fatal — streak tracking is optional */ }
+
+      // ── Award gamification points for new entries only ──
+      if (!editingResourceId && outlet?.id) {
+        await awardPoints(session.user.id, 'On-Time Entry', outlet.id);
+        if (type === 'energy') {
+          await awardPoints(session.user.id, 'Energy Reading', outlet.id);
+        }
+        window.dispatchEvent(new Event('ecometricus_points_updated'));
+      }
     } catch (err) {
       console.error('[DailyInput] Failed to sync resource entry to Supabase:', err);
     }
@@ -1060,6 +1166,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
         </div>
       )}
 
+      {/* ── EARTH KEEPER GAMIFICATION CARD ── */}
+      <GamificationCard user={user} />
+
       {/* ── FOOD WASTE FORM ── */}
       <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-5 sm:p-6">
         <div className="flex items-center gap-3 mb-5">
@@ -1182,7 +1291,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                   </div>
                 </div>
                 {showProductDropdown && form.subCategory && INVENTORY_LOGIC[form.category]?.[form.subCategory] && (
-                  <div className="relative bg-brand-dark border border-brand-gold/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-h-48 overflow-y-auto scrollbar-gold mt-1">
+                  <div className="absolute left-0 right-0 z-50 bg-brand-dark border border-brand-gold/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-h-48 overflow-y-auto scrollbar-gold mt-1">
                     {INVENTORY_LOGIC[form.category][form.subCategory]
                       .filter(p => p.toLowerCase().includes(form.productSearch.toLowerCase()))
                       .map(prod => {
@@ -1364,7 +1473,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
       </div>
 
       {/* ── WATER & ENERGY TRACKING ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div ref={resourceSectionRef} className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Water */}
         <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-5 sm:p-6">
           <div className="flex items-center gap-3 mb-5">
@@ -1501,9 +1610,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                 </div>
 
                 {/* Col 5: Actions */}
-                <div className="flex items-center justify-center gap-1.5 opacity-30 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => handleEditWaste(entry)} className="w-8 h-8 rounded-lg bg-white/5 border border-brand-gold/10 flex items-center justify-center hover:bg-brand-gold/10 hover:border-brand-gold/30 transition-all"><Edit2 size={13} className="text-white/60" /></button>
-                  <button onClick={() => deleteWaste(entry.id)} className="w-8 h-8 rounded-lg bg-white/5 border border-brand-gold/10 flex items-center justify-center hover:bg-brand-alert/10 hover:border-brand-alert/30 transition-all"><Trash2 size={13} className="text-white/60" /></button>
+                <div className="flex items-center justify-center gap-1.5">
+                  <button onClick={() => handleEditWaste(entry)} className="w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-center hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all"><Edit2 size={13} className="text-brand-gold" /></button>
+                  <button onClick={() => deleteWaste(entry.id)} className="w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all"><Trash2 size={13} className="text-brand-alert" /></button>
                 </div>
               </div>
             ))}
@@ -1581,9 +1690,13 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                 </div>
 
                 {/* Col 4: Actions */}
-                <div className="flex items-center justify-center gap-1.5 opacity-30 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => { setEditingResourceId(entry.id); setForm(prev => ({ ...prev, [entry.type]: entry.amount.toString() })); }} className="w-8 h-8 rounded-lg bg-white/5 border border-brand-gold/10 flex items-center justify-center hover:bg-brand-gold/10 hover:border-brand-gold/30 transition-all"><Edit2 size={13} className="text-white/60" /></button>
-                  <button onClick={() => deleteResource(entry.id)} className="w-8 h-8 rounded-lg bg-white/5 border border-brand-gold/10 flex items-center justify-center hover:bg-brand-alert/10 hover:border-brand-alert/30 transition-all"><Trash2 size={13} className="text-white/60" /></button>
+                <div className="flex items-center justify-center gap-1.5">
+                  <button onClick={() => {
+                    setEditingResourceId(entry.id);
+                    setForm(prev => ({ ...prev, [entry.type]: entry.amount.toString() }));
+                    setTimeout(() => resourceSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+                  }} className="w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-center hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all"><Edit2 size={13} className="text-brand-gold" /></button>
+                  <button onClick={() => deleteResource(entry.id)} className="w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all"><Trash2 size={13} className="text-brand-alert" /></button>
                 </div>
               </div>
             ))}
@@ -1680,15 +1793,29 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
           </div>
 
           {/* Financial Impact */}
-          <div className={`rounded-2xl border p-5 transition-all ${showAlertFinance ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933]'}`}>
-            <div className="flex items-center gap-2 mb-4">
-              <DollarSign size={16} className="text-brand-gold" />
-              <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('dailyInput.financialImpact')}</h4>
+          <div className={`rounded-2xl border p-5 transition-all duration-300 ${(showAlertFinance || showAlertCarbon) ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-eco/30 bg-brand-eco/5 hover:border-brand-eco/40'}`}>
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <DollarSign size={16} className={(showAlertFinance || showAlertCarbon) ? 'text-brand-alert' : 'text-brand-eco'} />
+                <h4 className={`text-[11px] font-black uppercase tracking-widest ${(showAlertFinance || showAlertCarbon) ? 'text-brand-alert' : 'text-brand-eco'}`}>{t('dailyInput.financialImpact')}</h4>
+              </div>
+              {(showAlertFinance || showAlertCarbon) ? (
+                <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                  <AlertTriangle size={9} /> {t('dailyInput.notified')}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 bg-brand-eco/15 text-brand-eco border border-brand-eco/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                  <ShieldCheck size={9} /> {t('dailyInput.onTarget')}
+                </div>
+              )}
             </div>
-            <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
+            <p className={`text-3xl font-geometric font-black leading-none mb-2 ${(showAlertFinance || showAlertCarbon) ? 'text-brand-alert' : 'text-brand-eco'}`}>
               ${totals.totalFinancialLoss.toFixed(2)}
             </p>
-            <div className="space-y-1 pt-2 border-t border-brand-gold/8">
+            <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-3">
+              {(showAlertFinance || showAlertCarbon) ? t('dailyInput.supervisorNotified') : t('dailyInput.withinFinancialCap')}
+            </p>
+            <div className={`space-y-1 pt-2 border-t ${(showAlertFinance || showAlertCarbon) ? 'border-brand-alert/20' : 'border-brand-eco/20'}`}>
               <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest text-white/40">
                 <span>{t('dailyInput.itemLoss')}</span>
                 <span className="text-white">${totals.financialLossItems.toFixed(2)}</span>
