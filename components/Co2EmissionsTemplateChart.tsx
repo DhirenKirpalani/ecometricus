@@ -36,6 +36,10 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
     const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
     const outletMeta: OutletMeta[] = useMemo(() => {
+        if (outletKeys.length === 0) {
+            // Fallback: aggregate all numeric values per day as a single "Total" series
+            return [{ key: '__total', label: 'Total', color: DEFAULT_COLORS[0] }];
+        }
         return outletKeys.map((key, i) => ({
             key,
             label: outletLabels[key] || key.charAt(0) + key.slice(1).toLowerCase(),
@@ -43,8 +47,19 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
         }));
     }, [outletKeys, outletColors, outletLabels]);
 
+    // Build normalized data: if no outletKeys, compute total from all numeric fields
+    const normalizedData = useMemo(() => {
+        if (outletKeys.length > 0) return data;
+        return data.map(d => {
+            const total = Object.entries(d)
+                .filter(([k]) => k !== 'date')
+                .reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
+            return { ...d, __total: total };
+        });
+    }, [data, outletKeys]);
+
     const minVal = 0;
-    const totals = data.map(d => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0));
+    const totals = normalizedData.map(d => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0));
     const maxVal = Math.max(benchmark * 1.5, ...totals, 100);
     const range = maxVal - minVal;
 
@@ -138,8 +153,8 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                                     </linearGradient>
                                 ))}
                             </defs>
-                            {data.map((t, i) => {
-                                const x = getX(i, data.length);
+                            {normalizedData.map((t, i) => {
+                                const x = getX(i, normalizedData.length);
                                 let cumulative = 0;
                                 const segments = outletMeta.map(o => {
                                     const val = Number(t[o.key]) || 0;
@@ -166,8 +181,8 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                     )}
 
                     {/* Data point dots with hover labels */}
-                    {data.map((t, i) => {
-                        const xPct = getX(i, data.length);
+                    {normalizedData.map((t, i) => {
+                        const xPct = getX(i, normalizedData.length);
                         const total = outletMeta.reduce((sum, o) => sum + (Number(t[o.key]) || 0), 0);
                         const yPct = getY(Math.min(maxVal, Math.max(minVal, total)));
                         const isGood = total <= benchmark;
@@ -192,7 +207,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
 
                     {/* Tooltip */}
                     {selectedDay && (() => {
-                        const index = data.findIndex(d => d.date === selectedDay.date);
+                        const index = normalizedData.findIndex(d => d.date === selectedDay.date);
                         const xPct = getX(index, data.length);
                         const total = outletMeta.reduce((sum, o) => sum + (Number(selectedDay[o.key]) || 0), 0);
                         const yPct = getY(Math.min(maxVal, total));
@@ -230,8 +245,8 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
 
                 {/* X-Axis labels */}
                 <div className="absolute left-12 right-0 bottom-0 h-6">
-                    {data.map((t, i) => (
-                        <div key={t.date} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
+                    {normalizedData.map((t, i) => (
+                        <div key={t.date} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, normalizedData.length)}%` }}>
                             {t.date}
                         </div>
                     ))}

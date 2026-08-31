@@ -7,7 +7,7 @@ export interface DailyWaste {
   [outletKey: string]: number | string;
 }
 
-export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: number = 4, scopeOutletName?: string) => {
+export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: number = 4, scopeOutletName?: string, scopeUserId?: string, scopeOutletId?: string) => {
   const [chartData, setChartData] = useState<DailyWaste[]>([]);
   const [outletKeys, setOutletKeys] = useState<string[]>([]);
   const [target, setTarget] = useState(1800);
@@ -50,6 +50,8 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
           .order('outlet_name', { ascending: true });
         if (scopeOutletName) {
           outletsQuery = outletsQuery.eq('outlet_name', scopeOutletName);
+        } else if (scopeUserId) {
+          outletsQuery = outletsQuery.eq('user_id', scopeUserId);
         }
         const { data: outletsData } = await outletsQuery;
 
@@ -67,7 +69,9 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
           .from('food_waste_logs')
           .select('*')
           .gte('created_at', weekStartISO);
-        if (scopeOutletName) {
+        if (scopeOutletId) {
+          wasteQuery = wasteQuery.eq('outlet_id', scopeOutletId);
+        } else if (scopeOutletName) {
           wasteQuery = wasteQuery.eq('outlet_name', scopeOutletName);
         }
         const { data: wasteLogs, error: wasteError } = await wasteQuery
@@ -142,7 +146,7 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
       window.removeEventListener('ecometricus_waste_updated', handleStorageChange);
       supabase.removeChannel(channel);
     };
-  }, [targetKg, activeOutletCount, scopeOutletName]);
+  }, [targetKg, activeOutletCount, scopeOutletName, scopeUserId, scopeOutletId]);
 
   return { chartData, outletKeys, target, dailyBenchmark, weeklyTotal, isLoading };
 };

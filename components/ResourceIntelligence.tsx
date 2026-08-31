@@ -74,7 +74,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Total Water */}
-        <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-6 shadow-xl">
+        <div className={`rounded-2xl border p-5 sm:p-6 shadow-xl transition-all duration-300 ${showAlertWater ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/30'}`}>
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-400/10 border border-blue-400/20 flex items-center justify-center shrink-0">
@@ -106,7 +106,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
         </div>
 
         {/* Total Energy */}
-        <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-6 shadow-xl">
+        <div className={`rounded-2xl border p-5 sm:p-6 shadow-xl transition-all duration-300 ${showAlertEnergy ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/30'}`}>
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center shrink-0">

@@ -664,9 +664,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     || (location.pathname === '/dashboard' ? PortalView.DASHBOARD : null)
     || PortalView.DASHBOARD;
 
-  // Admins don't have access to Daily Input — redirect to dashboard if attempted
+  // Admins and supervisors don't have access to Daily Input — redirect to dashboard if attempted
   useEffect(() => {
-    if (activeView === PortalView.DAILY_INPUT && user.role.toLowerCase() === 'admin') {
+    if (activeView === PortalView.DAILY_INPUT && (user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'supervisor')) {
       routerNavigate('/dashboard/overview');
     }
   }, [activeView, user.role, routerNavigate]);
@@ -909,14 +909,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         // Admins: see all logs from their company (company_id = their own user_id)
         query = query.eq('company_id', session.user.id);
       } else if (roleLower === 'supervisor') {
-        // Supervisors: see all logs from their company, filtered by their outlet
-        // First find the admin's user_id from personnel
+        // Supervisors: see only logs for their assigned outlet
         const { data: personnelRow } = await supabase
           .from('personnel')
-          .select('user_id')
-          .eq('email', user.email)
+          .select('user_id, outlet_id')
+          .ilike('email', user.email || '')
           .maybeSingle();
-        if (personnelRow?.user_id) {
+        if (personnelRow?.user_id && personnelRow?.outlet_id) {
+          // Strict filter: company_id = admin AND outlet_code = supervisor's outlet UUID
+          query = query.eq('company_id', personnelRow.user_id)
+                       .eq('outlet_code', personnelRow.outlet_id);
+        } else if (personnelRow?.user_id) {
+          // Fallback: outlet_id missing, use user.outletCode
           query = query.eq('company_id', personnelRow.user_id)
                        .eq('outlet_code', user.outletCode);
         } else {
@@ -969,16 +973,34 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         const isNonAdmin = roleLower !== 'admin' && roleLower !== 'super_admin';
 
         let targetUserId = authUser.id;
+        let myOutletId: string | null = null; // supervisor's assigned outlet
         if (isNonAdmin) {
-          // Find this user's personnel record to get the admin's user_id
-          const { data: myPersonnel } = await supabase
+          // Find this user's personnel record — try by user_id first, then by email
+          let { data: myPersonnel } = await supabase
             .from('personnel')
-            .select('user_id, outlet_id')
+            .select('user_id, outlet_id, email')
             .eq('user_id', authUser.id)
             .maybeSingle();
-          // If personnel record exists with a different user_id (the admin), use that
-          // Otherwise, find the admin who owns the outlet this user belongs to
-          if (myPersonnel?.outlet_id) {
+
+          // If not found by user_id, try by email (personnel.user_id is the admin's ID)
+          if (!myPersonnel && user.email) {
+            const { data: byEmail } = await supabase
+              .from('personnel')
+              .select('user_id, outlet_id, email')
+              .ilike('email', user.email)
+              .maybeSingle();
+            myPersonnel = byEmail;
+          }
+
+          // Capture the supervisor's assigned outlet for filtering
+          myOutletId = myPersonnel?.outlet_id || null;
+
+          // The personnel row's user_id IS the admin's user_id
+          if (myPersonnel?.user_id) {
+            targetUserId = myPersonnel.user_id;
+          }
+          // Fallback: find the admin who owns the outlet this user belongs to
+          else if (myPersonnel?.outlet_id) {
             const { data: outletOwner } = await supabase
               .from('outlets')
               .select('user_id')
@@ -1030,8 +1052,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             color_hex: o.color_hex
           }));
 
+        // Supervisors/basic users: only show their assigned outlet, not all admin outlets
+        const visibleOutlets = isNonAdmin && myOutletId
+          ? dbOutlets.filter(o => o.id === myOutletId)
+          : dbOutlets;
+
         // Only show this user's outlets — never fall back to shared demo data
-        setOutlets(dbOutlets);
+        setOutlets(visibleOutlets);
 
         if (parametersRes.data) {
           setParams(prev => ({
@@ -1073,6 +1100,45 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             password: p.pincode || '',
             accessCode: p.access_code || ''
           }));
+
+          // Include the admin themselves in the registry (they don't have a personnel row)
+          if (companyRes.data) {
+            // Fetch admin's email from profiles table
+            // Try direct query first, then fallback to fetching from already-loaded profilesData
+            let adminEmail = '';
+            let adminPosition = '';
+            const { data: adminProfile, error: adminProfileErr } = await supabase
+              .from('profiles')
+              .select('email, position')
+              .eq('id', targetUserId)
+              .maybeSingle();
+            if (adminProfileErr || !adminProfile) {
+              // Fallback: fetch from profiles table by email match in personnel
+              const adminPersonnel = (personnelRes.data || []).find((p: any) => p.role?.toLowerCase() === 'admin');
+              if (adminPersonnel?.email) adminEmail = adminPersonnel.email;
+              adminPosition = adminPersonnel?.position || '';
+            } else {
+              adminEmail = adminProfile.email || '';
+              adminPosition = adminProfile.position || '';
+            }
+            const adminAlreadyIncluded = mappedUsers.some((u: any) =>
+              u.email?.toLowerCase() === adminEmail.toLowerCase()
+            );
+            if (!adminAlreadyIncluded) {
+              mappedUsers.unshift({
+                id: targetUserId,
+                fullName: companyRes.data.admin_name || 'Administrator',
+                email: adminEmail,
+                role: 'admin',
+                position: adminPosition || companyRes.data.admin_position || 'Admin',
+                outletCode: dbOutlets[0]?.code || '',
+                permissions: [],
+                password: '',
+                accessCode: ''
+              });
+            }
+          }
+
           setUsers(mappedUsers);
         }
 
@@ -1117,9 +1183,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // Build query filters — admin: all outlets, supervisor/basic: own outlet only
       const scopeQuery = (base: any, useOutletName = false) => {
-        if (isAdmin || !userOutletId) return base;
+        if (isAdmin) return base;
+        // Use userOutletId from outlets map, or fall back to user.outletCode (UUID)
+        const filterId = userOutletId || user.outletCode;
+        if (!filterId) return base;
         if (useOutletName && userOutletName) return base.eq('outlet_name', userOutletName);
-        return base.eq('outlet_id', userOutletId);
+        return base.eq('outlet_id', filterId);
       };
 
       // 2. Fire ALL queries in parallel (was 9 sequential → now 1 round-trip)
@@ -1271,7 +1340,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       supabase.removeChannel(wasteChannel);
       supabase.removeChannel(resourceChannel);
     };
-  }, [user.role, user.outletCode]);
+  }, [user.role, user.outletCode, outlets, isHydrating]);
 
   const [auditReport, setAuditReport] = useState({
     cycle: 'Monthly',
@@ -1311,12 +1380,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // Real chart data from hooks — scoped to user's outlet for supervisor/basic
   const isHookAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin';
   const hookScopeOutlet = !isHookAdmin && user.outletCode ? (outlets.find((o: any) => o.code === user.outletCode || o.id === user.outletCode)?.name || userOutletName) : undefined;
+  const hookScopeUserId = isHookAdmin ? user.id : undefined;
+  const hookScopeOutletId = !isHookAdmin ? (outlets.find((o: any) => o.code === user.outletCode || o.id === user.outletCode)?.id) : undefined;
   const { chartData: wasteChartData, outletKeys: wasteOutletKeys, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData(
     params.wasteTarget,
     outlets.length || 1,
-    hookScopeOutlet
+    hookScopeOutlet,
+    hookScopeUserId,
+    hookScopeOutletId
   );
-  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet);
+  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet, hookScopeUserId);
 
   // Transform hook data for template charts (aggregate all outlets per day dynamically)
   const sumOutletKeys = (row: Record<string, any>, keys: string[]) => keys.reduce((s, k) => s + (Number(row[k]) || 0), 0);
@@ -2486,14 +2559,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               {user.role.toLowerCase() !== 'basic' && (
                 <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label={t('dashboard.navOverview')} />
               )}
-              {user.role.toLowerCase() !== 'admin' && (
+              {user.role.toLowerCase() !== 'admin' && user.role.toLowerCase() !== 'supervisor' && (
                 <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label={t('dashboard.navDailyInput')} />
               )}
               {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin' || user.role.toLowerCase() === 'supervisor') && (
                 <>
-                  <SidebarItem view={PortalView.IDENTITY} icon={Building2} label={t('dashboard.navCompany')} />
-                  <SidebarItem view={PortalView.TEAM} icon={Users} label={t('dashboard.navTeam')} />
-                  <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label={t('dashboard.navBenchmarks')} />
+                  {isHookAdmin && <SidebarItem view={PortalView.IDENTITY} icon={Building2} label={t('dashboard.navCompany')} />}
+                  {isHookAdmin && <SidebarItem view={PortalView.TEAM} icon={Users} label={t('dashboard.navTeam')} />}
+                  {isHookAdmin && <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label={t('dashboard.navBenchmarks')} />}
                   <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label={t('dashboard.navAuditLog')} />
                 </>
               )}
@@ -2528,6 +2601,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         {greeting}, <span className="text-brand-gold font-bold">{firstName}</span>
                       </h2>
                       <p className="text-[11px] sm:text-[12px] font-medium text-white/50 mt-2 tracking-wide flex items-center gap-2 flex-wrap">
+                        <span className="text-brand-gold/80 font-semibold uppercase tracking-widest text-[10px]">
+                          {user.role.toLowerCase() === 'super_admin' ? 'Super Admin' : user.position || user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                        </span>
+                        <span className="w-1 h-1 rounded-full bg-white/15" />
                         <span>{currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
                         <span className="w-1 h-1 rounded-full bg-white/15" />
                         <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -2541,7 +2618,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </span>
                       </p>
                     </div>
-                    {isBasicOrSupervisor && (
+                    {isBasicOrSupervisor && user.role?.toLowerCase() === 'basic' && (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-gold/10 border border-brand-gold/25 shrink-0">
                         <Trophy size={14} className="text-brand-gold" />
                         <span className="text-sm font-black text-brand-gold tabular-nums">{navPoints.toLocaleString()}</span>
@@ -2718,19 +2795,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {/* "Position the Earth Keeper Engagement % Chart directly BELOW the Mila Actionable Intelligence container... only element in this section" */}
                           {(() => {
                             // "Calculate Outlet Engagement % (Unique Outlets in Session Data)"
-                            // Logic: Total Active Outlets / Total Registered Outlets
-                            const activeOutletIds = new Set([
-                              ...rawWasteLogs.map(e => e.outlet_id),
-                              ...rawResourceLogs.map(e => e.outlet_id),
-                              ...sessionWasteEntries.map(e => e.outletId),
-                              ...sessionResourceEntries.map(e => e.outletId)
-                            ]);
+                            // Logic: Count outlets that have at least one log entry
+                            const outletIds = new Set(outlets.map(o => o.id));
+                            const activeOutletIds = new Set<string>();
+                            rawWasteLogs.forEach(e => { if (e.outlet_id && outletIds.has(e.outlet_id)) activeOutletIds.add(e.outlet_id); });
+                            rawResourceLogs.forEach(e => {
+                                const id = e.outlet_id || outlets.find((o: any) => o.code === e.outlet_code || o.name === e.outlet_name)?.id;
+                                if (id && outletIds.has(id)) activeOutletIds.add(id);
+                            });
+                            sessionWasteEntries.forEach(e => { if (e.outletId && outletIds.has(e.outletId)) activeOutletIds.add(e.outletId); });
+                            sessionResourceEntries.forEach(e => { if (e.outletId && outletIds.has(e.outletId)) activeOutletIds.add(e.outletId); });
 
                             const totalOutlets = outlets.length || 1;
                             const activeCount = activeOutletIds.size;
 
-                            // SYNCED CALCULATION: Read from localStorage or fallback to standard logic
-                            const savedAvg = localStorage.getItem('ecometricus_cumulative_engagement');
+                            // SYNCED CALCULATION: Calculate from actual data, ignore stale localStorage for non-admins
+                            const savedAvg = isHookAdmin ? localStorage.getItem('ecometricus_cumulative_engagement') : null;
                             const engagementPct = savedAvg ? parseInt(savedAvg) : Math.round((activeCount / totalOutlets) * 100);
 
                             // "Color Thresholds: Green (> 85%), Yellow (65% - 84%), Red (<65%)"
@@ -2793,7 +2873,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         <span className="text-sm text-white/50 font-medium uppercase tracking-wide block mt-2">{t('dashboard.participation')}</span>
                                       </div>
                                       <p className="text-xs text-white/50 mt-3 font-medium leading-relaxed max-w-sm">
-                                        {t('dashboard.cumulativeTracking')}
+                                        {isHookAdmin
+                                          ? t('dashboard.cumulativeTracking')
+                                          : t('dashboard.cumulativeTrackingOutlet')}
                                       </p>
                                     </div>
 
@@ -3050,7 +3132,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       )}
 
                       {dashboardTab === DashboardTab.GAMIFICATION && (
-                        <GamificationHub goal={effectiveParams.gamificationGoal} />
+                        <GamificationHub goal={effectiveParams.gamificationGoal} outletIds={outlets.map(o => o.id).filter((id): id is string => !!id)} />
                       )}
                     </div>
                   </div>
@@ -3085,10 +3167,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       </div>
                       {/* Auto-save indicator + Edit button */}
                       <div className="flex items-center gap-3">
+                        {isHookAdmin && (
                         <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${saveStatus === 'saving' ? 'text-brand-gold/70' : saveStatus === 'success' ? 'text-brand-eco' : 'text-white/40'}`}>
                           {saveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : saveStatus === 'success' ? <Check size={11} /> : <Save size={11} />}
                           {saveStatus === 'saving' ? t('dashboard.saving') : saveStatus === 'success' ? t('dashboard.saved') : t('dashboard.autoSaveOn')}
                         </div>
+                        )}
                         {/* Edit button — admin/super_admin only */}
                         {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin') && (
                           <button
@@ -3773,7 +3857,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       </div>
                     </div>
 
-                    {/* ── Enroll / Edit card ── */}
+                    {/* ── Enroll / Edit card ── (admin/super_admin only) */}
+                    {isHookAdmin && (
                     <div id="enrollment-form" className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_40px_rgba(34,197,94,0.04)]">
                       <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between border-b border-brand-eco/15 gap-3">
                         <div className="flex items-center gap-3">
@@ -3960,6 +4045,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </button>
                       </div>
                     </div>
+                    )}
 
                     <div className="space-y-8">
                       <div className="px-6 mb-2">
@@ -3981,9 +4067,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPosition')}</th>
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thRole')}</th>
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thEmail')}</th>
-                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPin')}</th>
-                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thAccessLink')}</th>
-                                  <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold text-right">{t('dashboard.thActions')}</th>
+                                  {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPin')}</th>}
+                                  {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thAccessLink')}</th>}
+                                  {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold text-right">{t('dashboard.thActions')}</th>}
                                 </tr>
                               </thead>
                               <tbody>
@@ -4008,6 +4094,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <td className="px-4 py-3">
                                       <span className="text-[11px] text-white/60 font-medium truncate max-w-[180px] block">{u.email}</span>
                                     </td>
+                                    {isHookAdmin && (
                                     <td className="px-4 py-3">
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider">{visiblePasswords.has(u.id) ? u.password : '••••••••'}</span>
@@ -4021,6 +4108,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         )}
                                       </div>
                                     </td>
+                                    )}
+                                    {isHookAdmin && (
                                     <td className="px-4 py-3">
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}` : '••••••••••••••••'}</span>
@@ -4032,6 +4121,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         </button>
                                       </div>
                                     </td>
+                                    )}
+                                    {isHookAdmin && (
                                     <td className="px-4 py-3">
                                       <div className="flex gap-2 justify-end">
                                         <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all" title="Edit">
@@ -4042,6 +4133,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         </button>
                                       </div>
                                     </td>
+                                    )}
                                   </tr>
                                 );})}
                               </tbody>
@@ -4069,9 +4161,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPosition')}</th>
                                     <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thRole')}</th>
                                     <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thEmail')}</th>
-                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPin')}</th>
-                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thAccessLink')}</th>
-                                    <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold text-right">{t('dashboard.thActions')}</th>
+                                    {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPin')}</th>}
+                                    {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thAccessLink')}</th>}
+                                    {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold text-right">{t('dashboard.thActions')}</th>}
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -4096,6 +4188,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       <td className="px-4 py-3">
                                         <span className="text-[11px] text-white/60 font-medium truncate max-w-[180px] block">{u.email}</span>
                                       </td>
+                                      {isHookAdmin && (
                                       <td className="px-4 py-3">
                                         <div className="flex items-center gap-1.5">
                                           <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider">{visiblePasswords.has(u.id) ? u.password : '••••••••'}</span>
@@ -4109,6 +4202,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                           )}
                                         </div>
                                       </td>
+                                      )}
+                                      {isHookAdmin && (
                                       <td className="px-4 py-3">
                                         <div className="flex items-center gap-1.5">
                                           <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}` : '••••••••••••••••'}</span>
@@ -4120,6 +4215,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                           </button>
                                         </div>
                                       </td>
+                                      )}
+                                      {isHookAdmin && (
                                       <td className="px-4 py-3">
                                         <div className="flex gap-2 justify-end">
                                           <button onClick={() => handleEdit(u)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all" title="Edit">
@@ -4130,6 +4227,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                           </button>
                                         </div>
                                       </td>
+                                      )}
                                     </tr>
                                   );})}
                                 </tbody>
@@ -4161,10 +4259,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                       </div>
                       {/* Auto-save indicator */}
+                      {isHookAdmin && (
                       <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all ${autoSaveStatus === 'saving' ? 'text-brand-gold/70' : autoSaveStatus === 'saved' ? 'text-brand-eco' : 'text-white/40'}`}>
                         {autoSaveStatus === 'saving' ? <RefreshCcw size={11} className="animate-spin" /> : autoSaveStatus === 'saved' ? <Check size={11} /> : <Save size={11} />}
                         {autoSaveStatus === 'saving' ? t('dashboard.saving') : autoSaveStatus === 'saved' ? `Saved ${paramsUpdatedAt ?? ''}` : t('dashboard.autoSaveOn')}
                       </div>
+                      )}
                     </div>
 
                     {/* ── STEP 1: Industry Benchmarking ── */}
@@ -4179,6 +4279,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.industryBenchmarking')}</h4>
                           </div>
                         </div>
+                        {isHookAdmin && (
                         <button
                           onClick={() => setIsEditingBenchmarks(!isEditingBenchmarks)}
                           className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingBenchmarks ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
@@ -4186,6 +4287,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {isEditingBenchmarks ? <Unlock size={12} /> : <Edit2 size={12} />}
                           {isEditingBenchmarks ? t('dashboard.lock') : t('dashboard.edit')}
                         </button>
+                        )}
                       </div>
 
                       <div className="p-4 sm:p-6 bg-brand-dark/40 space-y-4">
@@ -4247,6 +4349,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          {isHookAdmin && (
                           <button
                             onClick={() => setIsEditingSustainability(!isEditingSustainability)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingSustainability ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-gold/15 border border-brand-gold/30 text-brand-gold hover:bg-brand-gold/25'}`}
@@ -4254,6 +4357,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             {isEditingSustainability ? <Unlock size={12} /> : <Edit2 size={12} />}
                             {isEditingSustainability ? t('dashboard.lock') : t('dashboard.edit')}
                           </button>
+                          )}
                         </div>
                       </div>
 
@@ -4348,6 +4452,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          {isHookAdmin && (
                           <button
                             onClick={() => setIsEditingFnB(!isEditingFnB)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingFnB ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
@@ -4355,6 +4460,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             {isEditingFnB ? <Unlock size={12} /> : <Edit2 size={12} />}
                             {isEditingFnB ? t('dashboard.lock') : t('dashboard.edit')}
                           </button>
+                          )}
                         </div>
                       </div>
 
@@ -4555,6 +4661,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             )}
                           </div>
                         </div>
+                        {isHookAdmin && (
                         <button
                           onClick={() => setIsEditingApis(!isEditingApis)}
                           className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 ${isEditingApis ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-eco/15 border border-brand-eco/30 text-brand-eco hover:bg-brand-eco/25'}`}
@@ -4562,6 +4669,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {isEditingApis ? <Unlock size={12} /> : <Edit2 size={12} />}
                           {isEditingApis ? t('dashboard.lock') : t('dashboard.edit')}
                         </button>
+                        )}
                       </div>
 
                       <div className="p-4 sm:p-6 bg-brand-dark/40">

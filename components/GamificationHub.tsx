@@ -47,9 +47,10 @@ interface CheckinData {
 
 interface GamificationHubProps {
     goal?: number;
+    outletIds?: string[];
 }
 
-const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
+const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletIds = [] }) => {
     const { t } = useI18n();
     const [outlets, setOutlets] = useState<OutletData[]>([]);
     const [leaderboard, setLeaderboard] = useState<LeaderboardData[]>([]);
@@ -60,77 +61,191 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
 
     const OUTLET_GOAL = goal;
 
+    // Stabilize outletIds to avoid re-fetching on every render
+    const outletIdsKey = outletIds.sort().join(',');
     const fetchData = useCallback(async () => {
+        const ids = outletIdsKey.split(',').filter(Boolean);
+        if (ids.length === 0) {
+            setLoading(false);
+            return;
+        }
         try {
-            // 1. Outlets
+            // 1. Outlets — filter to current company's outlets only
             const { data: oData } = await supabase
                 .from('outlet_engagement_overview')
                 .select('*')
                 .order('total_points', { ascending: false });
 
-            if (oData && oData.length > 0) {
-                setOutlets(oData.slice(0, 4));
-                const avg = Math.round(oData.slice(0, 4).reduce((sum: number, o: any) => sum + o.engagement_pct, 0) / Math.min(oData.length, 4));
+            // Filter to only this company's outlets
+            const scopedOutlets = ids.length > 0
+                ? (oData || []).filter((o: any) => ids.includes(o.id))
+                : (oData || []);
+
+            if (scopedOutlets.length > 0) {
+                setOutlets(scopedOutlets.slice(0, 4));
+                const avg = Math.round(scopedOutlets.slice(0, 4).reduce((sum: number, o: any) => sum + o.engagement_pct, 0) / Math.min(scopedOutlets.length, 4));
                 localStorage.setItem('ecometricus_cumulative_engagement', avg.toString());
+            } else {
+                setOutlets([]);
             }
 
-            // 2. Leaderboard
+            // 2. Leaderboard — filter to current company's outlets via gamification_ledger.outlet_id
             let leaderboardRows: LeaderboardData[] = [];
-            const { data: viewData } = await supabase
-                .from('staff_leaderboard_display')
-                .select('id, name, outlet_name, outlet_dot_color, total_points')
-                .order('total_points', { ascending: false })
-                .limit(10);
 
-            if (viewData && viewData.length > 0) {
-                leaderboardRows = viewData;
-            } else {
-                const { data: profData } = await supabase
+            // Fetch ledger entries scoped to this company's outlets
+            let ledgerQuery = supabase
+                .from('gamification_ledger')
+                .select('profile_id, outlet_id, points_awarded');
+            if (ids.length > 0) {
+                ledgerQuery = ledgerQuery.in('outlet_id', ids);
+            }
+            const { data: ledgerData } = await ledgerQuery;
+
+            // Fetch personnel for this company's outlets to get names
+            let personnelQuery = supabase
+                .from('personnel')
+                .select('user_id, full_name, outlet_id, email');
+            if (ids.length > 0) {
+                personnelQuery = personnelQuery.in('outlet_id', ids);
+            }
+            const { data: personnelData } = await personnelQuery;
+
+            // Also fetch profiles to map profile_id -> name (personnel.user_id is the admin's ID, not the staff's)
+            // Fetch only the specific profile IDs from the ledger to avoid RLS issues
+            const profileIds = [...new Set((ledgerData || [])
+                .map((l: any) => l.profile_id)
+                .filter(Boolean))] as string[];
+            let profilesData: any[] = [];
+            if (profileIds.length > 0) {
+                const { data: profData, error: profErr } = await supabase
                     .from('profiles')
-                    .select('id, full_name, outlets(name, color_hex)');
-                const { data: ledgerData } = await supabase
-                    .from('gamification_ledger')
-                    .select('profile_id, points_awarded');
+                    .select('id, full_name, email')
+                    .in('id', profileIds);
+                if (profErr) console.error('GAMIFICATION: profiles query error:', profErr);
+                profilesData = profData || [];
+            }
 
-                if (profData) {
-                    leaderboardRows = profData.map(p => {
-                        const total = (ledgerData || [])
-                            .filter(l => l.profile_id === p.id)
-                            .reduce((sum, curr) => sum + curr.points_awarded, 0);
+            if (ledgerData) {
+                // Build a map of profile_id -> name from profiles
+                const profileNames = new Map<string, string>();
+                profilesData.forEach((p: any) => {
+                    profileNames.set(p.id, p.full_name || 'Staff');
+                });
+                // Also try personnel email -> name as fallback
+                const personnelByEmail = new Map<string, string>();
+                (personnelData || []).forEach((p: any) => {
+                    if (p.email) personnelByEmail.set(p.email.toLowerCase(), p.full_name);
+                });
+                // Match profiles to personnel by email
+                profilesData.forEach((p: any) => {
+                    if (p.email && personnelByEmail.has(p.email.toLowerCase())) {
+                        profileNames.set(p.id, personnelByEmail.get(p.email.toLowerCase()) || p.full_name);
+                    }
+                });
+
+                // Aggregate points by profile_id from the ledger
+                const pointsMap = new Map<string, number>();
+                (ledgerData as any[]).forEach((l: any) => {
+                    if (l.profile_id) {
+                        pointsMap.set(l.profile_id, (pointsMap.get(l.profile_id) || 0) + (l.points_awarded || 0));
+                    }
+                });
+
+                // Build leaderboard from personnel who have points
+                leaderboardRows = (personnelData || [])
+                    .filter((p: any) => {
+                        // Match personnel to profile by email
+                        const profile = profilesData.find((pr: any) => pr.email?.toLowerCase() === p.email?.toLowerCase());
+                        return profile && pointsMap.has(profile.id);
+                    })
+                    .map((p: any) => {
+                        const profile = profilesData.find((pr: any) => pr.email?.toLowerCase() === p.email?.toLowerCase());
+                        const outlet = scopedOutlets.find((o: any) => o.id === p.outlet_id);
                         return {
-                            id: p.id,
-                            name: p.full_name,
-                            outlet_name: (p as any).outlets?.name || 'Unknown',
-                            outlet_dot_color: (p as any).outlets?.color_hex || '#ccc',
-                            total_points: total
+                            id: profile?.id || p.user_id,
+                            name: p.full_name || 'Unknown',
+                            outlet_name: outlet?.name || 'Unknown',
+                            outlet_dot_color: outlet?.color_hex || '#ccc',
+                            total_points: pointsMap.get(profile?.id) || 0
                         };
-                    }).sort((a, b) => b.total_points - a.total_points);
-                }
+                    })
+                    .sort((a, b) => b.total_points - a.total_points);
             }
             setLeaderboard(leaderboardRows.slice(0, 7));
 
-            // 3. Action Logs
-            const { data: lData } = await supabase
-                .from('gamification_recent_logs')
-                .select('*')
+            // 3. Action Logs — fetch directly from ledger filtered by outlet_id
+            let logsQuery = supabase
+                .from('gamification_ledger')
+                .select('id, profile_id, outlet_id, action_key, points_awarded, created_at')
                 .order('created_at', { ascending: false })
-                .limit(10);
-            if (lData) setLogs(lData);
+                .limit(20);
+            if (ids.length > 0) {
+                logsQuery = logsQuery.in('outlet_id', ids);
+            }
+            const { data: lData } = await logsQuery;
+            if (lData) {
+                // Map profile_id to names using profiles data
+                const profileNames = new Map<string, string>();
+                profilesData.forEach((p: any) => {
+                    profileNames.set(p.id, p.full_name || 'Staff');
+                });
+                // Also try personnel email match
+                const personnelByEmail = new Map<string, string>();
+                (personnelData || []).forEach((p: any) => {
+                    if (p.email) personnelByEmail.set(p.email.toLowerCase(), p.full_name);
+                });
+                profilesData.forEach((p: any) => {
+                    if (p.email && personnelByEmail.has(p.email.toLowerCase())) {
+                        profileNames.set(p.id, personnelByEmail.get(p.email.toLowerCase()) || p.full_name);
+                    }
+                });
+                const outletNames = new Map<string, string>();
+                scopedOutlets.forEach((o: any) => outletNames.set(o.id, o.name));
 
-            // 4. Daily Check-ins (streaks)
-            const { data: checkinData } = await supabase
+                const mappedLogs = (lData as any[]).map((l: any) => ({
+                    id: l.id,
+                    points_awarded: l.points_awarded,
+                    created_at: l.created_at,
+                    action_name: l.action_key ? l.action_key.replace(/_/g, ' ') : 'points earned',
+                    staff_name: profileNames.get(l.profile_id) || 'Staff',
+                    outlet_name: outletNames.get(l.outlet_id) || 'Outlet'
+                }));
+                setLogs(mappedLogs.slice(0, 10));
+            }
+
+            // 4. Daily Check-ins (streaks) — filter by outlet_code at the query level
+            let checkinQuery = supabase
                 .from('daily_checkins')
                 .select('*')
                 .order('checkin_date', { ascending: false })
                 .limit(20);
-            if (checkinData) setCheckins(checkinData as any);
+            if (ids.length > 0) {
+                checkinQuery = checkinQuery.in('outlet_code', ids);
+            }
+            const { data: checkinData, error: checkinErr } = await checkinQuery;
+            if (checkinErr) {
+                console.error('GAMIFICATION: checkins query error:', checkinErr);
+                // Fallback: try without outlet filter
+                const { data: fallbackCheckins } = await supabase
+                    .from('daily_checkins')
+                    .select('*')
+                    .order('checkin_date', { ascending: false })
+                    .limit(20);
+                if (fallbackCheckins) {
+                    const filtered = fallbackCheckins.filter((c: any) => ids.includes(c.outlet_code));
+                    setCheckins(filtered as any);
+                }
+            } else if (checkinData) {
+                setCheckins(checkinData as any);
+            }
+            console.log('GAMIFICATION: checkins:', checkinData, 'error:', checkinErr, 'ids:', ids);
 
         } catch (error) {
             console.error("Gamification data fetch error:", error);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [outletIdsKey]);
 
     useEffect(() => {
         fetchData();
@@ -141,7 +256,8 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
         return () => { supabase.removeChannel(sub); };
     }, [fetchData]);
 
-    const getThemeColor = (name: string) => {
+    const getThemeColor = (name: string, colorHex?: string) => {
+        if (colorHex) return colorHex;
         const n = name.toLowerCase();
         if (n.includes('royal')) return '#ff5722';
         if (n.includes('gusto')) return '#94a3b8';
@@ -158,22 +274,22 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
         );
     }
 
-    const TabButton: React.FC<{ id: typeof activeView; label: string; icon: React.ElementType }> = ({ id, label, icon: Icon }) => (
-        <button
-            onClick={() => setActiveView(id)}
-            className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 whitespace-nowrap border ${
-                activeView === id
-                    ? 'bg-brand-gold/15 border-brand-gold/40 text-white shadow-[0_2px_12px_rgba(200,164,19,0.15)]'
-                    : 'border-transparent text-white/50 hover:text-white/80 hover:bg-brand-dark/60'
-            }`}
-        >
-            <Icon size={16} className={activeView === id ? 'text-brand-gold' : 'text-white/40'} />
-            <span className="text-[13px] font-bold tracking-tight">{label}</span>
-        </button>
-    );
+    const tabButtons = [
+        { id: 'outlets' as const, label: 'Outlet Status', icon: Building2 },
+        { id: 'leaderboard' as const, label: 'Leaderboard', icon: Trophy },
+        { id: 'streaks' as const, label: 'Streaks', icon: Flame },
+        { id: 'activity' as const, label: 'Live Activity', icon: Zap },
+    ];
 
     const maxStreak = Math.max(...checkins.map(c => c.streak_days), 1);
-    const totalCheckinsToday = checkins.filter(c => c.checkin_date === new Date().toISOString().split('T')[0]).length;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const totalCheckinsToday = checkins.filter(c => {
+        const cDate = typeof c.checkin_date === 'string' ? c.checkin_date.split('T')[0] : new Date(c.checkin_date).toISOString().split('T')[0];
+        return cDate === todayStr;
+    }).length;
+    // Fallback: if no exact match for today, count the most recent date's check-ins
+    const latestCheckinDate = checkins.length > 0 ? checkins[0].checkin_date : null;
+    const displayCheckins = totalCheckinsToday > 0 ? totalCheckinsToday : (latestCheckinDate ? checkins.filter(c => c.checkin_date === latestCheckinDate).length : 0);
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col gap-6 sm:gap-8 pb-20">
@@ -239,24 +355,34 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                         <Calendar size={16} className="text-brand-eco" />
                         <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.todaysCheckins')}</h4>
                     </div>
-                    <p className="text-2xl font-geometric font-black text-white leading-none">{totalCheckinsToday}</p>
+                    <p className="text-2xl font-geometric font-black text-white leading-none">{displayCheckins}</p>
                     <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{t('gamification.activeUsersToday')}</p>
                 </div>
             </div>
 
             {/* ── Tabs ── */}
             <div className="flex overflow-x-auto gap-2 w-full sm:w-fit shrink-0 scrollbar-hide pb-1">
-                <TabButton id="outlets" label="Outlet Status" icon={Building2} />
-                <TabButton id="leaderboard" label="Leaderboard" icon={Trophy} />
-                <TabButton id="streaks" label="Streaks" icon={Flame} />
-                <TabButton id="activity" label="Live Activity" icon={Zap} />
+                {tabButtons.map(({ id, label, icon: Icon }) => (
+                    <button
+                        key={id}
+                        onClick={() => setActiveView(id)}
+                        className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 whitespace-nowrap border ${
+                            activeView === id
+                                ? 'bg-brand-gold/15 border-brand-gold/40 text-white shadow-[0_2px_12px_rgba(200,164,19,0.15)]'
+                                : 'border-transparent text-white/50 hover:text-white/80 hover:bg-brand-dark/60'
+                        }`}
+                    >
+                        <Icon size={16} className={activeView === id ? 'text-brand-gold' : 'text-white/40'} />
+                        <span className="text-[13px] font-bold tracking-tight">{label}</span>
+                    </button>
+                ))}
             </div>
 
             {/* ── Outlet Status Tab ── */}
             {activeView === 'outlets' && (
                 <div className="space-y-4 animate-in fade-in duration-500">
                     {outlets.map((o) => {
-                        const themeColor = getThemeColor(o.name);
+                        const themeColor = getThemeColor(o.name, (o as any).color_hex);
                         return (
                             <div key={o.id} className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6 hover:border-brand-gold/30 transition-all">
                                 {/* Circular Progress */}
@@ -358,29 +484,25 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
 
                     {/* Full Ranking */}
                     <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
-                        <div className="flex justify-between items-center px-5 py-3 border-b border-brand-gold/15">
-                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.rankHeader')}</span>
+                        <div className="grid grid-cols-[auto_1fr_auto] gap-3 px-5 py-3 border-b border-brand-gold/15 items-center">
+                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest min-w-[20px]">{t('gamification.rankHeader')}</span>
                             <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.staffMemberHeader')}</span>
-                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.pointsHeader')}</span>
+                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest text-right min-w-[40px]">{t('gamification.pointsHeader')}</span>
                         </div>
                         <div className="divide-y divide-brand-gold/5">
                             {leaderboard.map((s, idx) => (
-                                <div key={s.id} className="flex items-center justify-between px-5 py-3 hover:bg-brand-gold/5 transition-all">
-                                    <div className="flex items-center gap-4">
-                                        <span className={`text-sm font-black w-6 ${idx < 3 ? 'text-brand-gold' : 'text-white/30'}`}>{idx + 1}</span>
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center border border-brand-gold/10">
-                                                <span className="text-white text-[10px] font-black">{s.name.charAt(0)}</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-white">{s.name}</p>
-                                                <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider">{s.outlet_name}</p>
-                                            </div>
+                                <div key={s.id} className="grid grid-cols-[auto_1fr_auto] gap-3 px-5 py-3 hover:bg-brand-gold/5 transition-all items-center">
+                                    <span className={`text-sm font-black min-w-[20px] ${idx < 3 ? 'text-brand-gold' : 'text-white/30'}`}>{idx + 1}</span>
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                                            <span className="text-brand-gold text-xs font-black">{s.name.charAt(0)}</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-white truncate">{s.name}</p>
+                                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate">{s.outlet_name}</p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-black text-brand-gold">{s.total_points}</p>
-                                    </div>
+                                    <span className="text-sm font-black text-brand-gold text-right min-w-[40px]">{s.total_points}</span>
                                 </div>
                             ))}
                             {leaderboard.length === 0 && (
@@ -407,7 +529,9 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                                 {[...checkins]
                                     .sort((a, b) => b.streak_days - a.streak_days)
                                     .slice(0, 3)
-                                    .map((c, i) => (
+                                    .map((c, i) => {
+                                        const outlet = outlets.find((o: any) => o.id === c.outlet_code);
+                                        return (
                                         <div key={i} className={`rounded-2xl border p-5 ${i === 0 ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/20 bg-[#1c3933]'}`}>
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="flex items-center gap-2">
@@ -416,50 +540,62 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                                                 </div>
                                                 {i === 0 && <Crown size={16} className="text-brand-alert" />}
                                             </div>
-                                            <p className="text-lg font-geometric font-black text-white truncate">{c.user_name}</p>
-                                            <p className="text-[10px] text-white/40 uppercase tracking-wider mb-3">{c.user_role} · {c.outlet_code}</p>
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                                                    <span className="text-brand-gold text-sm font-black">{c.user_name?.charAt(0) || '?'}</span>
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-lg font-geometric font-black text-white truncate">{c.user_name}</p>
+                                                    <p className="text-[10px] text-white/40 uppercase tracking-wider truncate">{outlet?.name || 'Outlet'}</p>
+                                                </div>
+                                            </div>
                                             <div className="flex items-baseline gap-1">
                                                 <span className="text-3xl font-black text-white">{c.streak_days}</span>
                                                 <span className="text-[10px] font-bold text-white/40 uppercase">days</span>
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                             </div>
 
                             {/* Full check-in list */}
                             <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
-                                <div className="flex justify-between items-center px-5 py-3 border-b border-brand-gold/15">
+                                <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 px-5 py-3 border-b border-brand-gold/15 items-center">
                                     <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.userHeader')}</span>
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest hidden sm:block">{t('gamification.entriesHeader')}</span>
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.streakHeader')}</span>
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest hidden sm:block">{t('gamification.dateHeader')}</span>
+                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest text-center">W / Wa / E</span>
+                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest text-center min-w-[45px]">{t('gamification.streakHeader')}</span>
+                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest text-right min-w-[55px]">{t('gamification.dateHeader')}</span>
                                 </div>
                                 <div className="divide-y divide-brand-gold/5">
-                                    {checkins.map((c, i) => (
-                                        <div key={i} className="flex items-center justify-between px-5 py-3 hover:bg-brand-gold/5 transition-all">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center border border-brand-gold/10">
-                                                    <span className="text-white text-[10px] font-black">{c.user_name?.charAt(0) || '?'}</span>
+                                    {checkins.map((c, i) => {
+                                        const outlet = outlets.find((o: any) => o.id === c.outlet_code);
+                                        const formattedDate = new Date(c.checkin_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                        return (
+                                        <div key={i} className="grid grid-cols-[auto_1fr_auto_auto] gap-3 px-5 py-4 hover:bg-brand-gold/5 transition-all items-center">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                                                    <span className="text-brand-gold text-xs font-black">{c.user_name?.charAt(0) || '?'}</span>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-white">{c.user_name}</p>
-                                                    <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider">{c.user_role} · {c.outlet_code}</p>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-white truncate">{c.user_name}</p>
+                                                    <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate">{outlet?.name || 'Outlet'}</p>
                                                 </div>
                                             </div>
-                                            <div className="hidden sm:flex items-center gap-2 text-[10px] font-bold">
-                                                <span className="text-brand-eco">{c.waste_entries}</span>
-                                                <span className="text-white/20">/</span>
-                                                <span className="text-blue-400">{c.water_entries}</span>
-                                                <span className="text-white/20">/</span>
-                                                <span className="text-amber-400">{c.energy_entries}</span>
+                                            <div className="flex items-center gap-1.5 justify-center">
+                                                <span className="text-brand-eco text-[11px] font-black" title="Waste">{c.waste_entries}</span>
+                                                <span className="text-white/15 text-[10px]">/</span>
+                                                <span className="text-blue-400 text-[11px] font-black" title="Water">{c.water_entries}</span>
+                                                <span className="text-white/15 text-[10px]">/</span>
+                                                <span className="text-amber-400 text-[11px] font-black" title="Energy">{c.energy_entries}</span>
                                             </div>
-                                            <div className="flex items-center gap-1.5">
-                                                <Flame size={14} className={c.streak_days >= 3 ? 'text-brand-alert' : 'text-white/30'} />
+                                            <div className="flex items-center gap-1 justify-center min-w-[45px]">
+                                                <Flame size={12} className={c.streak_days >= 3 ? 'text-brand-alert' : 'text-white/30'} />
                                                 <span className="text-sm font-black text-white">{c.streak_days}</span>
                                             </div>
-                                            <span className="hidden sm:block text-[10px] text-white/30">{c.checkin_date}</span>
+                                            <span className="text-[10px] text-white/30 font-medium text-right min-w-[55px]">{formattedDate}</span>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </>
@@ -483,23 +619,38 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000 }) => {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {logs.map(log => (
+                                {logs.map(log => {
+                                    const actionLabels: Record<string, string> = {
+                                        'on-time_entry': 'On-Time Entry',
+                                        'entry_with_image': 'Entry with Photo',
+                                        'energy_reading': 'Energy Reading',
+                                        '5-day_streak_bonus': '5-Day Streak Bonus',
+                                        'mila_comment': 'Mila AI Comment',
+                                        'accuracy_bonus': 'Accuracy Bonus',
+                                    };
+                                    const actionLabel = actionLabels[log.action_name] || (log.action_name && log.action_name !== 'points earned' ? log.action_name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Points Earned');
+                                    const timeStr = new Date(log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                                    const dateStr = new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                    return (
                                     <div key={log.id} className="bg-brand-dark/40 border border-brand-gold/10 rounded-xl p-4 flex items-start gap-3 hover:border-brand-gold/30 transition-all">
                                         <div className="mt-0.5 w-8 h-8 bg-brand-eco/10 border border-brand-eco/30 rounded-lg flex items-center justify-center shrink-0">
                                             <CheckCircle2 size={14} className="text-brand-eco" />
                                         </div>
                                         <div className="flex-grow space-y-1">
-                                            <p className="text-[11px] font-bold text-white uppercase leading-tight">{log.action_name}</p>
+                                            <p className="text-[11px] font-bold text-white uppercase leading-tight">{actionLabel}</p>
                                             <div className="flex items-center gap-2 text-white/30">
                                                 <Clock size={9} />
-                                                <span className="text-[9px] font-black uppercase tracking-widest">{log.staff_name || log.outlet_name}</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest">{log.staff_name}</span>
+                                                <span className="text-white/15">·</span>
+                                                <span className="text-[9px] font-medium normal-case tracking-normal">{timeStr} · {dateStr}</span>
                                             </div>
                                         </div>
                                         <div className="shrink-0">
-                                            <span className="text-[10px] font-black text-brand-gold">+{log.points_awarded}</span>
+                                            <span className="text-sm font-black text-brand-gold">+{log.points_awarded}</span>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

@@ -345,15 +345,68 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
 
     if (!canAttemptAuth()) return;
     setIsLoading(true);
+    const DEBUG = true;
+    const log = (...args: any[]) => DEBUG && console.log('%c[AUTH LOGIN]', 'color: #C8A413; font-weight: bold;', ...args);
 
     try {
       let authUser = null;
 
       if (isSignIn) {
+        log('=== SIGN IN START ===');
+        log('Email:', email);
+        log('Current URL:', window.location.href);
+        log('Path:', window.location.pathname);
+        log('Hash:', window.location.hash || '(none)');
+
+        // Check existing session before clearing
+        const { data: existingSession } = await supabase.auth.getSession();
+        log('Existing session found:', !!existingSession.session);
+        if (existingSession.session) {
+          log('Existing session user:', existingSession.session.user?.email);
+          log('Existing session expires_at:', new Date((existingSession.session.expires_at || 0) * 1000).toISOString());
+        }
+
+        // Clear any stale session before signing in
+        log('Step 1: Clearing stale session...');
+        const { error: signOutErr } = await supabase.auth.signOut();
+        if (signOutErr) log('Sign-out error (non-fatal):', signOutErr.message);
+        else log('Step 1 ✓: Stale session cleared');
+
+        // Verify session is actually gone
+        const { data: postSignOutSession } = await supabase.auth.getSession();
+        log('Post sign-out session exists:', !!postSignOutSession.session);
+
+        // Sign in
+        log('Step 2: Calling signInWithPassword...');
+        const signInStart = Date.now();
         const { data, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInErr) throw signInErr;
+        const signInDuration = Date.now() - signInStart;
+        log(`Step 2: signInWithPassword took ${signInDuration}ms`);
+
+        if (signInErr) {
+          log('Step 2 ✗: Sign-in ERROR:', signInErr.name, signInErr.message, signInErr.status);
+          throw signInErr;
+        }
+
         authUser = data.user;
+        log('Step 2 ✓: Sign-in successful');
+        log('  User ID:', authUser?.id);
+        log('  Email:', authUser?.email);
+        log('  Email confirmed at:', authUser?.email_confirmed_at || '(not confirmed)');
+        log('  Session exists:', !!data.session);
+        if (data.session) {
+          log('  Access token (first 20 chars):', data.session.access_token?.substring(0, 20) + '...');
+          log('  Token expires_at:', new Date((data.session.expires_at || 0) * 1000).toISOString());
+          log('  Refresh token exists:', !!data.session.refresh_token);
+        }
+        log('  User metadata:', JSON.stringify(authUser?.user_metadata, null, 2));
+        log('  App metadata:', JSON.stringify(authUser?.app_metadata, null, 2));
       } else {
+        log('=== SIGN UP START ===');
+        log('Email:', email, '| Name:', fullName, '| Role:', role);
+        log('Is invite:', isInvite);
+        if (inviteData) log('Invite data:', JSON.stringify(inviteData, null, 2));
+
         const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
           email,
           password,
@@ -368,25 +421,26 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
             emailRedirectTo: `${window.location.origin}/login`,
           },
         });
-        if (signUpErr) throw signUpErr;
+        if (signUpErr) {
+          log('Sign-up ERROR:', signUpErr.name, signUpErr.message, signUpErr.status);
+          throw signUpErr;
+        }
         authUser = signUpData.user;
+        log('Sign-up result: user_id=', authUser?.id, '| session=', !!signUpData.session);
         if (!authUser?.id) throw new Error(t('auth.errSignupFailed'));
 
         // ── Email confirmation required ──
-        // session === null means Supabase sent a confirmation email (email confirm enabled).
-        // This is the reliable check — email_confirmed_at can be set even before the user
-        // clicks the link in some Supabase configurations.
         if (!signUpData.session) {
-          // Still sync profile so data is ready when they confirm
+          log('Email confirmation required — syncing profile...');
           try {
             await supabase.from('profiles').upsert({
               id: authUser.id,
               full_name: fullName,
-              role, // From invite or default 'admin'
+              role,
               position: inviteData?.position || 'Admin',
               legal_consent: false,
             }, { onConflict: 'id' });
-            // Only create company_settings for direct sign-ups (admins), not invited staff
+            log('Profile synced ✓');
             if (!inviteData) {
               await supabase.from('company_settings').upsert({
                 user_id: authUser.id,
@@ -394,26 +448,57 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
                 company_name: 'My Organization',
                 audit_cycle: 'Monthly',
               }, { onConflict: 'user_id' });
+              log('Company settings created ✓');
             }
           } catch (syncErr: any) {
+            log('Profile sync warning:', syncErr.message);
             console.warn('Profile sync warning:', syncErr.message);
           }
-          setSuccessMsg('confirmation_sent'); // triggers the check-email screen
+          setSuccessMsg('confirmation_sent');
+          log('=== SIGN UP END (awaiting email confirmation) ===');
           return;
         }
+        log('Sign-up complete with session ✓');
       }
 
-      if (!authUser) throw new Error(t('auth.errAuthFailed'));
+      if (!authUser) {
+        log('ERROR: authUser is null after auth flow');
+        throw new Error(t('auth.errAuthFailed'));
+      }
 
       const dynamicFullName = fullName || authUser.user_metadata?.full_name || 'Admin User';
+      log('Step 3: Building user profile...');
+      log('  Full name:', dynamicFullName);
+
       // ── Super Admin override (from DB/personnel, not hardcoded) ──
       const metaRole = (authUser.user_metadata?.role || '').toLowerCase();
-      const isSuperAdmin = metaRole === 'super_admin';
+      log('  Metadata role:', metaRole);
+
+      let isSuperAdmin = metaRole === 'super_admin';
+      log('  Is super_admin (from metadata)?', isSuperAdmin);
+
+      // Check personnel table for super_admin role
+      if (!isSuperAdmin && (metaRole === 'admin' || metaRole === 'supervisor' || metaRole === '')) {
+        log('  Checking personnel table for super_admin elevation...');
+        const { data: personnelRow, error: personnelErr } = await supabase
+          .from('personnel')
+          .select('role')
+          .ilike('email', authUser.email?.toLowerCase() || '')
+          .maybeSingle();
+        if (personnelErr) log('  Personnel query error:', personnelErr.message);
+        log('  Personnel row:', personnelRow ? JSON.stringify(personnelRow) : '(none)');
+        isSuperAdmin = personnelRow?.role?.toLowerCase().includes('super_admin') ?? false;
+        log('  Is super_admin (from personnel)?', isSuperAdmin);
+      }
+
       const finalRole = isSuperAdmin ? 'super_admin' : (authUser.user_metadata?.role || inviteData?.role || 'admin');
       const finalPosition = isSuperAdmin ? 'Super Admin' : (authUser.user_metadata?.position || inviteData?.position || 'Admin');
       const finalOutletCode = authUser.user_metadata?.outlet_code || inviteData?.outletCode || 'ROY02';
+      log('  Final role:', finalRole);
+      log('  Final position:', finalPosition);
+      log('  Final outlet code:', finalOutletCode);
 
-      onLogin({
+      const userProfile = {
         id: authUser.id,
         fullName: dynamicFullName,
         email: authUser.email || email,
@@ -421,15 +506,27 @@ const AuthPage: React.FC<AuthPageProps> = ({ currentView, onNavigate, onLogin })
         position: finalPosition as any,
         outletCode: finalOutletCode,
         legal_consent: authUser.user_metadata?.legal_consent === true,
-      });
+      };
+      log('Step 3 ✓: User profile built:', JSON.stringify(userProfile, null, 2));
+
+      log('Step 4: Calling onLogin callback...');
+      onLogin(userProfile);
+      log('Step 4 ✓: onLogin callback fired');
+      log('=== SIGN IN END (success) ===');
 
     } catch (err: any) {
+      console.error('%c[AUTH LOGIN] ERROR', 'color: #FF3131; font-weight: bold;', err);
+      console.error('  Error name:', err.name);
+      console.error('  Error message:', err.message);
+      console.error('  Error status:', err.status);
+      console.error('  Error stack:', err.stack);
       let msg = err.message || 'Authentication failed.';
       if (msg.includes('Email not confirmed'))    msg = t('auth.errEmailNotConfirmed');
       if (msg.includes('Invalid login credentials')) msg = t('auth.errInvalidCredentials');
       if (msg.includes('rate limit'))             msg = t('auth.errTooManyRequests');
       setError(msg);
     } finally {
+      log('Finally block: setting isLoading=false');
       setIsLoading(false);
     }
   };
