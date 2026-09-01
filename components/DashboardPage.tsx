@@ -1175,9 +1175,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             email: p.email,
             role: p.role,
             position: p.position,
-            // personnel.outlet_id is a UUID — find the matching outlet code from dbOutlets
-            // null outlet_id means GM-level access to all outlets
-            outletCode: p.outlet_id ? (dbOutlets.find(o => o.id === p.outlet_id)?.code || 'ALL') : 'ALL',
+            // Use outlet_ids array (TEXT[] of outlet codes) if available; fall back to outlet_id
+            // Multiple outlet_ids means GM-level access to all outlets
+            outletCode: (p.outlet_ids && p.outlet_ids.length > 1)
+              ? 'ALL'
+              : (p.outlet_ids && p.outlet_ids.length === 1)
+                ? p.outlet_ids[0]
+                : p.outlet_id
+                  ? (dbOutlets.find(o => o.id === p.outlet_id)?.code || 'ALL')
+                  : 'ALL',
             permissions: Array.isArray(p.permissions) ? p.permissions : (p.permissions ? String(p.permissions).split(',').map((s: string) => s.trim()).filter(Boolean) : []),
             // Password stored as pincode in DB
             password: p.pincode || '',
@@ -1747,10 +1753,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     if (enrollId && enrollId.includes('-')) {
       dbPayload.id = enrollId;
     }
-    // personnel table uses outlet_id (UUID), not outlet_code
-    // 'ALL' means GM-level access across all outlets — leave outlet_id null
-    if (enrollOutlet !== 'ALL' && mappedOutlet && mappedOutlet.id) {
+    // personnel table uses outlet_id (UUID) and outlet_ids (TEXT[]) for multi-outlet access
+    // 'ALL' means GM-level access across all outlets — populate outlet_ids with all outlet codes
+    if (enrollOutlet === 'ALL') {
+       const allOutletCodes = outlets.filter(o => o.code).map(o => o.code);
+       dbPayload.outlet_ids = allOutletCodes;
+       dbPayload.outlet_id = null;
+    } else if (mappedOutlet && mappedOutlet.id) {
        dbPayload.outlet_id = mappedOutlet.id;
+       dbPayload.outlet_ids = [enrollOutlet];
     }
 
     // Trigger Strict Insert (as requested)
@@ -2170,8 +2181,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           position: enrollPosition,
           permissions: enrollPermissions,
         };
-        // 'ALL' = GM-level access, leave outlet_id null
-        if (enrollOutlet !== 'ALL' && mappedOutlet?.id) dbPayload.outlet_id = mappedOutlet.id;
+        // 'ALL' = GM-level access, populate outlet_ids with all outlet codes
+        if (enrollOutlet === 'ALL') {
+          dbPayload.outlet_id = null;
+          dbPayload.outlet_ids = outlets.filter(o => o.code).map(o => o.code);
+        } else if (mappedOutlet?.id) {
+          dbPayload.outlet_id = mappedOutlet.id;
+          dbPayload.outlet_ids = [enrollOutlet];
+        }
 
         const { error } = await supabase.from('personnel').upsert(dbPayload);
         if (error) throw error;
