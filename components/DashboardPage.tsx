@@ -1175,8 +1175,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             email: p.email,
             role: p.role,
             position: p.position,
-            // personnel.outlet_id is a UUID — find the matching outlet code from dbOutlets
-            outletCode: dbOutlets.find(o => o.id === p.outlet_id)?.code || '',
+            // Use outlet_ids array (TEXT[] of outlet codes) if available; fall back to outlet_id
+            // Multiple outlet_ids means GM-level access to all outlets
+            outletCode: (p.outlet_ids && p.outlet_ids.length > 1)
+              ? 'ALL'
+              : (p.outlet_ids && p.outlet_ids.length === 1)
+                ? p.outlet_ids[0]
+                : p.outlet_id
+                  ? (dbOutlets.find(o => o.id === p.outlet_id)?.code || 'ALL')
+                  : 'ALL',
             permissions: Array.isArray(p.permissions) ? p.permissions : (p.permissions ? String(p.permissions).split(',').map((s: string) => s.trim()).filter(Boolean) : []),
             // Password stored as pincode in DB
             password: p.pincode || '',
@@ -1746,10 +1753,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     if (enrollId && enrollId.includes('-')) {
       dbPayload.id = enrollId;
     }
-    // personnel table uses outlet_id (UUID), not outlet_code
-    // 'ALL' means GM-level access across all outlets — leave outlet_id null
-    if (enrollOutlet !== 'ALL' && mappedOutlet && mappedOutlet.id) {
+    // personnel table uses outlet_id (UUID) and outlet_ids (TEXT[]) for multi-outlet access
+    // 'ALL' means GM-level access across all outlets — populate outlet_ids with all outlet codes
+    if (enrollOutlet === 'ALL') {
+       const allOutletCodes = outlets.filter(o => o.code).map(o => o.code);
+       dbPayload.outlet_ids = allOutletCodes;
+       dbPayload.outlet_id = null;
+    } else if (mappedOutlet && mappedOutlet.id) {
        dbPayload.outlet_id = mappedOutlet.id;
+       dbPayload.outlet_ids = [enrollOutlet];
     }
 
     // Trigger Strict Insert (as requested)
@@ -2169,8 +2181,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           position: enrollPosition,
           permissions: enrollPermissions,
         };
-        // 'ALL' = GM-level access, leave outlet_id null
-        if (enrollOutlet !== 'ALL' && mappedOutlet?.id) dbPayload.outlet_id = mappedOutlet.id;
+        // 'ALL' = GM-level access, populate outlet_ids with all outlet codes
+        if (enrollOutlet === 'ALL') {
+          dbPayload.outlet_id = null;
+          dbPayload.outlet_ids = outlets.filter(o => o.code).map(o => o.code);
+        } else if (mappedOutlet?.id) {
+          dbPayload.outlet_id = mappedOutlet.id;
+          dbPayload.outlet_ids = [enrollOutlet];
+        }
 
         const { error } = await supabase.from('personnel').upsert(dbPayload);
         if (error) throw error;
@@ -4328,7 +4346,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       </div>
 
                       {/* Management Group Table */}
-                      {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').length > 0 && (
+                      {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm' || u.position?.toLowerCase() === 'gm').length > 0 && (
                         <div className="px-6">
                           <div className="flex items-center gap-3 mb-3">
                             <UserCheck size={14} className="text-brand-gold" />
@@ -4346,7 +4364,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 </tr>
                               </thead>
                               <tbody>
-                                {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm').map((u) => {
+                                {users.filter(u => u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'gm' || u.position?.toLowerCase() === 'gm').map((u) => {
                                   const initials = u.fullName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
                                   return (
                                   <tr key={u.id} className="border-b border-brand-gold/10 last:border-0 hover:bg-brand-gold/5 transition-colors">
@@ -4389,7 +4407,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       {/* Outlet Tables */}
                       {outlets.map(outlet => {
-                        const members = users.filter(u => u.outletCode === outlet.code && u.role.toLowerCase() !== 'admin' && u.role.toLowerCase() !== 'gm');
+                        const members = users.filter(u => u.outletCode === outlet.code && u.role.toLowerCase() !== 'admin' && u.role.toLowerCase() !== 'gm' && u.position?.toLowerCase() !== 'gm');
                         if (members.length === 0) return null;
 
                         return (
