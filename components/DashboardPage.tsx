@@ -446,8 +446,9 @@ interface CustomSelectProps {
   disabled?: boolean;
   placeholder?: string;
   emptyMessage?: string;
+  checkedValues?: string[];
 }
-const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, disabled, placeholder, emptyMessage }) => {
+const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, disabled, placeholder, emptyMessage, checkedValues }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -481,22 +482,25 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
               <li className="px-4 py-3 text-xs text-white/30 italic text-center select-none">
                 {emptyMessage ?? 'No options available'}
               </li>
-            ) : options.map(opt => (
+            ) : options.map(opt => {
+              const isSelected = opt === value || (checkedValues && checkedValues.includes(opt));
+              return (
               <li key={opt}>
                 <button
                   type="button"
                   onClick={() => { onChange(opt); setOpen(false); }}
                   className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2
-                    ${opt === value
+                    ${isSelected
                       ? 'text-brand-gold bg-brand-gold/10 font-semibold'
                       : 'text-white/70 hover:text-white hover:bg-brand-dark/60'}`}
                 >
-                  {opt === value && <Check size={12} className="text-brand-gold shrink-0" />}
-                  {opt !== value && <span className="w-3 shrink-0" />}
+                  {isSelected && <Check size={12} className="text-brand-gold shrink-0" />}
+                  {!isSelected && <span className="w-3 shrink-0" />}
                   {opt}
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       )}
@@ -1713,7 +1717,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     // Hash the pincode before storing — never save plaintext
     const hashedPin = await sha256(password);
 
-    const link = `${window.location.origin}/access/${enrollOutlet}?token=${accessCode.toLowerCase()}`;
+    const link = `${window.location.origin}/access/${enrollOutlet === 'ALL' ? (outlets[0]?.code || 'all') : enrollOutlet}?token=${accessCode.toLowerCase()}`;
     const upsertId = enrollId || Date.now().toString();
 
     // 🛡️ Auth Sync Gate (Phase 3 Repair)
@@ -1743,7 +1747,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       dbPayload.id = enrollId;
     }
     // personnel table uses outlet_id (UUID), not outlet_code
-    if (mappedOutlet && mappedOutlet.id) {
+    // 'ALL' means GM-level access across all outlets — leave outlet_id null
+    if (enrollOutlet !== 'ALL' && mappedOutlet && mappedOutlet.id) {
        dbPayload.outlet_id = mappedOutlet.id;
     }
 
@@ -2164,7 +2169,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           position: enrollPosition,
           permissions: enrollPermissions,
         };
-        if (mappedOutlet?.id) dbPayload.outlet_id = mappedOutlet.id;
+        // 'ALL' = GM-level access, leave outlet_id null
+        if (enrollOutlet !== 'ALL' && mappedOutlet?.id) dbPayload.outlet_id = mappedOutlet.id;
 
         const { error } = await supabase.from('personnel').upsert(dbPayload);
         if (error) throw error;
@@ -4212,9 +4218,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="space-y-1.5">
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.primaryOutlet')}</label>
                               <CustomSelect
-                                value={enrollOutlet}
-                                options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
-                                onChange={v => setEnrollOutlet(outlets.find(o => `${o.name} (${o.code})` === v)?.code || v)}
+                                value={enrollOutlet === 'ALL' ? `${t('dashboard.allOutlets')} (ALL)` : enrollOutlet ? (outlets.find(o => o.code === enrollOutlet) ? `${outlets.find(o => o.code === enrollOutlet)!.name} (${enrollOutlet})` : enrollOutlet) : ''}
+                                options={[`${t('dashboard.allOutlets')} (ALL)`, ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
+                                checkedValues={enrollOutlet === 'ALL' ? outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`) : undefined}
+                                onChange={v => {
+                                  if (v === `${t('dashboard.allOutlets')} (ALL)`) {
+                                    setEnrollOutlet('ALL');
+                                  } else {
+                                    setEnrollOutlet(outlets.find(o => `${o.name} (${o.code})` === v)?.code || v);
+                                  }
+                                }}
                                 placeholder={t('dashboard.selectOutlet')}
                                 emptyMessage={t('dashboard.noOutletsMessage')}
                               />
@@ -4329,8 +4342,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPosition')}</th>
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thRole')}</th>
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thEmail')}</th>
-                                  {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPin')}</th>}
-                                  {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thAccessLink')}</th>}
                                   {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold text-right">{t('dashboard.thActions')}</th>}
                                 </tr>
                               </thead>
@@ -4356,34 +4367,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <td className="px-4 py-3">
                                       <span className="text-[11px] text-white/60 font-medium truncate max-w-[180px] block">{u.email}</span>
                                     </td>
-                                    {isHookAdmin && (
-                                    <td className="px-4 py-3">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider">{visiblePasswords.has(u.id) ? u.password : '••••••••'}</span>
-                                        <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold transition-colors">
-                                          {visiblePasswords.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
-                                        </button>
-                                        {u.password && (
-                                          <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast(t('dashboard.pinCopied'), 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold transition-colors">
-                                            <Copy size={12} />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </td>
-                                    )}
-                                    {isHookAdmin && (
-                                    <td className="px-4 py-3">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}` : '••••••••••••••••'}</span>
-                                        <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
-                                          {visibleLinks.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
-                                        </button>
-                                        <button onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}`); showToast('Link copied.', 'success'); }} className="text-brand-eco/50 hover:text-brand-eco transition-colors" title="Copy link">
-                                          <Copy size={11} />
-                                        </button>
-                                      </div>
-                                    </td>
-                                    )}
                                     {isHookAdmin && (
                                     <td className="px-4 py-3">
                                       <div className="flex gap-2 justify-end">

@@ -46,6 +46,10 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
     const outletName = context?.company?.outlet || t('mila.outletFallback');
     const region = context?.company?.region || '';
     const city = context?.company?.city || '';
+    const userRole = (context?.user?.role || '').toLowerCase();
+    // For basic users, greet with their outlet name instead of company name
+    const isBasicUser = userRole === 'basic';
+    const greetingLocation = isBasicUser ? outletName : hotelName;
     const userProfile: UserProfile = context?.userProfile || {
         id: '', fullName: userFirstName, email: '', role: 'admin', position: 'GM', outletCode: ''
     };
@@ -70,12 +74,12 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
     // Initialize Greeting on Mount
     useEffect(() => {
         const greeting = getGreeting();
-        const initialText = `${greeting}, ${userFirstName}. I'm Mila, your ESG strategist at ${hotelName}. I can see you're viewing ${outletName}${region ? ` in ${region}` : ''}.\n\nI can now **take actions** for you — log waste entries, query your data, generate reports, search the knowledge base, and more. What would you like to do?`;
+        const initialText = `${greeting}, ${userFirstName}. I'm Mila, your ESG strategist at ${greetingLocation}. I can see you're viewing ${outletName}${region ? ` in ${region}` : ''}.\n\nI can now **take actions** for you — log waste entries, query your data, generate reports, search the knowledge base, and more. What would you like to do?`;
 
         setMessages([
             { id: '1', sender: 'mila', text: initialText, timestamp: new Date() }
         ]);
-    }, [userFirstName, hotelName, outletName, region]);
+    }, [userFirstName, greetingLocation, outletName, region]);
 
     // Auto-scroll to bottom
     useEffect(() => {

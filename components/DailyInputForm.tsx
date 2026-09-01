@@ -84,6 +84,7 @@ interface WasteEntry {
   unit: 'kg' | 'lbs' | 'L';
   timestamp: string;
   date?: string;
+  createdAt?: string; // ISO timestamp for edit-lock checks
   imageUrl?: string;
   images?: string[];
   staffName?: string;
@@ -97,6 +98,7 @@ interface ResourceEntry {
   amount: number;
   timestamp: string;
   date?: string;
+  createdAt?: string; // ISO timestamp for edit-lock checks
 }
 
 // 1. FOOD WASTE CATEGORIES → 2. SUB-CATEGORIES / FOOD GROUP → 3. PRODUCT SUGGESTIONS
@@ -399,6 +401,18 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
     fetchCompanyAndOutlet();
   }, [companyName, outletName, user.outletCode]);
 
+  // ── Same-day edit lock for basic users ─────────────────────────────────────
+  // Basic users can only edit/delete entries submitted today.
+  // Supervisors/admins can edit any entry.
+  const canEditEntry = (createdAt?: string): boolean => {
+    const role = (user.role || '').toLowerCase();
+    if (role === 'admin' || role === 'super_admin' || role === 'supervisor') return true;
+    if (!createdAt) return true; // no timestamp = just created locally, allow edit
+    const entryDate = new Date(createdAt);
+    const today = new Date();
+    return entryDate.toDateString() === today.toDateString();
+  };
+
   // Always sourced from Supabase — never localStorage
   const [wasteEntries, setWasteEntries] = useState<WasteEntry[]>([]);
   const [resourceEntries, setResourceEntries] = useState<ResourceEntry[]>([]);
@@ -575,6 +589,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
             unit: 'kg' as const,
             timestamp: fmtTime(log.created_at),
             date: fmtDate(log.created_at),
+            createdAt: log.created_at,
             imageUrl: log.image_url || undefined,
             images: log.images ? (typeof log.images === 'string' ? JSON.parse(log.images) : log.images) : undefined,
             outletCode: user.outletCode,
@@ -597,10 +612,10 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
             const water = parseFloat(log.water_liters) || 0;
             const energy = parseFloat(log.energy_kwh) || 0;
             if (water > 0) {
-              dbResourceEntries.push({ id: `${log.id}-water`, dbId: log.id, type: 'water', amount: water, timestamp: fmtRTime(log.created_at), date: fmtRDate(log.created_at) });
+              dbResourceEntries.push({ id: `${log.id}-water`, dbId: log.id, type: 'water', amount: water, timestamp: fmtRTime(log.created_at), date: fmtRDate(log.created_at), createdAt: log.created_at });
             }
             if (energy > 0) {
-              dbResourceEntries.push({ id: `${log.id}-energy`, dbId: log.id, type: 'energy', amount: energy, timestamp: fmtRTime(log.created_at), date: fmtRDate(log.created_at) });
+              dbResourceEntries.push({ id: `${log.id}-energy`, dbId: log.id, type: 'energy', amount: energy, timestamp: fmtRTime(log.created_at), date: fmtRDate(log.created_at), createdAt: log.created_at });
             }
           });
           if (dbResourceEntries.length > 0) {
@@ -649,7 +664,13 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
   const BENCHMARKS = { waste: 100, water: 5000, energy: 200 };
 
+  // Deviation alert only for supervisors/admins — basic users don't see benchmark warnings
+  const role = (user.role || '').toLowerCase();
   useEffect(() => {
+    if (role === 'basic') {
+      setShowAlert(null);
+      return;
+    }
     if (totals.waste > BENCHMARKS.waste) {
       const deviation = totals.waste - BENCHMARKS.waste;
       const deviationCost = (deviation * 7.50) + (deviation * 1.25);
@@ -660,7 +681,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
     } else {
       setShowAlert(null);
     }
-  }, [totals, unit]);
+  }, [totals, unit, role]);
 
   const handleTare = () => {
     setForm({
@@ -744,6 +765,13 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
       // Use the finalImageUrls (uploaded to Supabase Storage)
       const editingEntry = editingId ? wasteEntries.find(e => e.id === editingId) : null;
+
+      // Guard: basic users cannot edit past-day entries
+      if (editingEntry && !canEditEntry(editingEntry.createdAt)) {
+        setShowAlert({ msg: t('dailyInput.pastEntryLocked'), color: '#FF3131' });
+        setTimeout(() => setShowAlert(null), 3000);
+        return;
+      }
 
       if (editingEntry && editingEntry.dbId) {
         // ── UPDATE existing record ──
@@ -871,6 +899,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
         unit,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         date: new Date().toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }),
+        createdAt: new Date().toISOString(),
         staffName: user.fullName,
         outletCode: user.outletCode,
         images: form.images,
@@ -930,6 +959,13 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
       }
 
       const editingResEntry = editingResourceId ? resourceEntries.find(e => e.id === editingResourceId) : null;
+
+      // Guard: basic users cannot edit past-day entries
+      if (editingResEntry && !canEditEntry(editingResEntry.createdAt)) {
+        setShowAlert({ msg: t('dailyInput.pastEntryLocked'), color: '#FF3131' });
+        setTimeout(() => setShowAlert(null), 3000);
+        return;
+      }
 
       if (editingResEntry && editingResEntry.dbId) {
         // ── UPDATE existing record ──
@@ -1044,6 +1080,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
         type, amount: parseFloat(val),
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         date: new Date().toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }),
+        createdAt: new Date().toISOString(),
       };
       setResourceEntries([newEntry, ...resourceEntries]);
       setResourcePage(0);
@@ -1551,7 +1588,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
               <CheckCircle2 size={16} className="text-brand-eco" />
             </div>
             <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('dailyInput.foodWasteLogTitle')}</h3>
-            <span className="ml-auto text-[10px] font-bold text-white/30 uppercase tracking-widest">{wasteEntries.length} {wasteEntries.length !== 1 ? 'Entries' : 'Entry'}</span>
+            <span className="ml-auto text-[10px] font-bold text-white/30 uppercase tracking-widest">{wasteEntries.length} {wasteEntries.length !== 1 ? t('dailyInput.entryPlural') : t('dailyInput.entrySingular')}</span>
           </div>
 
           {/* Column headers */}
@@ -1607,14 +1644,19 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
                 {/* Col 4: Timestamp */}
                 <div className="text-right">
-                  <div className="text-[10px] font-bold text-white/50">{entry.date || new Date().toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                  <div className="text-[10px] font-bold text-white/30">{entry.timestamp}</div>
+                  <div className="text-[10px] font-bold text-white/50">{entry.createdAt ? new Date(entry.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : (entry.date || '—')}</div>
                 </div>
 
                 {/* Col 5: Actions */}
                 <div className="flex items-center justify-center gap-1.5">
-                  <button onClick={() => handleEditWaste(entry)} className="w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-center hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all"><Edit2 size={13} className="text-brand-gold" /></button>
-                  <button onClick={() => deleteWaste(entry.id)} className="w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all"><Trash2 size={13} className="text-brand-alert" /></button>
+                  {canEditEntry(entry.createdAt) ? (
+                    <>
+                      <button onClick={() => handleEditWaste(entry)} className="w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-center hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all"><Edit2 size={13} className="text-brand-gold" /></button>
+                      <button onClick={() => deleteWaste(entry.id)} className="w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all"><Trash2 size={13} className="text-brand-alert" /></button>
+                    </>
+                  ) : (
+                    <span className="text-[9px] text-white/20 uppercase tracking-widest font-bold px-2">{t('dailyInput.locked')}</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -1655,7 +1697,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
               <TrendingDown size={16} className="text-brand-eco" />
             </div>
             <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('dailyInput.resourceFlowsTitle')}</h3>
-            <span className="ml-auto text-[10px] font-bold text-white/30 uppercase tracking-widest">{resourceEntries.length} {resourceEntries.length !== 1 ? 'Readings' : 'Reading'}</span>
+            <span className="ml-auto text-[10px] font-bold text-white/30 uppercase tracking-widest">{resourceEntries.length} {resourceEntries.length !== 1 ? t('dailyInput.readingPlural') : t('dailyInput.readingSingular')}</span>
           </div>
 
           {/* Column headers */}
@@ -1687,18 +1729,23 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
                 {/* Col 3: Log Time */}
                 <div className="text-right">
-                  <div className="text-[10px] font-bold text-white/50">{entry.date || new Date().toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                  <div className="text-[10px] font-bold text-white/30">{entry.timestamp}</div>
+                  <div className="text-[10px] font-bold text-white/50">{entry.createdAt ? new Date(entry.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : (entry.date || '—')}</div>
                 </div>
 
                 {/* Col 4: Actions */}
                 <div className="flex items-center justify-center gap-1.5">
-                  <button onClick={() => {
-                    setEditingResourceId(entry.id);
-                    setForm(prev => ({ ...prev, [entry.type]: entry.amount.toString() }));
-                    setTimeout(() => resourceSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-                  }} className="w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-center hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all"><Edit2 size={13} className="text-brand-gold" /></button>
-                  <button onClick={() => deleteResource(entry.id)} className="w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all"><Trash2 size={13} className="text-brand-alert" /></button>
+                  {canEditEntry(entry.createdAt) ? (
+                    <>
+                      <button onClick={() => {
+                        setEditingResourceId(entry.id);
+                        setForm(prev => ({ ...prev, [entry.type]: entry.amount.toString() }));
+                        setTimeout(() => resourceSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+                      }} className="w-8 h-8 rounded-lg bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-center hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all"><Edit2 size={13} className="text-brand-gold" /></button>
+                      <button onClick={() => deleteResource(entry.id)} className="w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all"><Trash2 size={13} className="text-brand-alert" /></button>
+                    </>
+                  ) : (
+                    <span className="text-[9px] text-white/20 uppercase tracking-widest font-bold px-2">{t('dailyInput.locked')}</span>
+                  )}
                 </div>
               </div>
             ))}
