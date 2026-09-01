@@ -664,7 +664,13 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
   const BENCHMARKS = { waste: 100, water: 5000, energy: 200 };
 
+  // Deviation alert only for supervisors/admins — basic users don't see benchmark warnings
+  const role = (user.role || '').toLowerCase();
   useEffect(() => {
+    if (role === 'basic') {
+      setShowAlert(null);
+      return;
+    }
     if (totals.waste > BENCHMARKS.waste) {
       const deviation = totals.waste - BENCHMARKS.waste;
       const deviationCost = (deviation * 7.50) + (deviation * 1.25);
@@ -675,7 +681,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
     } else {
       setShowAlert(null);
     }
-  }, [totals, unit]);
+  }, [totals, unit, role]);
 
   const handleTare = () => {
     setForm({
