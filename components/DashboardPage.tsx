@@ -4825,7 +4825,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <span className={`text-[10px] font-black uppercase tracking-widest ${params.alertsActive ? 'text-brand-gold' : 'text-white/40'}`}>{params.alertsActive ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
-                          <button onClick={() => setParams({ ...params, alertsActive: !params.alertsActive })}>
+                          <button onClick={() => setParams({ ...params, alertsActive: !params.alertsActive })} disabled={!canEdit} className={!canEdit ? 'cursor-not-allowed opacity-60' : ''}>
                             {params.alertsActive ? <ToggleRight className="text-brand-eco" size={36} /> : <ToggleLeft className="text-gray-600" size={36} />}
                           </button>
                         </div>
@@ -4841,7 +4841,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <span className={`text-[10px] font-black uppercase tracking-widest ${params.milaLogic ? 'text-brand-gold' : 'text-white/40'}`}>{params.milaLogic ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
-                          <button onClick={() => setParams({ ...params, milaLogic: !params.milaLogic })}>
+                          <button onClick={() => setParams({ ...params, milaLogic: !params.milaLogic })} disabled={!canEdit} className={!canEdit ? 'cursor-not-allowed opacity-60' : ''}>
                             {params.milaLogic ? <ToggleRight className="text-brand-eco" size={36} /> : <ToggleLeft className="text-gray-600" size={36} />}
                           </button>
                         </div>
