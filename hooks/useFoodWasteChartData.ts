@@ -20,13 +20,6 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
   const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
   useEffect(() => {
-    const today = new Date().toDateString();
-    const lastDate = localStorage.getItem('ecometricus_waste_last_date');
-    if (lastDate !== today) {
-      localStorage.removeItem('ecometricus_cumulative_waste');
-      localStorage.setItem('ecometricus_waste_last_date', today);
-    }
-
     const handleStorageChange = () => fetchChartData();
     window.addEventListener('ecometricus_waste_updated', handleStorageChange);
 

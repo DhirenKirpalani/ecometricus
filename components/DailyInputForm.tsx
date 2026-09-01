@@ -540,21 +540,24 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
   // ── Hydrate from DB on mount ──────────────────────────────────────────────
   // Supabase is the single source of truth — no localStorage for entries.
+  // Loads current week's data (not just today) so yesterday's entries are visible.
   useEffect(() => {
     const hydrateFromDb = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        // Use current week start (Saturday reset) so yesterday's data is included
+        const { getPlatformSettings, getWeekStartISO } = await import('../lib/platformSettings');
+        const settings = await getPlatformSettings();
+        const weekStartISO = getWeekStartISO(settings.weekly_reset_day);
 
-        // Fetch today's waste entries for this user
+        // Fetch this week's waste entries for this user
         const { data: wasteData } = await supabase
           .from('food_waste_logs')
           .select('*')
           .eq('user_id', session.user.id)
-          .gte('created_at', todayStart.toISOString())
+          .gte('created_at', weekStartISO)
           .eq('is_mock', false);
 
         if (wasteData && wasteData.length > 0) {
@@ -579,13 +582,12 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
           setWasteEntries(dbEntries);
         }
 
-        // Fetch today's resource entries for this user
+        // Fetch this week's resource entries for this user
         const { data: resourceData } = await supabase
           .from('resource_logs')
           .select('*')
           .eq('user_id', session.user.id)
-          .gte('created_at', todayStart.toISOString())
-          .eq('is_mock', false);
+          .gte('created_at', weekStartISO);
 
         if (resourceData && resourceData.length > 0) {
           const fmtRDate = (iso: string) => { try { return new Date(iso).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return iso; } };

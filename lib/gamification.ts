@@ -32,15 +32,52 @@ export async function awardPoints(
       return;
     }
 
+    // ── Daily deduplication: only award each action once per day ──
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const actionKey = action.toLowerCase().replace(/\s+/g, '_');
+
+    const { data: existing } = await supabase
+      .from('gamification_ledger')
+      .select('id')
+      .eq('profile_id', userId)
+      .eq('action_key', actionKey)
+      .gte('created_at', todayStart.toISOString())
+      .maybeSingle();
+
+    if (existing) {
+      console.log(`[Gamification] Already awarded "${action}" today — skipping`);
+      return;
+    }
+
     // Insert with action_key for activity feed
     await supabase.from('gamification_ledger').insert({
       profile_id: userId,
       points_awarded: actionRow.points,
       outlet_id: outletId,
-      action_key: action.toLowerCase().replace(/\s+/g, '_'),
+      action_key: actionKey,
     });
   } catch (err) {
     console.error('[Gamification] awardPoints failed:', err);
+  }
+}
+
+/**
+ * Fetch which quest actions the user has already completed today.
+ * Returns a Set of action_key strings completed since midnight.
+ */
+export async function fetchTodayCompletedActions(userId: string): Promise<Set<string>> {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('gamification_ledger')
+      .select('action_key')
+      .eq('profile_id', userId)
+      .gte('created_at', todayStart.toISOString());
+    return new Set((data || []).map((r: any) => r.action_key).filter(Boolean));
+  } catch {
+    return new Set();
   }
 }
 
