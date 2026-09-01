@@ -1638,8 +1638,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
                 {/* Col 4: Timestamp */}
                 <div className="text-right">
-                  <div className="text-[10px] font-bold text-white/50">{entry.date || new Date().toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                  <div className="text-[10px] font-bold text-white/30">{entry.timestamp}</div>
+                  <div className="text-[10px] font-bold text-white/50">{entry.createdAt ? new Date(entry.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : (entry.date || '—')}</div>
                 </div>
 
                 {/* Col 5: Actions */}
@@ -1724,8 +1723,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
                 {/* Col 3: Log Time */}
                 <div className="text-right">
-                  <div className="text-[10px] font-bold text-white/50">{entry.date || new Date().toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                  <div className="text-[10px] font-bold text-white/30">{entry.timestamp}</div>
+                  <div className="text-[10px] font-bold text-white/50">{entry.createdAt ? new Date(entry.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : (entry.date || '—')}</div>
                 </div>
 
                 {/* Col 4: Actions */}
