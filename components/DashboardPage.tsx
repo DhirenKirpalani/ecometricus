@@ -446,8 +446,9 @@ interface CustomSelectProps {
   disabled?: boolean;
   placeholder?: string;
   emptyMessage?: string;
+  checkedValues?: string[];
 }
-const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, disabled, placeholder, emptyMessage }) => {
+const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, disabled, placeholder, emptyMessage, checkedValues }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -481,22 +482,25 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, d
               <li className="px-4 py-3 text-xs text-white/30 italic text-center select-none">
                 {emptyMessage ?? 'No options available'}
               </li>
-            ) : options.map(opt => (
+            ) : options.map(opt => {
+              const isSelected = opt === value || (checkedValues && checkedValues.includes(opt));
+              return (
               <li key={opt}>
                 <button
                   type="button"
                   onClick={() => { onChange(opt); setOpen(false); }}
                   className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2
-                    ${opt === value
+                    ${isSelected
                       ? 'text-brand-gold bg-brand-gold/10 font-semibold'
                       : 'text-white/70 hover:text-white hover:bg-brand-dark/60'}`}
                 >
-                  {opt === value && <Check size={12} className="text-brand-gold shrink-0" />}
-                  {opt !== value && <span className="w-3 shrink-0" />}
+                  {isSelected && <Check size={12} className="text-brand-gold shrink-0" />}
+                  {!isSelected && <span className="w-3 shrink-0" />}
                   {opt}
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       )}
@@ -4216,6 +4220,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <CustomSelect
                                 value={enrollOutlet === 'ALL' ? `${t('dashboard.allOutlets')} (ALL)` : enrollOutlet ? (outlets.find(o => o.code === enrollOutlet) ? `${outlets.find(o => o.code === enrollOutlet)!.name} (${enrollOutlet})` : enrollOutlet) : ''}
                                 options={[`${t('dashboard.allOutlets')} (ALL)`, ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
+                                checkedValues={enrollOutlet === 'ALL' ? outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`) : undefined}
                                 onChange={v => {
                                   if (v === `${t('dashboard.allOutlets')} (ALL)`) {
                                     setEnrollOutlet('ALL');
