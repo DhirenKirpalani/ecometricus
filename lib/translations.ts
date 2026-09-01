@@ -800,7 +800,7 @@ export const translations: Record<string, TranslationSection> = {
     thActions:               { en: 'Actions', es: 'Acciones' },
     thFlowType:              { en: 'Flow Type', es: 'Tipo de Flujo' },
     thCumulativeConsumption: { en: 'Cumulative Consumption', es: 'Consumo Acumulativo' },
-    thLogTime:               { en: 'Log Time', es: 'Hora de Registro' },
+    thLogTime:               { en: 'Timestamp', es: 'Marca de Tiempo' },
     waterReading:            { en: 'Water Reading', es: 'Lectura de Agua' },
     energyReading:           { en: 'Energy Reading', es: 'Lectura de Energía' },
     milaTitle:               { en: 'Mila Actionable Intelligence', es: 'Inteligencia Accionable Mila' },
