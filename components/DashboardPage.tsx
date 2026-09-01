@@ -4337,8 +4337,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPosition')}</th>
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thRole')}</th>
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thEmail')}</th>
-                                  {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPin')}</th>}
-                                  {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thAccessLink')}</th>}
                                   {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold text-right">{t('dashboard.thActions')}</th>}
                                 </tr>
                               </thead>
@@ -4364,34 +4362,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <td className="px-4 py-3">
                                       <span className="text-[11px] text-white/60 font-medium truncate max-w-[180px] block">{u.email}</span>
                                     </td>
-                                    {isHookAdmin && (
-                                    <td className="px-4 py-3">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider">{visiblePasswords.has(u.id) ? u.password : '••••••••'}</span>
-                                        <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold transition-colors">
-                                          {visiblePasswords.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
-                                        </button>
-                                        {u.password && (
-                                          <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast(t('dashboard.pinCopied'), 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold transition-colors">
-                                            <Copy size={12} />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </td>
-                                    )}
-                                    {isHookAdmin && (
-                                    <td className="px-4 py-3">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">{visibleLinks.has(u.id) ? `access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}` : '••••••••••••••••'}</span>
-                                        <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors">
-                                          {visibleLinks.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
-                                        </button>
-                                        <button onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/access/${u.outletCode}?token=${(u.accessCode || '').toLowerCase()}`); showToast('Link copied.', 'success'); }} className="text-brand-eco/50 hover:text-brand-eco transition-colors" title="Copy link">
-                                          <Copy size={11} />
-                                        </button>
-                                      </div>
-                                    </td>
-                                    )}
                                     {isHookAdmin && (
                                     <td className="px-4 py-3">
                                       <div className="flex gap-2 justify-end">
