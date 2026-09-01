@@ -1713,7 +1713,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     // Hash the pincode before storing — never save plaintext
     const hashedPin = await sha256(password);
 
-    const link = `${window.location.origin}/access/${enrollOutlet}?token=${accessCode.toLowerCase()}`;
+    const link = `${window.location.origin}/access/${enrollOutlet === 'ALL' ? (outlets[0]?.code || 'all') : enrollOutlet}?token=${accessCode.toLowerCase()}`;
     const upsertId = enrollId || Date.now().toString();
 
     // 🛡️ Auth Sync Gate (Phase 3 Repair)
@@ -1743,7 +1743,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       dbPayload.id = enrollId;
     }
     // personnel table uses outlet_id (UUID), not outlet_code
-    if (mappedOutlet && mappedOutlet.id) {
+    // 'ALL' means GM-level access across all outlets — leave outlet_id null
+    if (enrollOutlet !== 'ALL' && mappedOutlet && mappedOutlet.id) {
        dbPayload.outlet_id = mappedOutlet.id;
     }
 
@@ -2164,7 +2165,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           position: enrollPosition,
           permissions: enrollPermissions,
         };
-        if (mappedOutlet?.id) dbPayload.outlet_id = mappedOutlet.id;
+        // 'ALL' = GM-level access, leave outlet_id null
+        if (enrollOutlet !== 'ALL' && mappedOutlet?.id) dbPayload.outlet_id = mappedOutlet.id;
 
         const { error } = await supabase.from('personnel').upsert(dbPayload);
         if (error) throw error;
@@ -4212,9 +4214,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="space-y-1.5">
                               <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.primaryOutlet')}</label>
                               <CustomSelect
-                                value={enrollOutlet}
-                                options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
-                                onChange={v => setEnrollOutlet(outlets.find(o => `${o.name} (${o.code})` === v)?.code || v)}
+                                value={enrollOutlet === 'ALL' ? `${t('dashboard.allOutlets')} (ALL)` : enrollOutlet ? (outlets.find(o => o.code === enrollOutlet) ? `${outlets.find(o => o.code === enrollOutlet)!.name} (${enrollOutlet})` : enrollOutlet) : ''}
+                                options={[`${t('dashboard.allOutlets')} (ALL)`, ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
+                                onChange={v => {
+                                  if (v === `${t('dashboard.allOutlets')} (ALL)`) {
+                                    setEnrollOutlet('ALL');
+                                  } else {
+                                    setEnrollOutlet(outlets.find(o => `${o.name} (${o.code})` === v)?.code || v);
+                                  }
+                                }}
                                 placeholder={t('dashboard.selectOutlet')}
                                 emptyMessage={t('dashboard.noOutletsMessage')}
                               />
