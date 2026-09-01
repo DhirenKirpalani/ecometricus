@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, User, Loader2, Minimize2, Maximize2, Lightbulb, Wrench, CheckCircle2, AlertCircle, Bell, TrendingDown, AlertTriangle, Info } from 'lucide-react';
+import { MessageSquare, X, Send, User, Loader2, Minimize2, Maximize2, Lightbulb, Wrench, CheckCircle2, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { retrieveContext } from '../lib/mila-rag';
 import { getToolsForRole, executeTool, type ToolCall, type ToolResult, type ToolExecutionContext } from '../lib/mila-tools';
@@ -10,16 +10,6 @@ import type { UserProfile } from '../types';
 
 interface MilaWidgetProps {
     context: any;
-}
-
-interface Insight {
-    id: string;
-    severity: 'critical' | 'warning' | 'info';
-    category: string;
-    title: string;
-    description: string;
-    recommendation?: string;
-    created_at: string;
 }
 
 interface Message {
@@ -37,8 +27,6 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
     const { t } = useI18n();
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
-    const [proactiveInsights, setProactiveInsights] = useState<Insight[]>([]);
-    const [showInsightsPanel, setShowInsightsPanel] = useState(false);
 
     // Extract user name and hotel info from context
     const userFirstName = context?.user?.firstName || context?.user?.name?.split(' ')[0] || t('mila.greetingFallback');
@@ -86,151 +74,6 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isOpen]);
 
-    // Generate dynamic insights from live dashboard data + fetch stored insights
-    useEffect(() => {
-        const fetchInsights = async () => {
-            try {
-                // 1. Fetch stored AI-generated insights from database
-                const { data: { session } } = await supabase.auth.getSession();
-                let storedInsights: Insight[] = [];
-                if (session) {
-                    const { data, error } = await supabase
-                        .from('mila_insights')
-                        .select('*')
-                        .eq('user_id', session.user.id)
-                        .eq('is_read', false)
-                        .order('created_at', { ascending: false })
-                        .limit(10);
-                    if (!error && data) {
-                        storedInsights = data as Insight[];
-                    }
-                }
-
-                // 2. Generate dynamic insights from live dashboard context
-                const dynamicInsights: Insight[] = [];
-                const ctx = context;
-                const metrics = ctx?.metrics;
-                const benchmarks = ctx?.benchmarks;
-                const financials = metrics?.financials;
-                const activeAlerts = ctx?.activeAlerts;
-
-                // Waste threshold alert
-                if (metrics?.wasteVolume && benchmarks?.waste && metrics.wasteVolume > benchmarks.waste) {
-                    const overage = metrics.wasteVolume - benchmarks.waste;
-                    const pct = Math.round((overage / benchmarks.waste) * 100);
-                    dynamicInsights.push({
-                        id: `dyn-waste-${Date.now()}`,
-                        severity: pct > 20 ? 'critical' : 'warning',
-                        category: 'Food Waste',
-                        title: `Waste volume ${pct}% over target`,
-                        description: `Current waste: ${Math.round(metrics.wasteVolume)}kg vs target ${benchmarks.waste}kg. Excess of ${Math.round(overage)}kg generating ~${Math.round(overage * 2.85)}kg CO₂e.`,
-                        recommendation: `Review prep processes and portion sizes. Focus on overproduction and spoilage categories.`,
-                        created_at: new Date().toISOString(),
-                    });
-                }
-
-                // Carbon lifecycle alert
-                if (financials?.carbonImpact && financials?.isDeviating) {
-                    dynamicInsights.push({
-                        id: `dyn-carbon-${Date.now()}`,
-                        severity: 'critical',
-                        category: 'Carbon',
-                        title: 'Carbon lifecycle deviation detected',
-                        description: `Total carbon impact: ${financials.carbonImpact.toFixed(1)}kg CO₂e. This exceeds the sustainable threshold for your operation.`,
-                        recommendation: `Prioritize waste reduction — every 1kg waste reduced saves 2.85kg CO₂e. Check energy usage patterns.`,
-                        created_at: new Date().toISOString(),
-                    });
-                }
-
-                // Financial impact alert
-                if (financials?.totalFinancialLoss && financials?.totalFinancialLoss > 500) {
-                    dynamicInsights.push({
-                        id: `dyn-financial-${Date.now()}`,
-                        severity: 'warning',
-                        category: 'Financial',
-                        title: `Financial loss at $${financials.totalFinancialLoss.toFixed(2)}`,
-                        description: `Current waste-related financial impact exceeds $500. Primary drivers: food cost ($7.50/kg) + logistics ($1.25/kg).`,
-                        recommendation: `Target high-waste categories first. A 10% waste reduction saves ~$${Math.round(financials.totalFinancialLoss * 0.10)}/week.`,
-                        created_at: new Date().toISOString(),
-                    });
-                }
-
-                // Water usage alert (if available in context)
-                if (metrics?.waterVolume && benchmarks?.water && metrics.waterVolume > benchmarks.water) {
-                    const overage = metrics.waterVolume - benchmarks.water;
-                    const pct = Math.round((overage / benchmarks.water) * 100);
-                    dynamicInsights.push({
-                        id: `dyn-water-${Date.now()}`,
-                        severity: pct > 30 ? 'critical' : 'warning',
-                        category: 'Water',
-                        title: `Water usage ${pct}% over target`,
-                        description: `Current: ${Math.round(metrics.waterVolume)}L vs target ${benchmarks.water}L. Excess consumption of ${Math.round(overage)}L.`,
-                        recommendation: `Check for leaks, optimize dishwashing schedules, and review irrigation if applicable.`,
-                        created_at: new Date().toISOString(),
-                    });
-                }
-
-                // Energy usage alert (if available in context)
-                if (metrics?.energyVolume && benchmarks?.energy && metrics.energyVolume > benchmarks.energy) {
-                    const overage = metrics.energyVolume - benchmarks.energy;
-                    const pct = Math.round((overage / benchmarks.energy) * 100);
-                    dynamicInsights.push({
-                        id: `dyn-energy-${Date.now()}`,
-                        severity: pct > 30 ? 'critical' : 'warning',
-                        category: 'Energy',
-                        title: `Energy usage ${pct}% over target`,
-                        description: `Current: ${Math.round(metrics.energyVolume)}kWh vs target ${benchmarks.energy}kWh. Excess of ${Math.round(overage)}kWh.`,
-                        recommendation: `Audit HVAC scheduling, switch to LED lighting, and review equipment idle times.`,
-                        created_at: new Date().toISOString(),
-                    });
-                }
-
-                // KPI alert from activeAlerts
-                if (activeAlerts?.kpi) {
-                    dynamicInsights.push({
-                        id: `dyn-kpi-${Date.now()}`,
-                        severity: 'warning',
-                        category: 'KPI',
-                        title: 'KPI variance detected',
-                        description: `One or more KPIs (food cost, labor, profit margin) are deviating from regional benchmarks.`,
-                        recommendation: `Review the KPI Report section for detailed variance analysis and adjust operations accordingly.`,
-                        created_at: new Date().toISOString(),
-                    });
-                }
-
-                // Merge: dynamic insights first, then stored insights (dedup by title)
-                const allInsights = [...dynamicInsights, ...storedInsights];
-                const seen = new Set<string>();
-                const deduped = allInsights.filter(i => {
-                    if (seen.has(i.title)) return false;
-                    seen.add(i.title);
-                    return true;
-                });
-
-                setProactiveInsights(deduped.slice(0, 10));
-            } catch {}
-        };
-        fetchInsights();
-        // Refresh every 60 seconds
-        const interval = setInterval(fetchInsights, 60000);
-        return () => clearInterval(interval);
-    }, [context]);
-
-    // Mark insight as read (handles both DB-stored and dynamic insights)
-    const dismissInsight = async (id: string) => {
-        // Dynamic insights start with 'dyn-' — just remove from UI
-        if (id.startsWith('dyn-')) {
-            setProactiveInsights(prev => prev.filter(i => i.id !== id));
-            return;
-        }
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-            await supabase.from('mila_insights').update({ is_read: true }).eq('id', id).eq('user_id', session.user.id);
-            setProactiveInsights(prev => prev.filter(i => i.id !== id));
-        } catch {}
-    };
-
     const handleSendMessage = async () => {
         if (!inputValue.trim() || isLoading) return;
 
@@ -247,6 +90,9 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
         setIsLoading(true);
 
         // GAMIFICATION: +5pts for Mila comment/recommendation
+        // For basic users making a suggestion or anomaly report, show a points-earned confirmation
+        const suggestionKeywords = /suggest|improve|idea|notice|found|broken|issue|problem|anomal|wrong|weird|scale|equipment|fix|report/i;
+        const isBasicSuggestion = isBasicUser && suggestionKeywords.test(userText);
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session && userProfile.outletCode) {
@@ -258,6 +104,17 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
                 if (outletRow?.id) {
                     await awardPoints(session.user.id, 'Mila Comment', outletRow.id);
                     window.dispatchEvent(new Event('ecometricus_points_updated'));
+                    // Show points-earned toast in chat for basic users who made a suggestion
+                    if (isBasicSuggestion) {
+                        setMessages(prev => [...prev, {
+                            id: `pts-${Date.now()}`,
+                            sender: 'tool',
+                            text: t('mila.pointsAwarded'),
+                            timestamp: new Date(),
+                            toolName: 'points_awarded',
+                            toolStatus: 'done',
+                        }]);
+                    }
                 }
             }
         } catch (e) {
@@ -351,7 +208,12 @@ INSTRUCTIONS:
 7. ROLE AWARENESS:
    - ${userProfile.role === 'admin' || userProfile.role === 'super_admin' ? 'You are talking to an ADMIN/GM. They have full access. You can use all tools including audit trail and cross-outlet comparison.' : ''}
    - ${userProfile.role === 'supervisor' ? 'You are talking to a SUPERVISOR. They review data and log entries. Help them validate and triage alerts.' : ''}
-   - ${userProfile.role === 'basic' ? 'You are talking to a STAFF member. Help them log entries quickly and give them quick feedback on their performance.' : ''}
+   - ${userProfile.role === 'basic' ? `BASIC STAFF MODE — THIS OVERRIDES ALL RESPONSE FORMAT RULES ABOVE:
+     • You are talking to a kitchen staff member (prep chef / line cook). They are busy and need instant, simple replies.
+     • RESPONSE LENGTH: 1-2 SHORT SENTENCES MAXIMUM. No bullet points. No explanations. No markdown.
+     • If they log a waste/water/energy entry: confirm it in one sentence, e.g. "Done, ${userFirstName} — logged. Keep it up!"
+     • If they make a suggestion, report an anomaly, or flag an issue: reply with ONE sentence of encouragement only, e.g. "Great catch, ${userFirstName} — noted and flagged for the supervisor!"
+     • NEVER give root cause analysis, impact breakdowns, or lengthy advice to basic users. They earn points for engaging — keep it fast and positive.` : ''}
 
 8. SAFETY: Never fabricate data. If a tool returns no results, say so honestly.`;
 
@@ -495,6 +357,7 @@ INSTRUCTIONS:
         log_resource_entry: t('mila.toolLogResource'),
         generate_report: t('mila.toolGenerateReport'),
         get_proactive_insights: t('mila.toolGetInsights'),
+        points_awarded: t('mila.pointsAwarded'),
     };
 
     if (!isOpen) {
@@ -519,13 +382,6 @@ INSTRUCTIONS:
 
                     {/* Status dot */}
                     <div className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-brand-eco border-2 border-brand-dark" />
-
-                    {/* Insight badge */}
-                    {proactiveInsights.length > 0 && (
-                        <div className="absolute -top-1.5 -right-1.5 min-w-6 h-6 px-1.5 bg-brand-alert rounded-full border-2 border-brand-dark flex items-center justify-center shadow-lg">
-                            <span className="text-[10px] font-black text-white">{proactiveInsights.length}</span>
-                        </div>
-                    )}
                 </div>
 
                 {/* Tooltip on hover */}
@@ -561,15 +417,6 @@ INSTRUCTIONS:
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    {proactiveInsights.length > 0 && (
-                        <button
-                            onClick={() => setShowInsightsPanel(!showInsightsPanel)}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${showInsightsPanel ? 'bg-brand-alert/25 border border-brand-alert/50' : 'bg-brand-alert/15 border border-brand-alert/30 hover:bg-brand-alert/20'}`}
-                        >
-                            <Bell size={11} className="text-brand-alert" />
-                            <span className="text-[9px] font-bold text-brand-alert">{proactiveInsights.length}</span>
-                        </button>
-                    )}
                     <button onClick={() => setIsMinimized(!isMinimized)} className="text-gray-400 hover:text-white transition-colors">
                         {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
                     </button>
@@ -579,44 +426,6 @@ INSTRUCTIONS:
                 </div>
             </div>
 
-            {/* Proactive Insights Panel */}
-            {showInsightsPanel && proactiveInsights.length > 0 && (
-                <div className="border-b border-brand-gold/20 bg-brand-dark/60 max-h-[280px] overflow-y-auto custom-scrollbar">
-                    <div className="px-4 py-2 border-b border-brand-gold/5 flex items-center justify-between sticky top-0 bg-brand-dark/80 backdrop-blur-sm">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('mila.insightsTitle')}</span>
-                        <button onClick={() => setShowInsightsPanel(false)} className="text-white/30 hover:text-white transition-colors">
-                            <X size={12} />
-                        </button>
-                    </div>
-                    {proactiveInsights.map((insight) => (
-                        <div key={insight.id} className="px-4 py-3 border-b border-brand-gold/5 hover:bg-white/3 transition-colors">
-                            <div className="flex items-start gap-2 mb-1.5">
-                                {insight.severity === 'critical' ? (
-                                    <AlertTriangle size={13} className="text-brand-alert shrink-0 mt-0.5" />
-                                ) : insight.severity === 'warning' ? (
-                                    <AlertCircle size={13} className="text-brand-gold shrink-0 mt-0.5" />
-                                ) : (
-                                    <Info size={13} className="text-brand-eco shrink-0 mt-0.5" />
-                                )}
-                                <span className="text-[11px] font-bold text-white leading-tight">{insight.title}</span>
-                            </div>
-                            <p className="text-[10px] text-white/50 leading-relaxed mb-1.5 pl-5">{insight.description}</p>
-                            {insight.recommendation && (
-                                <p className="text-[10px] text-brand-eco/70 leading-relaxed pl-5 mb-1.5">
-                                    <span className="font-bold">→ </span>{insight.recommendation}
-                                </p>
-                            )}
-                            <button
-                                onClick={() => dismissInsight(insight.id)}
-                                className="text-[9px] text-white/30 hover:text-white/60 uppercase tracking-widest transition-colors pl-5"
-                            >
-                                {t('mila.dismiss')}
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-
             {!isMinimized && (
                 <>
                     {/* Messages Area */}
@@ -624,6 +433,15 @@ INSTRUCTIONS:
                         {messages.map((msg) => (
                             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 {msg.sender === 'tool' ? (
+                                    msg.toolName === 'points_awarded' ? (
+                                        /* Points-earned chip for basic users */
+                                        <div className="flex items-center gap-2 w-full bg-brand-gold/10 border border-brand-gold/40 rounded-xl px-3 py-2">
+                                            <span className="text-brand-gold shrink-0 text-sm">⭐</span>
+                                            <span className="text-[10px] text-brand-gold font-black uppercase tracking-wider">
+                                                {t('mila.pointsAwarded')}
+                                            </span>
+                                        </div>
+                                    ) : (
                                     /* Tool status message */
                                     <div className="flex items-center gap-2 w-full bg-brand-eco/5 border border-brand-eco/15 rounded-xl px-3 py-2">
                                         {msg.toolStatus === 'running' ? (
@@ -637,6 +455,7 @@ INSTRUCTIONS:
                                             {toolDisplayNames[msg.toolName || ''] || msg.toolName || t('mila.toolFallback')} {msg.toolStatus === 'running' ? '...' : '✓'}
                                         </span>
                                     </div>
+                                    )
                                 ) : (
                                     <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${msg.sender === 'user'
                                         ? 'bg-brand-gold/10 border border-brand-gold/30 text-white rounded-br-none'

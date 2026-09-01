@@ -1031,6 +1031,7 @@ export const translations: Record<string, TranslationSection> = {
     toolLogResource:     { en: 'Logging resource entry', es: 'Registrando entrada de recursos' },
     toolGenerateReport:  { en: 'Generating report', es: 'Generando reporte' },
     toolGetInsights:     { en: 'Fetching insights', es: 'Obteniendo perspectivas' },
+    pointsAwarded:       { en: 'Points awarded for your contribution!', es: '¡Puntos otorgados por tu aportación!' },
     toolExecuting:       { en: 'Executing {toolName}...', es: 'Ejecutando {toolName}...' },
     toolCompleted:       { en: 'Completed: {toolName}', es: 'Completado: {toolName}' },
     toolFallback:        { en: 'Tool', es: 'Herramienta' },

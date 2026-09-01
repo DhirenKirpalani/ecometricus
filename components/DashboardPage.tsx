@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import ReactDOM from 'react-dom';
 import { useNavigate as useRouterNavigate, useLocation } from 'react-router-dom';
 import MilaWidget from './MilaWidget';
+import AlertsPanel from './AlertsPanel';
 import GamificationHub from './GamificationHub';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
@@ -2854,7 +2855,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
 
                               {/* Financial Impact */}
-                              <div className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${impacts.isDeviating ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-eco/30 bg-brand-eco/5 hover:border-brand-eco/40'}`}>
+                              <div className={`rounded-2xl p-5 sm:p-6 transition-all duration-300 ${impacts.isDeviating ? 'border-[3px] border-brand-alert bg-brand-alert/10 shadow-[0_0_24px_rgba(255,49,49,0.25)]' : 'border-2 border-brand-eco/30 bg-brand-eco/5 hover:border-brand-eco/40'}`}>
                                 <div className="flex items-center justify-between gap-2 mb-4">
                                   <div className="flex items-center gap-2">
                                     <DollarSign size={16} className={impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'} />
@@ -2880,7 +2881,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                           </div>
 
-                          {/* ALERTS & SUGGESTIONS - Dynamic deviation alerts */}
+                          {/* ALERTS & SUGGESTIONS - Consolidated grouped view */}
                           <div className="w-full max-w-full mb-6 rounded-2xl border border-brand-gold/20 bg-[#1c3933]/40 p-6">
                             {/* Header */}
                             <div className="flex items-center gap-4 mb-6">
@@ -2892,135 +2893,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   Alerts &amp; Suggestions
                                 </h2>
                                 <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                                  Deviation alerts and AI-powered recommendations
+                                  Grouped by issue · expand outlets · suggestions below
                                 </p>
                               </div>
                             </div>
 
-                            {/* Dynamic alerts grid */}
-                            <div className="space-y-3">
-                              {(() => {
-                                const alerts: { severity: 'critical' | 'warning' | 'info'; category: string; title: string; description: string; recommendation: string }[] = [];
-
-                                // Waste threshold
-                                if (sessionData.waste.kg > (effectiveParams.wasteTarget || 100)) {
-                                  const overage = sessionData.waste.kg - (effectiveParams.wasteTarget || 100);
-                                  const pct = Math.round((overage / (effectiveParams.wasteTarget || 100)) * 100);
-                                  alerts.push({
-                                    severity: pct > 20 ? 'critical' : 'warning',
-                                    category: 'Food Waste',
-                                    title: `Waste volume ${pct}% over target`,
-                                    description: `Current: ${Math.round(sessionData.waste.kg)}kg vs target ${effectiveParams.wasteTarget || 100}kg. Excess of ${Math.round(overage)}kg generating ~${Math.round(overage * 2.85)}kg CO₂e.`,
-                                    recommendation: 'Review prep processes and portion sizes. Focus on overproduction and spoilage categories.',
-                                  });
-                                }
-
-                                // Carbon lifecycle
-                                if (impacts.isDeviating) {
-                                  alerts.push({
-                                    severity: 'critical',
-                                    category: 'Carbon',
-                                    title: 'Carbon lifecycle deviation detected',
-                                    description: `Total carbon impact: ${impacts.carbonImpact.toFixed(1)}kg CO₂e exceeds the sustainable threshold for your operation.`,
-                                    recommendation: 'Prioritize waste reduction — every 1kg waste reduced saves 2.85kg CO₂e. Check energy usage patterns.',
-                                  });
-                                }
-
-                                // Financial impact
-                                if (impacts.totalFinancialLoss > 500) {
-                                  alerts.push({
-                                    severity: 'warning',
-                                    category: 'Financial',
-                                    title: `Financial loss at $${impacts.totalFinancialLoss.toFixed(2)}`,
-                                    description: `Waste-related financial impact exceeds $500. Primary drivers: food cost ($7.50/kg) + logistics ($1.25/kg).`,
-                                    recommendation: `Target high-waste categories first. A 10% waste reduction saves ~$${Math.round(impacts.totalFinancialLoss * 0.10)}/week.`,
-                                  });
-                                }
-
-                                // Water usage
-                                const waterTotal = rawResourceLogs.reduce((s, r) => s + (Number(r.water_liters) || 0), 0);
-                                if (waterTotal > (effectiveParams.waterTarget || 25000)) {
-                                  const pct = Math.round(((waterTotal - (effectiveParams.waterTarget || 25000)) / (effectiveParams.waterTarget || 25000)) * 100);
-                                  alerts.push({
-                                    severity: pct > 30 ? 'critical' : 'warning',
-                                    category: 'Water',
-                                    title: `Water usage ${pct}% over target`,
-                                    description: `Current: ${Math.round(waterTotal)}L vs target ${effectiveParams.waterTarget || 25000}L.`,
-                                    recommendation: 'Check for leaks, optimize dishwashing schedules, and review irrigation if applicable.',
-                                  });
-                                }
-
-                                // Energy usage
-                                const energyTotal = rawResourceLogs.reduce((s, r) => s + (Number(r.energy_kwh) || 0), 0);
-                                if (energyTotal > (effectiveParams.energyTarget || 1000)) {
-                                  const pct = Math.round(((energyTotal - (effectiveParams.energyTarget || 1000)) / (effectiveParams.energyTarget || 1000)) * 100);
-                                  alerts.push({
-                                    severity: pct > 30 ? 'critical' : 'warning',
-                                    category: 'Energy',
-                                    title: `Energy usage ${pct}% over target`,
-                                    description: `Current: ${Math.round(energyTotal)}kWh vs target ${effectiveParams.energyTarget || 1000}kWh.`,
-                                    recommendation: 'Audit HVAC scheduling, switch to LED lighting, and review equipment idle times.',
-                                  });
-                                }
-
-                                // KPI variance
-                                if (impacts.totalFinancialLoss > 500) {
-                                  alerts.push({
-                                    severity: 'info',
-                                    category: 'KPI',
-                                    title: 'KPI variance detected',
-                                    description: 'One or more KPIs (food cost, labor, profit margin) are deviating from regional benchmarks.',
-                                    recommendation: 'Review the KPI Report section for detailed variance analysis and adjust operations accordingly.',
-                                  });
-                                }
-
-                                if (alerts.length === 0) {
-                                  return (
-                                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                                      <div className="w-14 h-14 rounded-2xl bg-brand-eco/10 border border-brand-eco/30 flex items-center justify-center mb-4">
-                                        <ShieldCheck size={26} className="text-brand-eco" />
-                                      </div>
-                                      <p className="text-sm text-white/60 font-medium">All metrics within target range</p>
-                                      <p className="text-[11px] text-white/30 mt-1">No deviation alerts at this time</p>
-                                    </div>
-                                  );
-                                }
-
-                                return alerts.map((alert, i) => (
-                                  <div key={i} className={`rounded-xl border p-4 transition-all ${
-                                    alert.severity === 'critical' ? 'border-brand-alert/40 bg-brand-alert/5' :
-                                    alert.severity === 'warning' ? 'border-brand-gold/30 bg-brand-gold/5' :
-                                    'border-brand-eco/30 bg-brand-eco/5'
-                                  }`}>
-                                    <div className="flex items-start gap-3">
-                                      {alert.severity === 'critical' ? (
-                                        <AlertTriangle size={16} className="text-brand-alert shrink-0 mt-0.5" />
-                                      ) : alert.severity === 'warning' ? (
-                                        <AlertCircle size={16} className="text-brand-gold shrink-0 mt-0.5" />
-                                      ) : (
-                                        <Info size={16} className="text-brand-eco shrink-0 mt-0.5" />
-                                      )}
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <span className="text-[9px] font-black uppercase tracking-widest text-white/40">{alert.category}</span>
-                                          <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${
-                                            alert.severity === 'critical' ? 'bg-brand-alert/20 text-brand-alert' :
-                                            alert.severity === 'warning' ? 'bg-brand-gold/20 text-brand-gold' :
-                                            'bg-brand-eco/20 text-brand-eco'
-                                          }`}>{alert.severity}</span>
-                                        </div>
-                                        <h4 className="text-sm font-bold text-white leading-tight mb-1">{alert.title}</h4>
-                                        <p className="text-[11px] text-white/50 leading-relaxed mb-2">{alert.description}</p>
-                                        <p className="text-[11px] text-brand-eco/80 leading-relaxed">
-                                          <span className="font-bold">→ </span>{alert.recommendation}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ));
-                              })()}
-                            </div>
+                            <AlertsPanel
+                              impacts={sessionData.impacts}
+                              rawWasteLogs={rawWasteLogs}
+                              rawResourceLogs={rawResourceLogs}
+                              outlets={outlets}
+                              effectiveParams={effectiveParams}
+                            />
                           </div>
+
+
 
                           {/* EARTH KEEPER ENGAGEMENT RADIAL CHART - ADMIN VIEW */}
                           <div className="w-full max-w-full mb-6 rounded-2xl border border-brand-gold/20 bg-[#1c3933]/40 p-6">
@@ -4360,6 +4247,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thPosition')}</th>
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thRole')}</th>
                                   <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">{t('dashboard.thEmail')}</th>
+                                  {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">Password</th>}
+                                  {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold">Access Link</th>}
                                   {isHookAdmin && <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-brand-gold text-right">{t('dashboard.thActions')}</th>}
                                 </tr>
                               </thead>
@@ -4385,6 +4274,51 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                     <td className="px-4 py-3">
                                       <span className="text-[11px] text-white/60 font-medium truncate max-w-[180px] block">{u.email}</span>
                                     </td>
+                                    {/* Password — only meaningful for GM (PIN-based login) */}
+                                    {isHookAdmin && (
+                                    <td className="px-4 py-3">
+                                      {(u.role.toLowerCase() === 'gm' || u.position?.toLowerCase() === 'gm') ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] font-mono font-bold text-brand-gold tracking-wider">
+                                            {visiblePasswords.has(u.id) ? (u.password || '—') : '••••••••'}
+                                          </span>
+                                          <button onClick={() => togglePasswordVisibility(u.id)} className="text-brand-gold/50 hover:text-brand-gold transition-colors" title={visiblePasswords.has(u.id) ? 'Hide' : 'Show'}>
+                                            {visiblePasswords.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
+                                          </button>
+                                          {u.password && (
+                                            <button onClick={() => { navigator.clipboard?.writeText(u.password || ''); showToast(t('dashboard.pinCopied'), 'success'); }} title="Copy PIN" className="text-brand-gold/50 hover:text-brand-gold transition-colors">
+                                              <Copy size={12} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-[10px] text-white/20">—</span>
+                                      )}
+                                    </td>
+                                    )}
+                                    {/* Access Link — only for GM */}
+                                    {isHookAdmin && (
+                                    <td className="px-4 py-3">
+                                      {(u.role.toLowerCase() === 'gm' || u.position?.toLowerCase() === 'gm') ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] font-mono text-brand-eco/80 truncate max-w-[140px]">
+                                            {visibleLinks.has(u.id) ? `access/${u.outletCode || 'all'}?token=${(u.accessCode || '').toLowerCase()}` : '••••••••••••••••'}
+                                          </span>
+                                          <button onClick={() => toggleLinkVisibility(u.id)} className="text-brand-eco/50 hover:text-brand-eco transition-colors" title={visibleLinks.has(u.id) ? 'Hide' : 'Show'}>
+                                            {visibleLinks.has(u.id) ? <EyeOff size={12} /> : <Eye size={12} />}
+                                          </button>
+                                          <button
+                                            onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/access/${u.outletCode || 'all'}?token=${(u.accessCode || '').toLowerCase()}`); showToast('Link copied.', 'success'); }}
+                                            className="text-brand-eco/50 hover:text-brand-eco transition-colors" title="Copy full link"
+                                          >
+                                            <Copy size={11} />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="text-[10px] text-white/20">—</span>
+                                      )}
+                                    </td>
+                                    )}
                                     {isHookAdmin && (
                                     <td className="px-4 py-3">
                                       <div className="flex gap-2 justify-end">
