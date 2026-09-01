@@ -251,11 +251,12 @@ const App: React.FC = () => {
           // should NEVER redirect — respect whatever URL the user is on.
           if (event === 'SIGNED_IN' && hasAuthHash) {
             const rl = role.toLowerCase();
+            const pos = (position || '').toLowerCase();
+            const isGMRedirect = pos === 'gm' || rl === 'gm';
             const targetPath =
-              rl === 'super_admin' ? (PAGE_TO_PATH[Page.DASHBOARD] ?? '/dashboard') :
-              rl === 'admin' ? (PAGE_TO_PATH[Page.DASHBOARD] ?? '/dashboard') :
-              rl === 'supervisor' ? (PAGE_TO_PATH[Page.DASHBOARD] ?? '/dashboard') :
-              '/dashboard/daily-input';
+              rl === 'super_admin' || rl === 'admin' || rl === 'supervisor' || isGMRedirect
+                ? (PAGE_TO_PATH[Page.DASHBOARD] ?? '/dashboard')
+                : '/dashboard/daily-input';
             log(`  → AUTH HASH redirect: navigating to ${targetPath}`);
             navigate(targetPath);
             setCurrentPageState(Page.DASHBOARD);
@@ -284,12 +285,16 @@ const App: React.FC = () => {
     // listener fires immediately after sign-in and will update the role if needed.
     setCurrentUser(user);
     const role = user.role.toLowerCase();
-    if (role === 'basic' || role === 'view') {
+    const position = (user.position || '').toLowerCase();
+    // GM (General Manager) is a company-wide read-only viewer — treat like
+    // admin/supervisor/super_admin for routing, NOT like basic/view users.
+    const isGM = position === 'gm' || role === 'gm';
+    if ((role === 'basic' || role === 'view') && !isGM) {
       console.log('%c[AUTH LOGIN]', 'color: #C8A413; font-weight: bold;', 'Navigating to /dashboard/daily-input (basic/view)');
       navigate('/dashboard/daily-input');
       setCurrentPageState(Page.DASHBOARD);
     } else {
-      console.log('%c[AUTH LOGIN]', 'color: #C8A413; font-weight: bold;', 'Navigating to /dashboard (admin/supervisor/super_admin)');
+      console.log('%c[AUTH LOGIN]', 'color: #C8A413; font-weight: bold;', `Navigating to /dashboard (${role}${isGM ? '/GM' : ''})`);
       handleNavigate(Page.DASHBOARD);
     }
   }, [handleNavigate, navigate]);
