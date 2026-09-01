@@ -833,6 +833,12 @@ export const translations: Record<string, TranslationSection> = {
     stepDestination:         { en: 'Destination', es: 'Destino' },
     stepVerify:              { en: 'Verify', es: 'Verificar' },
     stepsLabel:              { en: 'of {count} steps', es: 'de {count} pasos' },
+    locked:                  { en: 'Locked', es: 'Bloqueado' },
+    entrySingular:           { en: 'Entry', es: 'Entrada' },
+    entryPlural:             { en: 'Entries', es: 'Entradas' },
+    readingSingular:         { en: 'Reading', es: 'Lectura' },
+    readingPlural:           { en: 'Readings', es: 'Lecturas' },
+    pastEntryLocked:         { en: "Past entries are locked. Only today's entries can be edited.", es: 'Las entradas pasadas están bloqueadas. Solo las entradas de hoy pueden editarse.' },
   },
 
   // ─── Intelligence Components ───────────────────────────────────────────────

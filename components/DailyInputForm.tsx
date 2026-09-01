@@ -768,7 +768,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
       // Guard: basic users cannot edit past-day entries
       if (editingEntry && !canEditEntry(editingEntry.createdAt)) {
-        setShowAlert({ msg: 'Past entries are locked. Only today\'s entries can be edited.', color: '#FF3131' });
+        setShowAlert({ msg: t('dailyInput.pastEntryLocked'), color: '#FF3131' });
         setTimeout(() => setShowAlert(null), 3000);
         return;
       }
@@ -962,7 +962,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
 
       // Guard: basic users cannot edit past-day entries
       if (editingResEntry && !canEditEntry(editingResEntry.createdAt)) {
-        setShowAlert({ msg: 'Past entries are locked. Only today\'s entries can be edited.', color: '#FF3131' });
+        setShowAlert({ msg: t('dailyInput.pastEntryLocked'), color: '#FF3131' });
         setTimeout(() => setShowAlert(null), 3000);
         return;
       }
@@ -1588,7 +1588,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
               <CheckCircle2 size={16} className="text-brand-eco" />
             </div>
             <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('dailyInput.foodWasteLogTitle')}</h3>
-            <span className="ml-auto text-[10px] font-bold text-white/30 uppercase tracking-widest">{wasteEntries.length} {wasteEntries.length !== 1 ? 'Entries' : 'Entry'}</span>
+            <span className="ml-auto text-[10px] font-bold text-white/30 uppercase tracking-widest">{wasteEntries.length} {wasteEntries.length !== 1 ? t('dailyInput.entryPlural') : t('dailyInput.entrySingular')}</span>
           </div>
 
           {/* Column headers */}
@@ -1655,7 +1655,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                       <button onClick={() => deleteWaste(entry.id)} className="w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all"><Trash2 size={13} className="text-brand-alert" /></button>
                     </>
                   ) : (
-                    <span className="text-[9px] text-white/20 uppercase tracking-widest font-bold px-2">Locked</span>
+                    <span className="text-[9px] text-white/20 uppercase tracking-widest font-bold px-2">{t('dailyInput.locked')}</span>
                   )}
                 </div>
               </div>
@@ -1697,7 +1697,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
               <TrendingDown size={16} className="text-brand-eco" />
             </div>
             <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('dailyInput.resourceFlowsTitle')}</h3>
-            <span className="ml-auto text-[10px] font-bold text-white/30 uppercase tracking-widest">{resourceEntries.length} {resourceEntries.length !== 1 ? 'Readings' : 'Reading'}</span>
+            <span className="ml-auto text-[10px] font-bold text-white/30 uppercase tracking-widest">{resourceEntries.length} {resourceEntries.length !== 1 ? t('dailyInput.readingPlural') : t('dailyInput.readingSingular')}</span>
           </div>
 
           {/* Column headers */}
@@ -1744,7 +1744,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                       <button onClick={() => deleteResource(entry.id)} className="w-8 h-8 rounded-lg bg-brand-alert/10 border border-brand-alert/30 flex items-center justify-center hover:bg-brand-alert/20 hover:border-brand-alert/50 transition-all"><Trash2 size={13} className="text-brand-alert" /></button>
                     </>
                   ) : (
-                    <span className="text-[9px] text-white/20 uppercase tracking-widest font-bold px-2">Locked</span>
+                    <span className="text-[9px] text-white/20 uppercase tracking-widest font-bold px-2">{t('dailyInput.locked')}</span>
                   )}
                 </div>
               </div>
