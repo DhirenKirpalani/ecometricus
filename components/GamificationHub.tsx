@@ -4,7 +4,7 @@ import { useI18n } from '../lib/useI18n';
 import {
     Trophy, Crown, Medal, Sparkles, CheckCircle2, Clock, Zap,
     RefreshCw, Flame, Target, TrendingUp, Award, Users, Building2,
-    Calendar, Star
+    Calendar, Star, Camera, Leaf, Droplets
 } from 'lucide-react';
 
 // --- Interfaces ---
@@ -29,6 +29,7 @@ interface ActionLogEntry {
     id: number;
     points_awarded: number;
     created_at: string;
+    action_key: string;
     action_name: string;
     staff_name: string | null;
     outlet_name: string;
@@ -223,6 +224,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                     id: l.id,
                     points_awarded: l.points_awarded,
                     created_at: l.created_at,
+                    action_key: l.action_key || '',
                     action_name: l.action_key ? l.action_key.replace(/_/g, ' ') : 'points earned',
                     staff_name: profileNames.get(l.profile_id) || 'Staff',
                     outlet_name: outletNames.get(l.outlet_id) || 'Outlet'
@@ -632,43 +634,59 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
 
                             {/* Full check-in list */}
                             <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
-                                <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 px-5 py-3 border-b border-brand-gold/15 items-center">
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.userHeader')}</span>
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest text-center">W / Wa / E</span>
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest text-center min-w-[45px]">{t('gamification.streakHeader')}</span>
-                                    <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest text-right min-w-[55px]">{t('gamification.dateHeader')}</span>
-                                </div>
-                                <div className="divide-y divide-brand-gold/5">
-                                    {checkins.map((c, i) => {
-                                        const outlet = outlets.find((o: any) => o.id === c.outlet_code);
-                                        const formattedDate = new Date(c.checkin_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                                        return (
-                                        <div key={i} className="grid grid-cols-[auto_1fr_auto_auto] gap-3 px-5 py-4 hover:bg-brand-gold/5 transition-all items-center">
-                                            <div className="flex items-center gap-2.5 min-w-0">
-                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
-                                                    <span className="text-brand-gold text-xs font-black">{c.user_name?.charAt(0) || '?'}</span>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-bold text-white truncate">{c.user_name}</p>
-                                                    <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate">{outlet?.name || 'Outlet'}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 justify-center">
-                                                <span className="text-brand-eco text-[11px] font-black" title="Waste">{c.waste_entries}</span>
-                                                <span className="text-white/15 text-[10px]">/</span>
-                                                <span className="text-blue-400 text-[11px] font-black" title="Water">{c.water_entries}</span>
-                                                <span className="text-white/15 text-[10px]">/</span>
-                                                <span className="text-amber-400 text-[11px] font-black" title="Energy">{c.energy_entries}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 justify-center min-w-[45px]">
-                                                <Flame size={12} className={c.streak_days >= 3 ? 'text-brand-alert' : 'text-white/30'} />
-                                                <span className="text-sm font-black text-white">{c.streak_days}</span>
-                                            </div>
-                                            <span className="text-[10px] text-white/30 font-medium text-right min-w-[55px]">{formattedDate}</span>
-                                        </div>
-                                        );
-                                    })}
-                                </div>
+                                <table className="w-full">
+                                    <colgroup>
+                                        <col className="w-[40%]" />
+                                        <col className="w-[20%]" />
+                                        <col className="w-[20%]" />
+                                        <col className="w-[20%]" />
+                                    </colgroup>
+                                    <thead>
+                                        <tr className="border-b border-brand-gold/15">
+                                            <th className="px-5 py-3 text-left text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.userHeader')}</th>
+                                            <th className="px-5 py-3 text-center text-[10px] font-black text-brand-gold uppercase tracking-widest">W / WA / E</th>
+                                            <th className="px-5 py-3 text-center text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.streakHeader')}</th>
+                                            <th className="px-5 py-3 text-right text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.dateHeader')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-brand-gold/5">
+                                        {checkins.map((c, i) => {
+                                            const outlet = outlets.find((o: any) => o.id === c.outlet_code);
+                                            const formattedDate = new Date(c.checkin_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                            return (
+                                            <tr key={i} className="hover:bg-brand-gold/5 transition-all">
+                                                <td className="px-5 py-3">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
+                                                            <span className="text-brand-gold text-xs font-black">{c.user_name?.charAt(0) || '?'}</span>
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-bold text-white truncate">{c.user_name}</p>
+                                                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate">{outlet?.name || 'Outlet'}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3 text-center">
+                                                    <div className="flex items-center gap-1.5 justify-center">
+                                                        <span className="text-brand-eco text-[11px] font-black" title="Waste">{c.waste_entries}</span>
+                                                        <span className="text-white/15 text-[10px]">/</span>
+                                                        <span className="text-blue-400 text-[11px] font-black" title="Water">{c.water_entries}</span>
+                                                        <span className="text-white/15 text-[10px]">/</span>
+                                                        <span className="text-amber-400 text-[11px] font-black" title="Energy">{c.energy_entries}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3 text-center">
+                                                    <div className="flex items-center gap-1 justify-center">
+                                                        <Flame size={12} className={c.streak_days >= 3 ? 'text-brand-alert' : 'text-white/30'} />
+                                                        <span className="text-sm font-black text-white">{c.streak_days}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3 text-right text-[10px] text-white/30 font-medium">{formattedDate}</td>
+                                            </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         </>
                     )}
@@ -693,20 +711,50 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {logs.map(log => {
                                     const actionLabels: Record<string, string> = {
-                                        'on-time_entry': 'On-Time Entry',
-                                        'entry_with_image': 'Entry with Photo',
-                                        'energy_reading': 'Energy Reading',
-                                        '5-day_streak_bonus': '5-Day Streak Bonus',
-                                        'mila_comment': 'Mila AI Comment',
-                                        'accuracy_bonus': 'Accuracy Bonus',
+                                        // Keys as stored in gamification_actions (action_key = display_name.toLowerCase().replace(/\s+/g,'_'))
+                                        'on-time_entry':       'On-Time Entry',
+                                        'on_time_entry':       'On-Time Entry',
+                                        'entry_with_image':    'Entry with Photo',
+                                        'energy_reading':      'Energy Reading',
+                                        '5-day_streak_bonus':  '5-Day Streak Bonus',
+                                        '5_day_streak_bonus':  '5-Day Streak Bonus',
+                                        'mila_comment':        'Mila AI Comment',
+                                        'mila_suggestion':     'Mila AI Suggestion',
+                                        'accuracy_bonus':      'Accuracy Bonus',
+                                        'daily_checkin':       'Daily Check-in',
+                                        'waste_log':           'Waste Log',
+                                        'water_log':           'Water Log',
+                                        'points_earned':       'Points Earned',
                                     };
-                                    const actionLabel = actionLabels[log.action_name] || (log.action_name && log.action_name !== 'points earned' ? log.action_name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Points Earned');
+                                    // Use raw action_key first (most reliable), fall back to action_name
+                                    const lookupKey = log.action_key || log.action_name.replace(/\s+/g, '_');
+                                    const actionLabel = actionLabels[lookupKey]
+                                        || (log.action_name && log.action_name !== 'points earned'
+                                            ? log.action_name.replace(/\b\w/g, c => c.toUpperCase())
+                                            : 'Points Earned');
                                     const timeStr = new Date(log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
                                     const dateStr = new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                    // Icon + color per action type
+                                    const actionMeta: Record<string, { icon: React.ReactNode; color: string }> = {
+                                        'on-time_entry':      { icon: <Clock size={14} />,        color: '#22c55e' },
+                                        'on_time_entry':      { icon: <Clock size={14} />,        color: '#22c55e' },
+                                        'entry_with_image':   { icon: <Camera size={14} />,       color: '#60a5fa' },
+                                        'energy_reading':     { icon: <Zap size={14} />,          color: '#fbbf24' },
+                                        '5-day_streak_bonus': { icon: <Flame size={14} />,        color: '#f97316' },
+                                        '5_day_streak_bonus': { icon: <Flame size={14} />,        color: '#f97316' },
+                                        'mila_comment':       { icon: <Star size={14} />,         color: '#a78bfa' },
+                                        'mila_suggestion':    { icon: <Star size={14} />,         color: '#a78bfa' },
+                                        'accuracy_bonus':     { icon: <CheckCircle2 size={14} />, color: '#34d399' },
+                                        'daily_checkin':      { icon: <CheckCircle2 size={14} />, color: '#22c55e' },
+                                        'waste_log':          { icon: <Leaf size={14} />,         color: '#4ade80' },
+                                        'water_log':          { icon: <Droplets size={14} />,     color: '#38bdf8' },
+                                    };
+                                    const meta = actionMeta[lookupKey] || { icon: <Trophy size={14} />, color: '#C8A413' };
                                     return (
-                                    <div key={log.id} className="bg-brand-dark/40 border border-brand-gold/10 rounded-xl p-4 flex items-start gap-3 hover:border-brand-gold/30 transition-all">
-                                        <div className="mt-0.5 w-8 h-8 bg-brand-eco/10 border border-brand-eco/30 rounded-lg flex items-center justify-center shrink-0">
-                                            <CheckCircle2 size={14} className="text-brand-eco" />
+                                    <div key={log.id} className="bg-brand-dark/40 border border-brand-gold/10 rounded-xl p-4 flex items-start gap-3 hover:border-brand-gold/25 transition-all">
+                                        <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                             style={{ backgroundColor: `${meta.color}18`, border: `1px solid ${meta.color}40`, color: meta.color }}>
+                                            {meta.icon}
                                         </div>
                                         <div className="flex-grow space-y-1">
                                             <p className="text-[11px] font-bold text-white uppercase leading-tight">{actionLabel}</p>
@@ -718,7 +766,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                                             </div>
                                         </div>
                                         <div className="shrink-0">
-                                            <span className="text-sm font-black text-brand-gold">+{log.points_awarded}</span>
+                                            <span className="text-sm font-black" style={{ color: meta.color }}>+{log.points_awarded}</span>
                                         </div>
                                     </div>
                                     );

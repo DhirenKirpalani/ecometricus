@@ -15,6 +15,7 @@ interface DailyInputFormProps {
   user: UserProfile;
   companyName?: string;
   outletName?: string;
+  readOnly?: boolean;
   onAuditLog?: (action: string, entityType: string, entityName: string, description: string, metadata?: Record<string, any>) => void;
 }
 
@@ -304,7 +305,7 @@ const WASTE_DESTINATIONS: string[] = [
   'Anaerobic Digestion', 'Recycling', 'Landfill', 'Drain / Sewer', 'Other'
 ];
 
-const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outletName, onAuditLog }) => {
+const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outletName, readOnly = false, onAuditLog }) => {
   const { t } = useI18n();
   const [unit, setUnit] = useState<'kg' | 'lbs' | 'L'>('kg');
   const [showAlert, setShowAlert] = useState<{ msg: string; color: string } | null>(null);
@@ -404,7 +405,9 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
   // ── Same-day edit lock for basic users ─────────────────────────────────────
   // Basic users can only edit/delete entries submitted today.
   // Supervisors/admins can edit any entry.
+  // GM (readOnly) cannot edit any entries.
   const canEditEntry = (createdAt?: string): boolean => {
+    if (readOnly) return false;
     const role = (user.role || '').toLowerCase();
     if (role === 'admin' || role === 'super_admin' || role === 'supervisor') return true;
     if (!createdAt) return true; // no timestamp = just created locally, allow edit
@@ -1252,6 +1255,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
         })()}
 
         <form onSubmit={handleSaveWaste} className="space-y-5">
+          <fieldset disabled={readOnly} className="space-y-5">
           {/* Step 1: Category */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-brand-gold">
@@ -1508,10 +1512,12 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
               )}
             </div>
           )}
+          </fieldset>
         </form>
       </div>
 
       {/* ── WATER & ENERGY TRACKING ── */}
+      <fieldset disabled={readOnly}>
       <div ref={resourceSectionRef} className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Water */}
         <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-5 sm:p-6">
@@ -1777,6 +1783,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
           )}
         </div>
       )}
+      </fieldset>
 
       {/* ── MILA ACTIONABLE INTELLIGENCE ── */}
       <div>
