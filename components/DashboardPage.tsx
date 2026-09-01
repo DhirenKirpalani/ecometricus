@@ -733,6 +733,50 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [isHydrating, setIsHydrating] = useState(true);
 
+  // ── DIRECT DATA FETCH for non-admin users ──────────────────────────────────
+  // Bypasses all scopeQuery complexity. Runs as soon as the user is authenticated.
+  // Uses user_id (always set on insert) and outlet_id as backup.
+  useEffect(() => {
+    const isNonAdmin = !['admin', 'super_admin'].includes((user.role || '').toLowerCase());
+    if (!isNonAdmin || !user.id) return;
+
+    const fetchMyData = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const uid = session.user.id;
+      console.log('[DirectFetch] Fetching data for non-admin user_id:', uid);
+
+      // Fetch waste logs by user_id
+      const { data: waste, error: wErr } = await supabase
+        .from('food_waste_logs')
+        .select('*')
+        .eq('user_id', uid)
+        .eq('is_mock', false);
+
+      if (wErr) console.error('[DirectFetch] waste error:', wErr.message);
+      else {
+        console.log('[DirectFetch] waste rows:', waste?.length, waste);
+        if (waste && waste.length > 0) setRawWasteLogs(waste);
+      }
+
+      // Fetch resource logs by user_id
+      const { data: resources, error: rErr } = await supabase
+        .from('resource_logs')
+        .select('*')
+        .eq('user_id', uid);
+
+      if (rErr) console.error('[DirectFetch] resource error:', rErr.message);
+      else {
+        console.log('[DirectFetch] resource rows:', resources?.length, resources);
+        if (resources && resources.length > 0) setRawResourceLogs(resources);
+      }
+    };
+
+    fetchMyData();
+  }, [user.id, user.role]);
+  // ────────────────────────────────────────────────────────────────────────────
+
   // Redirect bare /dashboard to the user's default tab
   // Basic users → /dashboard/daily-input, everyone else → /dashboard/overview
   useEffect(() => {
@@ -839,8 +883,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   // Shared Administrative Core State
   const [outlets, setOutlets] = useState<Outlet[]>([]);
-  // For basic/supervisor users: their specific outlet name (outlets[] is empty for non-admins)
+  // For basic/supervisor users: their specific outlet name and UUID (resolved from personnel record)
   const [userOutletName, setUserOutletName] = useState('');
+  const [personnelOutletId, setPersonnelOutletId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user.outletCode) return;
@@ -1026,6 +1071,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
           // Capture the supervisor's assigned outlet for filtering
           myOutletId = myPersonnel?.outlet_id || null;
+          setPersonnelOutletId(myOutletId);
 
           // The personnel row's user_id IS the admin's user_id
           if (myPersonnel?.user_id) {
@@ -1209,18 +1255,59 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // Build role-scoped query helpers
       const isAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin';
-      const userOutlet = !isAdmin && user.outletCode ? outlets.find((o: any) => o.code === user.outletCode || o.id === user.outletCode) : null;
-      const userOutletId = userOutlet?.id;
-      const userOutletName = userOutlet?.name;
 
-      // Build query filters — admin: all outlets, supervisor/basic: own outlet only
+      // For non-admins: resolve outlet UUID directly from personnel table (don't rely on state timing)
+      let resolvedOutletId: string | null = personnelOutletId;
+      let resolvedOutletName: string = userOutletName;
+
+      if (!isAdmin && !resolvedOutletId) {
+        // Fetch personnel record synchronously within this effect to avoid race condition
+        let { data: personnelRow } = await supabase
+          .from('personnel')
+          .select('outlet_id')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (!personnelRow && user.email) {
+          const { data: byEmail } = await supabase
+            .from('personnel')
+            .select('outlet_id')
+            .ilike('email', user.email)
+            .maybeSingle();
+          personnelRow = byEmail;
+        }
+        if (personnelRow?.outlet_id) {
+          resolvedOutletId = personnelRow.outlet_id;
+          setPersonnelOutletId(resolvedOutletId);
+        }
+      }
+
+      // Resolve outlet name from outlets array or Supabase
+      if (!isAdmin && !resolvedOutletName && resolvedOutletId) {
+        const fromOutlets = outlets.find((o: any) => o.id === resolvedOutletId);
+        if (fromOutlets) {
+          resolvedOutletName = fromOutlets.name;
+        } else {
+          const { data: outletRow } = await supabase
+            .from('outlets')
+            .select('outlet_name')
+            .eq('id', resolvedOutletId)
+            .maybeSingle();
+          if (outletRow?.outlet_name) {
+            resolvedOutletName = outletRow.outlet_name;
+            setUserOutletName(resolvedOutletName);
+          }
+        }
+      }
+
+      // Build query filters — admin: all data, non-admin: own outlet data
+      // For non-admins: resource_logs uses outlet_name; other tables use outlet_id.
+      // Final fallback: filter by user_id (always set on insert).
       const scopeQuery = (base: any, useOutletName = false) => {
         if (isAdmin) return base;
-        // Use userOutletId from outlets map, or fall back to user.outletCode (UUID)
-        const filterId = userOutletId || user.outletCode;
-        if (!filterId) return base;
-        if (useOutletName && userOutletName) return base.eq('outlet_name', userOutletName);
-        return base.eq('outlet_id', filterId);
+        if (useOutletName && resolvedOutletName) return base.eq('outlet_name', resolvedOutletName);
+        if (resolvedOutletId) return base.eq('outlet_id', resolvedOutletId);
+        // Guaranteed fallback: user submitted this data themselves
+        return base.eq('user_id', session.user.id);
       };
 
       // 2. Fire ALL queries in parallel (was 9 sequential → now 1 round-trip)
@@ -1294,13 +1381,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         setSentimentLogs(mapped);
       } else { setSentimentLogs([]); }
 
-      // 7. Process waste logs
-      if (wasteRes.data) {
-        setRawWasteLogs(wasteRes.data.filter((w: any) => !w.is_mock));
-      }
+      // 7. Process waste logs — only update if results found (don't overwrite DirectFetch data)
+      const filteredWaste = (wasteRes.data || []).filter((w: any) => !w.is_mock);
+      if (filteredWaste.length > 0) setRawWasteLogs(filteredWaste);
 
-      // 8. Process resource logs
-      if (resourceRes.data) setRawResourceLogs(resourceRes.data);
+      // 8. Process resource logs — only update if results found
+      const filteredResources = resourceRes.data || [];
+      if (filteredResources.length > 0) setRawResourceLogs(filteredResources);
 
       // 9. Process sales logs
       if (salesRes.data) {
@@ -1372,7 +1459,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       supabase.removeChannel(wasteChannel);
       supabase.removeChannel(resourceChannel);
     };
-  }, [user.role, user.outletCode, outlets, isHydrating]);
+  }, [user.role, user.outletCode, outlets, isHydrating, userOutletName, personnelOutletId]);
 
   const [auditReport, setAuditReport] = useState({
     cycle: 'Monthly',
@@ -1411,9 +1498,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   // Real chart data from hooks — scoped to user's outlet for supervisor/basic
   const isHookAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin';
-  const hookScopeOutlet = !isHookAdmin && user.outletCode ? (outlets.find((o: any) => o.code === user.outletCode || o.id === user.outletCode)?.name || userOutletName) : undefined;
+  // Use personnelOutletId (UUID from personnel record — most reliable) for chart scope
+  const hookScopeOutlet = !isHookAdmin ? (userOutletName || undefined) : undefined;
   const hookScopeUserId = isHookAdmin ? user.id : undefined;
-  const hookScopeOutletId = !isHookAdmin ? (outlets.find((o: any) => o.code === user.outletCode || o.id === user.outletCode)?.id) : undefined;
+  const hookScopeOutletId = !isHookAdmin ? (personnelOutletId || undefined) : undefined;
   const { chartData: wasteChartData, outletKeys: wasteOutletKeys, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData(
     params.wasteTarget,
     outlets.length || 1,
@@ -1421,7 +1509,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     hookScopeUserId,
     hookScopeOutletId
   );
-  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet, hookScopeUserId);
+  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet, hookScopeUserId, hookScopeOutletId);
 
   // Transform hook data for template charts (aggregate all outlets per day dynamically)
   const sumOutletKeys = (row: Record<string, any>, keys: string[]) => keys.reduce((s, k) => s + (Number(row[k]) || 0), 0);
@@ -1492,11 +1580,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   }, [params.benchmarkRegion, params.selectedManualOutlet, outlets]);
 
   const [manualOutletSettings, setManualOutletSettings] = useState<Record<string, any>>({});
-
-  // Persist outlets to localStorage for session continuity (V2 Key)
-  useEffect(() => {
-    localStorage.setItem('ecometricus_outlets_v2', JSON.stringify(outlets));
-  }, [outlets]);
 
   // Handle auto-mapping roles/permissions when position changes
   // Skip when editing an existing user — use a ref to avoid race conditions
@@ -2292,16 +2375,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const isSustainabilityEditable = isEditingSustainability;
   const isFnBEditable = isEditingFnB;
 
-  // DUPLICATION: Session Data Logic for Mila Actionable Intelligence
-  const [sessionWasteEntries, setSessionWasteEntries] = useState<any[]>([]);
-  const [sessionResourceEntries, setSessionResourceEntries] = useState<any[]>([]);
-
-  useEffect(() => {
-    const savedWaste = localStorage.getItem('ecometricus_waste_entries');
-    const savedResources = localStorage.getItem('ecometricus_resource_entries');
-    if (savedWaste) setSessionWasteEntries(JSON.parse(savedWaste));
-    if (savedResources) setSessionResourceEntries(JSON.parse(savedResources));
-  }, []);
+  // Session entries come from Supabase (rawWasteLogs/rawResourceLogs) — no localStorage
+  const sessionWasteEntries = rawWasteLogs;
+  const sessionResourceEntries = rawResourceLogs;
 
   const sessionData = useMemo(() => {
     // Live Supabase Data only — no mock/fallback values
@@ -2378,18 +2454,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       totalOutlets: outlets.length,
       activeOutlets: new Set([
         ...rawWasteLogs.map(e => e.outlet_id), 
-        ...rawResourceLogs.map(e => e.outlet_id),
-        ...sessionWasteEntries.map(e => e.outletId),
-        ...sessionResourceEntries.map(e => e.outletId)
+        ...rawResourceLogs.map(e => e.outlet_id)
       ]).size,
       financials: impacts, // Inherit the calculated impacts
       wasteVolume: sessionData.waste.kg,
-      waterVolume: rawResourceLogs.filter(r => r.resource_type === 'water').reduce((s, r) => s + (Number(r.consumption) || 0), 0),
-      energyVolume: rawResourceLogs.filter(r => r.resource_type === 'energy').reduce((s, r) => s + (Number(r.consumption) || 0), 0),
+      waterVolume: rawResourceLogs.reduce((s, r) => s + (Number(r.water_liters) || 0), 0),
+      energyVolume: rawResourceLogs.reduce((s, r) => s + (Number(r.energy_kwh) || 0), 0),
       efficiencyScore: Math.round((impacts.carbonImpact / (sessionData.waste.kg || 1)) * 100) // Rough metric
     },
     // Pass raw session data for deep reasoning if needed
-    recentLogs: [...rawWasteLogs, ...sessionWasteEntries].slice(-10), // Last 10 entries for context
+    recentLogs: [...rawWasteLogs].slice(-10), // Last 10 entries for context
     marketingModality: "Admin-Level Strategic Oversight",
     activeAlerts: {
       kpi: impacts.totalFinancialLoss > 500,
@@ -2420,8 +2494,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     metrics: {
       totalOutlets: outlets.length,
       wasteVolume: sessionData.waste.kg,
-      waterVolume: rawResourceLogs.filter(r => r.resource_type === 'water').reduce((s, r) => s + (Number(r.consumption) || 0), 0),
-      energyVolume: rawResourceLogs.filter(r => r.resource_type === 'energy').reduce((s, r) => s + (Number(r.consumption) || 0), 0),
+      waterVolume: rawResourceLogs.reduce((s, r) => s + (Number(r.water_liters) || 0), 0),
+      energyVolume: rawResourceLogs.reduce((s, r) => s + (Number(r.energy_kwh) || 0), 0),
       financials: impacts,
     },
     activeAlerts: {
@@ -2840,7 +2914,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 }
 
                                 // Water usage
-                                const waterTotal = rawResourceLogs.filter(r => r.resource_type === 'water').reduce((s, r) => s + (Number(r.consumption) || 0), 0);
+                                const waterTotal = rawResourceLogs.reduce((s, r) => s + (Number(r.water_liters) || 0), 0);
                                 if (waterTotal > (effectiveParams.waterTarget || 25000)) {
                                   const pct = Math.round(((waterTotal - (effectiveParams.waterTarget || 25000)) / (effectiveParams.waterTarget || 25000)) * 100);
                                   alerts.push({
@@ -2853,7 +2927,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 }
 
                                 // Energy usage
-                                const energyTotal = rawResourceLogs.filter(r => r.resource_type === 'energy').reduce((s, r) => s + (Number(r.consumption) || 0), 0);
+                                const energyTotal = rawResourceLogs.reduce((s, r) => s + (Number(r.energy_kwh) || 0), 0);
                                 if (energyTotal > (effectiveParams.energyTarget || 1000)) {
                                   const pct = Math.round(((energyTotal - (effectiveParams.energyTarget || 1000)) / (effectiveParams.energyTarget || 1000)) * 100);
                                   alerts.push({
@@ -2937,15 +3011,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 const id = e.outlet_id || outlets.find((o: any) => o.code === e.outlet_code || o.name === e.outlet_name)?.id;
                                 if (id && outletIds.has(id)) activeOutletIds.add(id);
                             });
-                            sessionWasteEntries.forEach(e => { if (e.outletId && outletIds.has(e.outletId)) activeOutletIds.add(e.outletId); });
-                            sessionResourceEntries.forEach(e => { if (e.outletId && outletIds.has(e.outletId)) activeOutletIds.add(e.outletId); });
 
                             const totalOutlets = outlets.length || 1;
                             const activeCount = activeOutletIds.size;
 
-                            // SYNCED CALCULATION: Calculate from actual data, ignore stale localStorage for non-admins
-                            const savedAvg = isHookAdmin ? localStorage.getItem('ecometricus_cumulative_engagement') : null;
-                            const engagementPct = savedAvg ? parseInt(savedAvg) : Math.round((activeCount / totalOutlets) * 100);
+                            // SYNCED CALCULATION: Calculate from actual Supabase data only
+                            const engagementPct = totalOutlets > 0 ? Math.round((activeCount / totalOutlets) * 100) : 0;
 
                             // "Color Thresholds: Green (> 85%), Yellow (65% - 84%), Red (<65%)"
                             // "Status Badge Logic"

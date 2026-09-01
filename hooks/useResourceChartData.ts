@@ -60,6 +60,8 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
           .gte('created_at', weekStartISO);
         if (scopeOutletName) {
           resourceQuery = resourceQuery.eq('outlet_name', scopeOutletName);
+        } else if (scopeOutletId) {
+          resourceQuery = resourceQuery.eq('outlet_code', scopeOutletId);
         }
         const { data: resourceLogs, error } = await resourceQuery
           .order('created_at', { ascending: false })
@@ -167,7 +169,7 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
       window.removeEventListener('ecometricus_resource_updated', handleStorageChange);
       supabase.removeChannel(channel);
     };
-  }, [waterTarget, energyTarget, scopeOutletName, scopeUserId]);
+  }, [waterTarget, energyTarget, scopeOutletName, scopeUserId, scopeOutletId]);
 
   return {
     waterData,

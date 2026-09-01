@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Trophy, Flame, Star, Zap, Camera, MessageSquare, Award, Sparkles, Target, Crown, Medal } from 'lucide-react';
-import { fetchUserStats } from '../lib/gamification';
+import { Trophy, Flame, Star, Zap, Camera, MessageSquare, Award, Sparkles, Target, Crown, Medal, CheckCircle2 } from 'lucide-react';
+import { fetchUserStats, fetchTodayCompletedActions } from '../lib/gamification';
 import type { UserProfile } from '../types';
 
 interface GamificationCardProps {
@@ -72,17 +72,22 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
   const [stats, setStats] = useState({ totalPoints: 0, streakDays: 0, rank: 1 });
   const [loading, setLoading] = useState(true);
   const [justEarned, setJustEarned] = useState(false);
+  const [todayDone, setTodayDone] = useState<Set<string>>(new Set());
   const prevPointsRef = useRef(0);
 
   const load = useCallback(async () => {
     if (!user.id) return;
-    const s = await fetchUserStats(user.id);
+    const [s, done] = await Promise.all([
+      fetchUserStats(user.id),
+      fetchTodayCompletedActions(user.id),
+    ]);
     if (s.totalPoints > prevPointsRef.current && prevPointsRef.current > 0) {
       setJustEarned(true);
       setTimeout(() => setJustEarned(false), 2000);
     }
     prevPointsRef.current = s.totalPoints;
     setStats(s);
+    setTodayDone(done);
     setLoading(false);
   }, [user.id]);
 
@@ -238,24 +243,37 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
                 <Target size={11} /> Quests
               </p>
               <div className="grid grid-cols-1 gap-2">
-                {ACTIONS.map(({ action, pts, desc, icon: Icon, color }) => (
-                  <div
-                    key={action}
-                    className="group flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/3 border border-white/5 hover:border-white/10 transition-all hover:bg-white/5"
-                  >
+                {ACTIONS.map(({ action, pts, desc, icon: Icon, color }) => {
+                  const key = action.toLowerCase().replace(/\s+/g, '_');
+                  const done = todayDone.has(key);
+                  return (
                     <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-                      style={{ background: `${color}15`, border: `1px solid ${color}30` }}
+                      key={action}
+                      className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
+                        done
+                          ? 'bg-brand-eco/8 border-brand-eco/25 opacity-70'
+                          : 'bg-white/3 border-white/5 hover:border-white/10 hover:bg-white/5'
+                      }`}
                     >
-                      <Icon size={13} style={{ color }} />
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+                        style={{ background: done ? '#22c55e20' : `${color}15`, border: `1px solid ${done ? '#22c55e40' : `${color}30`}` }}
+                      >
+                        {done
+                          ? <CheckCircle2 size={13} className="text-brand-eco" />
+                          : <Icon size={13} style={{ color }} />
+                        }
+                      </div>
+                      <span className={`text-[11px] flex-1 font-medium ${done ? 'text-brand-eco/70 line-through' : 'text-white/60'}`}>{desc}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {done
+                          ? <span className="text-[10px] font-black text-brand-eco uppercase tracking-wide">Done</span>
+                          : <><span className="text-[11px] font-black tabular-nums" style={{ color }}>+{pts}</span><Star size={9} className="text-white/20" /></>
+                        }
+                      </div>
                     </div>
-                    <span className="text-[11px] text-white/60 flex-1 font-medium">{desc}</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-[11px] font-black tabular-nums" style={{ color }}>+{pts}</span>
-                      <Star size={9} className="text-white/20" />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
