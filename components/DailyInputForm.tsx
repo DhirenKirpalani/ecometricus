@@ -569,12 +569,16 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
         const settings = await getPlatformSettings();
         const weekStartISO = getWeekStartISO(settings.weekly_reset_day);
 
+        // UI shows only today's entries (verification tables + totals)
+        const todayStartISO = new Date();
+        todayStartISO.setHours(0, 0, 0, 0);
+
         // Fetch this week's waste entries for this user
         const { data: wasteData } = await supabase
           .from('food_waste_logs')
           .select('*')
           .eq('user_id', session.user.id)
-          .gte('created_at', weekStartISO)
+          .gte('created_at', todayStartISO.toISOString())
           .eq('is_mock', false);
 
         if (wasteData && wasteData.length > 0) {
@@ -605,7 +609,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
           .from('resource_logs')
           .select('*')
           .eq('user_id', session.user.id)
-          .gte('created_at', weekStartISO);
+          .gte('created_at', todayStartISO.toISOString());
 
         if (resourceData && resourceData.length > 0) {
           const fmtRDate = (iso: string) => { try { return new Date(iso).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return iso; } };

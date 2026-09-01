@@ -2888,9 +2888,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <p className={`text-3xl font-geometric font-black leading-none mb-2 ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
                                   ${impacts.totalFinancialLoss.toFixed(2)}
                                 </p>
-                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-3">
                                   {impacts.isDeviating ? t('dashboard.supervisorNotified') : t('dashboard.withinFinancialCap')}
                                 </p>
+                                <div className={`space-y-1 pt-2 border-t ${impacts.isDeviating ? 'border-brand-alert/20' : 'border-brand-eco/20'}`}>
+                                  <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest text-white/40">
+                                    <span>{t('dailyInput.itemLoss')}</span>
+                                    <span className="text-white">${sessionData.waste.cost.toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest text-white/40">
+                                    <span>{t('dailyInput.logistics')}</span>
+                                    <span className="text-white">${sessionData.waste.disposalCost.toFixed(2)}</span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -3060,25 +3070,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </div>
 
                           <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <FoodWasteTemplateChart
                                 data={foodWasteTemplateData}
                                 benchmark={wasteDailyBenchmark}
                               />
                             </div>
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <WaterUsageTemplateChart
                                 data={waterTemplateData}
                                 benchmark={resourceWaterBenchmark}
                               />
                             </div>
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <EnergyUsageTemplateChart
                                 data={energyTemplateData}
                                 benchmark={resourceEnergyBenchmark}
                               />
                             </div>
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <Co2EmissionsTemplateChart
                                 data={wasteChartData}
                                 benchmark={wasteDailyBenchmark}
@@ -3109,7 +3119,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                           {/* Row 1: Food Cost + Labor Cost */}
                           <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <KpiChart
                                 title={t('dashboard.foodCost')}
                                 subtitle={t('dashboard.foodCostSubtitle')}
@@ -3127,7 +3137,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 chartType="line"
                               />
                             </div>
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <KpiChart
                                 title={t('dashboard.laborCost')}
                                 subtitle={t('dashboard.laborCostSubtitle')}
@@ -3149,7 +3159,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                           {/* Row 2: Profit Margins + Total Sales */}
                           <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <KpiChart
                                 title={t('dashboard.profitMargins')}
                                 subtitle={t('dashboard.profitMarginsSubtitle')}
@@ -3168,7 +3178,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               />
                             </div>
 
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <KpiChart
                                 title={t('dashboard.totalOutletSales')}
                                 subtitle={t('dashboard.totalOutletSalesSubtitle')}
@@ -3193,7 +3203,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                           {/* Row 3: Customer Sentiment + Avg Check */}
                           <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <KpiChart
                                 title={t('dashboard.customerSentiment')}
                                 subtitle={t('dashboard.customerSentimentSubtitle')}
@@ -3211,7 +3221,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 alertIfAbove={false}
                               />
                             </div>
-                            <div className="w-full h-[280px]">
+                            <div className="w-full h-[380px]">
                               <KpiChart
                                 title={t('dashboard.avgCheck')}
                                 subtitle={t('dashboard.avgCheckSubtitle')}
