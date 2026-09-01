@@ -743,7 +743,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // Uses user_id (always set on insert) and outlet_id as backup.
   useEffect(() => {
     const isNonAdmin = !['admin', 'super_admin'].includes((user.role || '').toLowerCase());
-    if (!isNonAdmin || !user.id) return;
+    const gmUser = user.position?.toLowerCase() === 'gm' || user.role?.toLowerCase() === 'gm';
+    // GM users are company-wide viewers — their own user_id has no logs; skip DirectFetch
+    if (!isNonAdmin || !user.id || gmUser) return;
 
     const fetchMyData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -918,6 +920,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     currentOutletCode: 'XXXX00',
     smsNotifications: true
   });
+
+  // The admin's user_id that owns the data — for GM/supervisor, this is resolved from personnel
+  const [dataOwnerUserId, setDataOwnerUserId] = useState<string | null>(null);
 
   // Specific Data States for Charts
   const [foodCostLogs, setFoodCostLogs] = useState<any[]>([]);
@@ -1099,6 +1104,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           supabase.from('company_settings').select('*').eq('user_id', targetUserId).maybeSingle(),
           supabase.from('outlets').select('*').eq('user_id', targetUserId)
         ]);
+        setDataOwnerUserId(targetUserId);
 
         if (companyRes.data) {
           setCompany(prev => ({ 
@@ -1266,7 +1272,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const isValidOutlet = (code: string) => outlets.some(o => o.code === code);
 
       // Build role-scoped query helpers
-      const isAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin';
+      // GM is a company-wide viewer — treat same as admin for data fetching
+      const isAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin'
+        || user.position?.toLowerCase() === 'gm' || user.role?.toLowerCase() === 'gm';
 
       // For non-admins: resolve outlet UUID directly from personnel table (don't rely on state timing)
       let resolvedOutletId: string | null = personnelOutletId;
@@ -1510,10 +1518,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
   // Real chart data from hooks — scoped to user's outlet for supervisor/basic
   const isHookAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin';
+  // GM (General Manager) — sees same sections as admin but read-only; can only chat with Mila
+  const isGM = user.position?.toLowerCase() === 'gm' || user.role?.toLowerCase() === 'gm';
+  const canEdit = isHookAdmin; // Only admin/super_admin can edit; GM is read-only
+  // GM gets company-wide data access like admin
+  const isCompanyWide = isHookAdmin || isGM;
   // Use personnelOutletId (UUID from personnel record — most reliable) for chart scope
-  const hookScopeOutlet = !isHookAdmin ? (userOutletName || undefined) : undefined;
-  const hookScopeUserId = isHookAdmin ? user.id : undefined;
-  const hookScopeOutletId = !isHookAdmin ? (personnelOutletId || undefined) : undefined;
+  const hookScopeOutlet = !isCompanyWide ? (userOutletName || undefined) : undefined;
+  // For admin, use their own user.id; for GM, use the resolved data owner's user_id
+  const hookScopeUserId = isCompanyWide ? (isHookAdmin ? user.id : (dataOwnerUserId || user.id)) : undefined;
+  const hookScopeOutletId = !isCompanyWide ? (personnelOutletId || undefined) : undefined;
   const { chartData: wasteChartData, outletKeys: wasteOutletKeys, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData(
     params.wasteTarget,
     outlets.length || 1,
@@ -2458,7 +2472,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     userProfile: user, // Full profile for Mila agent tools
     company: {
       name: company.name || 'Your Hotel',
-      outlet: isHookAdmin
+      outlet: isCompanyWide
         ? (company.currentOutletName || t('dashboard.allOutlets'))
         : (outlets.find(o => o.id === user.outletCode || o.code === user.outletCode || o.outlet_id === user.outletCode)?.name || userOutletName || company.currentOutletName || t('dashboard.allOutlets')),
       region: company.region || '',
@@ -2653,14 +2667,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               {user.role.toLowerCase() !== 'basic' && (
                 <SidebarItem view={PortalView.DASHBOARD} icon={LayoutDashboard} label={t('dashboard.navOverview')} active={activeView === PortalView.DASHBOARD} onClick={setActiveView} />
               )}
-              {user.role.toLowerCase() !== 'admin' && user.role.toLowerCase() !== 'supervisor' && (
+              {user.role.toLowerCase() !== 'admin' && user.role.toLowerCase() !== 'supervisor' && !isGM && (
                 <SidebarItem view={PortalView.DAILY_INPUT} icon={ClipboardList} label={t('dashboard.navDailyInput')} active={activeView === PortalView.DAILY_INPUT} onClick={setActiveView} />
               )}
-              {(user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'super_admin' || user.role.toLowerCase() === 'supervisor') && (
+              {(isHookAdmin || isGM || user.role.toLowerCase() === 'supervisor') && (
                 <>
-                  {isHookAdmin && <SidebarItem view={PortalView.IDENTITY} icon={Building2} label={t('dashboard.navCompany')} active={activeView === PortalView.IDENTITY} onClick={setActiveView} />}
-                  {isHookAdmin && <SidebarItem view={PortalView.TEAM} icon={Users} label={t('dashboard.navTeam')} active={activeView === PortalView.TEAM} onClick={setActiveView} />}
-                  {isHookAdmin && <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label={t('dashboard.navBenchmarks')} active={activeView === PortalView.PARAMETERS} onClick={setActiveView} />}
+                  {(isHookAdmin || isGM) && <SidebarItem view={PortalView.IDENTITY} icon={Building2} label={t('dashboard.navCompany')} active={activeView === PortalView.IDENTITY} onClick={setActiveView} />}
+                  {(isHookAdmin || isGM) && <SidebarItem view={PortalView.TEAM} icon={Users} label={t('dashboard.navTeam')} active={activeView === PortalView.TEAM} onClick={setActiveView} />}
+                  {(isHookAdmin || isGM) && <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label={t('dashboard.navBenchmarks')} active={activeView === PortalView.PARAMETERS} onClick={setActiveView} />}
                   <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label={t('dashboard.navAuditLog')} active={activeView === PortalView.AUDIT_LOG} onClick={setActiveView} />
                 </>
               )}
@@ -2700,7 +2714,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="w-1 h-1 rounded-full bg-white/15" />
                         <span className="truncate">
-                          {isHookAdmin
+                          {isCompanyWide
                             ? (company.currentOutletName || t('dashboard.allOutlets'))
                             : user.outletCode
                               ? (outlets.find(o => o.id === user.outletCode || o.code === user.outletCode || o.outlet_id === user.outletCode)?.name || userOutletName || user.outletCode)
@@ -2989,7 +3003,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                         <span className="text-sm text-white/50 font-medium uppercase tracking-wide block mt-2">{t('dashboard.participation')}</span>
                                       </div>
                                       <p className="text-xs text-white/50 mt-3 font-medium leading-relaxed max-w-sm">
-                                        {isHookAdmin
+                                        {isCompanyWide
                                           ? t('dashboard.cumulativeTracking')
                                           : t('dashboard.cumulativeTrackingOutlet')}
                                       </p>
@@ -3258,6 +3272,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       user={user}
                       companyName={company.name}
                       outletName={outlets.find(o => o.id === user.outletCode || o.code === user.outletCode || o.outlet_id === user.outletCode)?.name || outlets.find(o => o.outlet_name)?.outlet_name || company.currentOutletName}
+                      readOnly={isGM}
                       onAuditLog={logAction}
                     />
                   </div>
@@ -4810,7 +4825,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <span className={`text-[10px] font-black uppercase tracking-widest ${params.alertsActive ? 'text-brand-gold' : 'text-white/40'}`}>{params.alertsActive ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
-                          <button onClick={() => setParams({ ...params, alertsActive: !params.alertsActive })}>
+                          <button onClick={() => setParams({ ...params, alertsActive: !params.alertsActive })} disabled={!canEdit} className={!canEdit ? 'cursor-not-allowed opacity-60' : ''}>
                             {params.alertsActive ? <ToggleRight className="text-brand-eco" size={36} /> : <ToggleLeft className="text-gray-600" size={36} />}
                           </button>
                         </div>
@@ -4826,7 +4841,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <span className={`text-[10px] font-black uppercase tracking-widest ${params.milaLogic ? 'text-brand-gold' : 'text-white/40'}`}>{params.milaLogic ? 'Active' : 'Disabled'}</span>
                             </div>
                           </div>
-                          <button onClick={() => setParams({ ...params, milaLogic: !params.milaLogic })}>
+                          <button onClick={() => setParams({ ...params, milaLogic: !params.milaLogic })} disabled={!canEdit} className={!canEdit ? 'cursor-not-allowed opacity-60' : ''}>
                             {params.milaLogic ? <ToggleRight className="text-brand-eco" size={36} /> : <ToggleLeft className="text-gray-600" size={36} />}
                           </button>
                         </div>
