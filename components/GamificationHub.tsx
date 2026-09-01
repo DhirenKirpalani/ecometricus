@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
 import {
@@ -58,6 +58,9 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
     const [checkins, setCheckins] = useState<CheckinData[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'outlets' | 'leaderboard' | 'streaks' | 'activity'>('outlets');
+    const [leaderboardPeriod, setLeaderboardPeriod] = useState<'all' | 'month' | 'week'>('all');
+    const [rawLedger, setRawLedger] = useState<{ profile_id: string; points_awarded: number; created_at: string; outlet_id: string }[]>([]);
+    const [profileMap, setProfileMap] = useState<Map<string, { name: string; outlet_name: string; outlet_dot_color: string }>>(new Map());
 
     const OUTLET_GOAL = goal;
 
@@ -173,6 +176,20 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
             }
             setLeaderboard(leaderboardRows.slice(0, 7));
 
+            // Store raw ledger + profile map for period-based filtering
+            setRawLedger((ledgerData || []) as any[]);
+            const pMap = new Map<string, { name: string; outlet_name: string; outlet_dot_color: string }>();
+            leaderboardRows.forEach(r => {
+                pMap.set(r.id, { name: r.name, outlet_name: r.outlet_name, outlet_dot_color: r.outlet_dot_color });
+            });
+            // Also add profiles that didn't match personnel but are in the ledger
+            profilesData.forEach((p: any) => {
+                if (!pMap.has(p.id)) {
+                    pMap.set(p.id, { name: p.full_name || 'Staff', outlet_name: '', outlet_dot_color: '#ccc' });
+                }
+            });
+            setProfileMap(pMap);
+
             // 3. Action Logs — fetch directly from ledger filtered by outlet_id
             let logsQuery = supabase
                 .from('gamification_ledger')
@@ -265,6 +282,31 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
         if (n.includes('ralph')) return '#22c55e';
         return '#94a3b8';
     };
+
+    // Period-filtered leaderboard derived from raw ledger
+    const filteredLeaderboard = useMemo(() => {
+        const now = new Date();
+        let filtered = rawLedger;
+        if (leaderboardPeriod === 'month') {
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            filtered = rawLedger.filter(e => new Date(e.created_at) >= start);
+        } else if (leaderboardPeriod === 'week') {
+            const start = new Date(now);
+            start.setDate(start.getDate() - 7);
+            filtered = rawLedger.filter(e => new Date(e.created_at) >= start);
+        }
+        const pointsMap = new Map<string, number>();
+        filtered.forEach(e => {
+            if (e.profile_id) pointsMap.set(e.profile_id, (pointsMap.get(e.profile_id) || 0) + (e.points_awarded || 0));
+        });
+        return [...pointsMap.entries()]
+            .map(([pid, pts]) => {
+                const meta = profileMap.get(pid);
+                return { id: pid, name: meta?.name || 'Staff', outlet_name: meta?.outlet_name || '', outlet_dot_color: meta?.outlet_dot_color || '#ccc', total_points: pts };
+            })
+            .sort((a, b) => b.total_points - a.total_points)
+            .slice(0, 10);
+    }, [rawLedger, profileMap, leaderboardPeriod]);
 
     if (loading) {
         return (
@@ -447,66 +489,96 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
 
             {/* ── Leaderboard Tab ── */}
             {activeView === 'leaderboard' && (
-                <div className="animate-in fade-in duration-500 space-y-6">
-                    {/* Podium */}
-                    {leaderboard.length >= 3 && (
-                        <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-6">
-                            <h4 className="text-center text-brand-gold text-sm font-black uppercase tracking-widest mb-8">{t('gamification.topPerformers')}</h4>
-                            <div className="flex items-end justify-center gap-4 sm:gap-8">
-                                {[1, 0, 2].map((idx) => {
-                                    const s = leaderboard[idx];
-                                    if (!s) return <div key={idx} className="flex-1 max-w-[100px]" />;
-                                    const isFirst = idx === 0;
-                                    const isSecond = idx === 1;
-                                    return (
-                                        <div key={s.id} className={`flex flex-col items-center gap-2 flex-1 max-w-[120px] ${isFirst ? '-translate-y-4' : ''}`}>
-                                            <div className="relative">
-                                                {isFirst ? <Crown size={20} className="text-brand-gold absolute -top-7 left-1/2 -translate-x-1/2 animate-bounce" />
-                                                : isSecond ? <Medal size={16} className="text-slate-300 absolute -top-6 left-1/2 -translate-x-1/2" />
-                                                : <Medal size={16} className="text-[#cd7f32] absolute -top-6 left-1/2 -translate-x-1/2" />}
-                                                <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 p-1 ${isFirst ? 'border-brand-gold shadow-[0_0_15px_rgba(212,175,55,0.4)]' : 'border-brand-gold/20'}`}>
-                                                    <div className="w-full h-full rounded-full bg-white/5 flex items-center justify-center overflow-hidden">
-                                                        <span className="text-white text-sm font-black">{s.name.charAt(0)}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="text-center w-full">
-                                                <p className="text-[11px] font-black text-white truncate">{s.name}</p>
-                                                <p className="text-sm font-black text-brand-gold leading-none mt-1">{s.total_points}</p>
-                                                <p className="text-[7px] font-bold text-white/30 uppercase tracking-widest">pts</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                <div className="animate-in fade-in duration-500 space-y-4">
+
+                    {/* Gamified header card */}
+                    <div className="relative rounded-2xl overflow-hidden border border-brand-gold/30 bg-gradient-to-r from-[#0f1e1a] via-[#1a2e1c] to-[#0f1e1a] px-6 py-4">
+                        {/* Subtle decorative glow blobs */}
+                        <div className="absolute left-1/4 top-0 w-32 h-10 bg-brand-gold/10 blur-2xl rounded-full pointer-events-none" />
+                        <div className="absolute right-1/4 bottom-0 w-24 h-8 bg-brand-gold/8 blur-2xl rounded-full pointer-events-none" />
+
+                        <div className="relative flex items-center justify-between gap-4">
+                            {/* Trophy + title */}
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shadow-[0_0_16px_rgba(200,164,19,0.2)] shrink-0">
+                                    <Trophy size={20} className="text-brand-gold" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <Star size={9} className="text-brand-gold/60 fill-brand-gold/40" />
+                                        <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-[0.3em]">Earth Keeper</span>
+                                        <Star size={9} className="text-brand-gold/60 fill-brand-gold/40" />
+                                    </div>
+                                    <p className="text-[11px] font-black text-brand-gold uppercase tracking-[0.2em] mt-0.5">Top Performers</p>
+                                </div>
+                            </div>
+
+                            {/* Period filter pills */}
+                            <div className="flex items-center gap-1.5">
+                                {([['all', 'All Time'], ['month', 'This Month'], ['week', 'This Week']] as const).map(([id, label]) => (
+                                    <button
+                                        key={id}
+                                        onClick={() => setLeaderboardPeriod(id)}
+                                        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${
+                                            leaderboardPeriod === id
+                                                ? 'border-brand-gold text-brand-gold bg-brand-gold/15 shadow-[0_0_8px_rgba(200,164,19,0.2)]'
+                                                : 'border-white/10 text-white/35 hover:border-brand-gold/30 hover:text-brand-gold/60'
+                                        }`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    {/* Full Ranking */}
+                    {/* Rankings table */}
                     <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
-                        <div className="grid grid-cols-[auto_1fr_auto] gap-3 px-5 py-3 border-b border-brand-gold/15 items-center">
-                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest min-w-[20px]">{t('gamification.rankHeader')}</span>
-                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.staffMemberHeader')}</span>
-                            <span className="text-[10px] font-black text-brand-gold uppercase tracking-widest text-right min-w-[40px]">{t('gamification.pointsHeader')}</span>
+                        {/* Column headers */}
+                        <div className="flex items-center px-6 py-2.5 border-b border-brand-gold/10 bg-brand-gold/5">
+                            <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] w-12">Rank</span>
+                            <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] flex-1">User Name</span>
+                            <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Points</span>
                         </div>
+
+                        {/* Rows */}
                         <div className="divide-y divide-brand-gold/5">
-                            {leaderboard.map((s, idx) => (
-                                <div key={s.id} className="grid grid-cols-[auto_1fr_auto] gap-3 px-5 py-3 hover:bg-brand-gold/5 transition-all items-center">
-                                    <span className={`text-sm font-black min-w-[20px] ${idx < 3 ? 'text-brand-gold' : 'text-white/30'}`}>{idx + 1}</span>
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
-                                            <span className="text-brand-gold text-xs font-black">{s.name.charAt(0)}</span>
+                            {filteredLeaderboard.length > 0 ? filteredLeaderboard.map((s, idx) => (
+                                <div key={s.id} className={`flex items-center px-6 py-3 transition-all ${idx === 0 ? 'bg-brand-gold/5 hover:bg-brand-gold/8' : 'hover:bg-brand-gold/5'}`}>
+                                    <span className={`w-12 text-sm font-black shrink-0 ${
+                                        idx === 0 ? 'text-brand-gold' :
+                                        idx === 1 ? 'text-slate-300' :
+                                        idx === 2 ? 'text-[#cd7f32]' :
+                                        'text-white/30'
+                                    }`}>
+                                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`}
+                                    </span>
+                                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                                            idx === 0 ? 'bg-brand-gold/20 border-brand-gold/40 shadow-[0_0_10px_rgba(200,164,19,0.25)]' :
+                                            'bg-brand-gold/10 border-brand-gold/20'
+                                        }`}>
+                                            <span className="text-brand-gold text-[10px] font-black">{s.name.charAt(0).toUpperCase()}</span>
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-sm font-bold text-white truncate">{s.name}</p>
-                                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate">{s.outlet_name}</p>
+                                            <p className={`text-sm font-bold truncate ${idx === 0 ? 'text-brand-gold' : 'text-white'}`}>{s.name}</p>
+                                            {s.outlet_name && <p className="text-[9px] text-white/30 uppercase tracking-wider truncate">{s.outlet_name}</p>}
                                         </div>
                                     </div>
-                                    <span className="text-sm font-black text-brand-gold text-right min-w-[40px]">{s.total_points}</span>
+                                    <div className="flex items-center gap-1.5">
+                                        {idx === 0 && <Sparkles size={11} className="text-brand-gold/60 animate-pulse" />}
+                                        <span className={`text-sm font-black ${idx === 0 ? 'text-brand-gold' : idx < 3 ? 'text-white/80' : 'text-white/50'}`}>
+                                            {s.total_points.toLocaleString()}
+                                        </span>
+                                    </div>
                                 </div>
-                            ))}
-                            {leaderboard.length === 0 && (
-                                <div className="text-center py-12 text-[10px] font-black uppercase tracking-[0.3em] text-white/20">{t('gamification.awaitingSyncData')}</div>
+                            )) : (
+                                <div className="py-12 text-center">
+                                    <Trophy size={28} className="text-white/10 mx-auto mb-3" />
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
+                                        {t('gamification.awaitingSyncData')}
+                                    </p>
+                                </div>
                             )}
                         </div>
                     </div>

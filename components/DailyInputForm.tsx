@@ -1842,7 +1842,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
           </div>
 
           {/* Financial Impact */}
-          <div className={`rounded-2xl border p-5 transition-all duration-300 ${(showAlertFinance || showAlertCarbon) ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-eco/30 bg-brand-eco/5 hover:border-brand-eco/40'}`}>
+          <div className={`rounded-2xl p-5 transition-all duration-300 ${(showAlertFinance || showAlertCarbon) ? 'border-[3px] border-brand-alert bg-brand-alert/10 shadow-[0_0_24px_rgba(255,49,49,0.25)]' : 'border-2 border-brand-eco/30 bg-brand-eco/5 hover:border-brand-eco/40'}`}>
             <div className="flex items-center justify-between gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <DollarSign size={16} className={(showAlertFinance || showAlertCarbon) ? 'text-brand-alert' : 'text-brand-eco'} />

@@ -94,11 +94,11 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
                         ))}
                     </div>
 
-                    {/* Benchmark dot */}
+                    {/* Benchmark label */}
                     <div className="absolute inset-0 pointer-events-none">
                         <div className="absolute right-0 -translate-y-1/2 flex items-center gap-1" style={{ top: `${getY(benchmark)}%` }}>
-                            <div className="w-2 h-2 rounded-full bg-brand-alert border border-brand-alert" />
-                            <div className="bg-brand-alert/20 border border-brand-alert/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-alert uppercase tracking-wider">
+                            <div className="w-2 h-2 rounded-full bg-brand-gold border border-brand-gold" />
+                            <div className="bg-brand-gold/20 border border-brand-gold/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-gold uppercase tracking-wider">
                                 {benchmark.toLocaleString()}L
                             </div>
                         </div>
@@ -112,6 +112,8 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
                                 <stop offset="100%" stopColor="#60A5FA" stopOpacity="0.02" />
                             </linearGradient>
                         </defs>
+                        {/* Gold dotted benchmark line */}
+                        <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.85" />
                         {areaPath && <path d={areaPath} fill="url(#waterArea)" />}
                         {linePath && <path d={linePath} fill="none" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
                         {points.map((p, i) => {
