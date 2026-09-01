@@ -1186,8 +1186,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   ? (dbOutlets.find(o => o.id === p.outlet_id)?.code || 'ALL')
                   : 'ALL',
             permissions: Array.isArray(p.permissions) ? p.permissions : (p.permissions ? String(p.permissions).split(',').map((s: string) => s.trim()).filter(Boolean) : []),
-            // Password stored as pincode in DB
-            password: p.pincode || '',
+            // Show the plaintext PIN (not the hashed pincode) for admin display
+            password: p.plaintext_pin || p.pincode || '',
             accessCode: p.access_code || ''
           }));
 
