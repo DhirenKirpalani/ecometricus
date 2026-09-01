@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Trophy, Flame, Star, Zap, Camera, MessageSquare, Award, Sparkles, Target, Crown, Medal, CheckCircle2 } from 'lucide-react';
 import { fetchUserStats, fetchTodayCompletedActions } from '../lib/gamification';
+import { useI18n } from '../lib/useI18n';
 import type { UserProfile } from '../types';
 
 interface GamificationCardProps {
@@ -15,11 +16,11 @@ const BADGE_TIERS = [
 ];
 
 const ACTIONS = [
-  { action: 'On-Time Entry',      pts: 10, desc: 'Submit during your shift',    icon: Zap,           color: '#C8A413' },
-  { action: 'Entry with Image',   pts: 10, desc: 'Attach a photo as evidence',  icon: Camera,        color: '#3b82f6' },
-  { action: 'Energy Reading',     pts: 10, desc: 'Log energy consumption',      icon: Zap,           color: '#f97316' },
-  { action: '5-Day Streak Bonus', pts: 50, desc: 'Log data 5 days in a row',    icon: Flame,         color: '#ef4444' },
-  { action: 'Mila Comment',       pts: 5,  desc: 'Send a recommendation to Mila', icon: MessageSquare, color: '#77B139' },
+  { action: 'On-Time Entry',      pts: 10, descKey: 'gamification.questOnTime',      icon: Zap,           color: '#C8A413' },
+  { action: 'Entry with Image',   pts: 10, descKey: 'gamification.questPhoto',       icon: Camera,        color: '#3b82f6' },
+  { action: 'Energy Reading',     pts: 10, descKey: 'gamification.questEnergy',      icon: Zap,           color: '#f97316' },
+  { action: '5-Day Streak Bonus', pts: 50, descKey: 'gamification.questStreak',      icon: Flame,         color: '#ef4444' },
+  { action: 'Mila Comment',       pts: 5,  descKey: 'gamification.questMila',        icon: MessageSquare, color: '#77B139' },
 ];
 
 // Animated counter that counts up to the target value
@@ -69,6 +70,7 @@ const ProgressRing: React.FC<{ progress: number; size: number; stroke: number; c
 };
 
 const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
+  const { t } = useI18n();
   const [stats, setStats] = useState({ totalPoints: 0, streakDays: 0, rank: 1 });
   const [loading, setLoading] = useState(true);
   const [justEarned, setJustEarned] = useState(false);
@@ -140,11 +142,11 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-              Earth Keeper
+              {t('gamification.earthKeeper')}
               {justEarned && <Sparkles size={12} className="text-brand-gold animate-pulse" />}
             </h3>
             <p className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">
-              {badge.emoji} {badge.label} Tier
+              {badge.emoji} {t(`gamification.tier${badge.label}`)}
             </p>
           </div>
         </div>
@@ -162,10 +164,10 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
                   <div className="text-3xl font-black text-white tabular-nums leading-none">
                     {animatedPoints.toLocaleString()}
                   </div>
-                  <div className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-1">Total Points</div>
+                  <div className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-1">{t('gamification.totalPoints')}</div>
                   {nextBadge && (
                     <div className="text-[8px] font-bold mt-1.5 px-2 py-0.5 rounded-full" style={{ background: `${nextBadge.color}20`, color: nextBadge.color }}>
-                      {ptsToNext.toLocaleString()} to {nextBadge.emoji} {nextBadge.label}
+                      {ptsToNext.toLocaleString()} {t('gamification.to')} {nextBadge.emoji} {t(`gamification.tier${nextBadge.label}`)}
                     </div>
                   )}
                 </div>
@@ -178,11 +180,11 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
               <div className="relative rounded-xl p-4 overflow-hidden" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Flame size={14} className="text-[#ef4444]" />
-                  <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Streak</span>
+                  <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{t('gamification.streak')}</span>
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-2xl font-black text-[#ef4444] tabular-nums leading-none">{stats.streakDays}</span>
-                  <span className="text-[10px] font-bold text-[#ef4444]/60">days</span>
+                  <span className="text-[10px] font-bold text-[#ef4444]/60">{t('gamification.days')}</span>
                 </div>
                 {/* Streak dots — 5 day milestone tracker */}
                 <div className="flex gap-1 mt-2">
@@ -200,13 +202,13 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
               <div className="relative rounded-xl p-4 overflow-hidden" style={{ background: 'rgba(119,177,57,0.08)', border: '1px solid rgba(119,177,57,0.2)' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Trophy size={14} className="text-brand-eco" />
-                  <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Rank</span>
+                  <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{t('gamification.rank')}</span>
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-2xl font-black text-brand-eco tabular-nums leading-none">{ordinal(stats.rank)}</span>
                 </div>
                 <div className="text-[9px] font-bold text-brand-eco/60 uppercase tracking-wider mt-2">
-                  {stats.rank === 1 ? 'Leading the pack!' : stats.rank <= 3 ? 'Podium finish!' : 'Keep climbing!'}
+                  {stats.rank === 1 ? t('gamification.leadingPack') : stats.rank <= 3 ? t('gamification.podiumFinish') : t('gamification.keepClimbing')}
                 </div>
               </div>
             </div>
@@ -215,11 +217,11 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: badge.color }}>
-                  {badge.emoji} {badge.label}
+                  {badge.emoji} {t(`gamification.tier${badge.label}`)}
                 </span>
                 {nextBadge && (
                   <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">
-                    {nextBadge.emoji} {nextBadge.label}
+                    {nextBadge.emoji} {t(`gamification.tier${nextBadge.label}`)}
                   </span>
                 )}
               </div>
@@ -240,10 +242,10 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
             {/* How to earn — gamified quest list */}
             <div>
               <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                <Target size={11} /> Quests
+                <Target size={11} /> {t('gamification.quests')}
               </p>
               <div className="grid grid-cols-1 gap-2">
-                {ACTIONS.map(({ action, pts, desc, icon: Icon, color }) => {
+                {ACTIONS.map(({ action, pts, descKey, icon: Icon, color }) => {
                   const key = action.toLowerCase().replace(/\s+/g, '_');
                   const done = todayDone.has(key);
                   return (
@@ -264,10 +266,10 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
                           : <Icon size={13} style={{ color }} />
                         }
                       </div>
-                      <span className={`text-[11px] flex-1 font-medium ${done ? 'text-brand-eco/70 line-through' : 'text-white/60'}`}>{desc}</span>
+                      <span className={`text-[11px] flex-1 font-medium ${done ? 'text-brand-eco/70 line-through' : 'text-white/60'}`}>{t(descKey)}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         {done
-                          ? <span className="text-[10px] font-black text-brand-eco uppercase tracking-wide">Done</span>
+                          ? <span className="text-[10px] font-black text-brand-eco uppercase tracking-wide">{t('gamification.done')}</span>
                           : <><span className="text-[11px] font-black tabular-nums" style={{ color }}>+{pts}</span><Star size={9} className="text-white/20" /></>
                         }
                       </div>
@@ -285,7 +287,7 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
                   <div className="absolute inset-0 bg-[#ef4444]/30 rounded-full animate-ping" style={{ width: 16, height: 16 }} />
                 </div>
                 <p className="text-[11px] text-white/70">
-                  <span className="font-black text-[#ef4444]">{5 - stats.streakDays} more day{5 - stats.streakDays !== 1 ? 's' : ''}</span> to unlock <span className="font-black text-brand-gold">+50 pts</span> streak bonus!
+                  <span className="font-black text-[#ef4444]">{5 - stats.streakDays} {(5 - stats.streakDays) !== 1 ? t('gamification.moreDayPlural') : t('gamification.moreDay')}</span> {t('gamification.toUnlock')} <span className="font-black text-brand-gold">+50 {t('gamification.pts')}</span> {t('gamification.streakBonus')}!
                 </p>
               </div>
             )}
@@ -293,7 +295,7 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
               <div className="mt-4 flex items-center gap-2.5 px-3 py-3 rounded-xl bg-brand-eco/8 border border-brand-eco/25">
                 <Award size={16} className="text-brand-eco shrink-0" />
                 <p className="text-[11px] text-white/70">
-                  <span className="font-black text-brand-eco">🔥 {stats.streakDays}-day streak active!</span> Next bonus at day {(Math.floor(stats.streakDays / 5) + 1) * 5}.
+                  <span className="font-black text-brand-eco">🔥 {stats.streakDays}-{t('gamification.dayStreakActive')}</span> {t('gamification.nextBonusAt')} {(Math.floor(stats.streakDays / 5) + 1) * 5}.
                 </p>
               </div>
             )}
