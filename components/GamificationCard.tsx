@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Trophy, Flame, Star, Zap, Camera, MessageSquare, Award, Sparkles, Target, Crown, Medal, CheckCircle2 } from 'lucide-react';
-import { fetchUserStats, fetchTodayCompletedActions } from '../lib/gamification';
+import { Trophy, Flame, Star, Zap, Camera, MessageSquare, Award, Sparkles, Target, Crown, Medal, CheckCircle2, ChevronDown } from 'lucide-react';
+import { fetchUserStats, fetchTodayCompletedActions, recalculateStreak, backfillPoints } from '../lib/gamification';
+import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
 import type { UserProfile } from '../types';
 
@@ -75,14 +76,49 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const [justEarned, setJustEarned] = useState(false);
   const [todayDone, setTodayDone] = useState<Set<string>>(new Set());
+  const [showQuests, setShowQuests] = useState(false);
   const prevPointsRef = useRef(0);
 
   const load = useCallback(async () => {
     if (!user.id) return;
-    const [s, done] = await Promise.all([
+    let [s, done] = await Promise.all([
       fetchUserStats(user.id),
       fetchTodayCompletedActions(user.id),
     ]);
+
+    // Always sync streak with actual check-in/log data.
+    // This fixes historical data AND ensures tomorrow's streak is correct
+    // even if the record_daily_checkin RPC failed on previous days.
+    const fixedStreak = await recalculateStreak(user.id);
+    if (fixedStreak > 0 && fixedStreak !== s.streakDays) {
+      console.log(`[GamificationCard] Synced streak: ${s.streakDays} → ${fixedStreak}`);
+      s = { ...s, streakDays: fixedStreak };
+    }
+
+    // Backfill missing points from log history (fixes days where awardPoints failed)
+    // Resolve outlet UUID from user.outletCode
+    if (user.outletCode) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.outletCode);
+      let outletId = isUuid ? user.outletCode : '';
+      if (!outletId) {
+        const { data: outletRow } = await supabase
+          .from('outlets')
+          .select('id')
+          .eq('outlet_id', user.outletCode)
+          .maybeSingle();
+        outletId = outletRow?.id || '';
+      }
+      if (outletId) {
+        const backfilledPts = await backfillPoints(user.id, outletId);
+        if (backfilledPts > 0) {
+          console.log(`[GamificationCard] Backfilled +${backfilledPts} pts, re-fetching stats`);
+          // Re-fetch stats to include the backfilled points
+          s = await fetchUserStats(user.id);
+          done = await fetchTodayCompletedActions(user.id);
+        }
+      }
+    }
+
     if (s.totalPoints > prevPointsRef.current && prevPointsRef.current > 0) {
       setJustEarned(true);
       setTimeout(() => setJustEarned(false), 2000);
@@ -91,14 +127,18 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
     setStats(s);
     setTodayDone(done);
     setLoading(false);
-  }, [user.id]);
+  }, [user.id, user.outletCode]);
 
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     const handler = () => load();
     window.addEventListener('ecometricus_points_updated', handler);
-    return () => window.removeEventListener('ecometricus_points_updated', handler);
+    window.addEventListener('ecometricus_checkin_updated', handler);
+    return () => {
+      window.removeEventListener('ecometricus_points_updated', handler);
+      window.removeEventListener('ecometricus_checkin_updated', handler);
+    };
   }, [load]);
 
   const animatedPoints = useCountUp(stats.totalPoints);
@@ -132,8 +172,11 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
       )}
 
       <div className="relative p-5 sm:p-6">
-        {/* Header with badge tier */}
-        <div className="flex items-center gap-3 mb-6">
+        {/* Header with badge tier — clickable to toggle quest popup */}
+        <button
+          onClick={() => setShowQuests(prev => !prev)}
+          className="flex items-center gap-3 mb-6 w-full text-left group/header"
+        >
           <div
             className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all"
             style={{ background: `${badge.color}20`, border: `1px solid ${badge.color}50`, boxShadow: `0 0 12px ${badge.glow}` }}
@@ -149,7 +192,55 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
               {badge.emoji} {t(`gamification.tier${badge.label}`)}
             </p>
           </div>
-        </div>
+          <div className="flex items-center gap-1 shrink-0 text-white/30 group-hover/header:text-white/50 transition-colors">
+            <Target size={14} />
+            <ChevronDown size={14} className={`transition-transform duration-300 ${showQuests ? 'rotate-180' : ''}`} />
+          </div>
+        </button>
+
+        {/* Quest popup — slides down from header */}
+        {showQuests && !loading && (
+          <div className="mb-5 rounded-xl border border-brand-gold/15 bg-brand-dark/60 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="px-4 py-3 border-b border-brand-gold/10">
+              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+                <Target size={11} /> {t('gamification.quests')}
+              </p>
+            </div>
+            <div className="p-3 grid grid-cols-1 gap-2">
+              {ACTIONS.map(({ action, pts, descKey, icon: Icon, color }) => {
+                const key = action.toLowerCase().replace(/\s+/g, '_');
+                const done = todayDone.has(key);
+                return (
+                  <div
+                    key={action}
+                    className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
+                      done
+                        ? 'bg-brand-eco/8 border-brand-eco/25 opacity-70'
+                        : 'bg-white/3 border-white/5 hover:border-white/10 hover:bg-white/5'
+                    }`}
+                  >
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+                      style={{ background: done ? '#22c55e20' : `${color}15`, border: `1px solid ${done ? '#22c55e40' : `${color}30`}` }}
+                    >
+                      {done
+                        ? <CheckCircle2 size={13} className="text-brand-eco" />
+                        : <Icon size={13} style={{ color }} />
+                      }
+                    </div>
+                    <span className={`text-[11px] flex-1 font-medium ${done ? 'text-brand-eco/70 line-through' : 'text-white/60'}`}>{t(descKey)}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {done
+                        ? <span className="text-[10px] font-black text-brand-eco uppercase tracking-wide">{t('gamification.done')}</span>
+                        : <><span className="text-[11px] font-black tabular-nums" style={{ color }}>+{pts}</span><Star size={9} className="text-white/20" /></>
+                      }
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center h-32">
@@ -236,46 +327,6 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
                 </div>
-              </div>
-            </div>
-
-            {/* How to earn — gamified quest list */}
-            <div>
-              <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                <Target size={11} /> {t('gamification.quests')}
-              </p>
-              <div className="grid grid-cols-1 gap-2">
-                {ACTIONS.map(({ action, pts, descKey, icon: Icon, color }) => {
-                  const key = action.toLowerCase().replace(/\s+/g, '_');
-                  const done = todayDone.has(key);
-                  return (
-                    <div
-                      key={action}
-                      className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
-                        done
-                          ? 'bg-brand-eco/8 border-brand-eco/25 opacity-70'
-                          : 'bg-white/3 border-white/5 hover:border-white/10 hover:bg-white/5'
-                      }`}
-                    >
-                      <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-                        style={{ background: done ? '#22c55e20' : `${color}15`, border: `1px solid ${done ? '#22c55e40' : `${color}30`}` }}
-                      >
-                        {done
-                          ? <CheckCircle2 size={13} className="text-brand-eco" />
-                          : <Icon size={13} style={{ color }} />
-                        }
-                      </div>
-                      <span className={`text-[11px] flex-1 font-medium ${done ? 'text-brand-eco/70 line-through' : 'text-white/60'}`}>{t(descKey)}</span>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {done
-                          ? <span className="text-[10px] font-black text-brand-eco uppercase tracking-wide">{t('gamification.done')}</span>
-                          : <><span className="text-[11px] font-black tabular-nums" style={{ color }}>+{pts}</span><Star size={9} className="text-white/20" /></>
-                        }
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
 

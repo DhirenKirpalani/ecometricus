@@ -93,6 +93,7 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
         // For basic users making a suggestion or anomaly report, show a points-earned confirmation
         const suggestionKeywords = /suggest|improve|idea|notice|found|broken|issue|problem|anomal|wrong|weird|scale|equipment|fix|report/i;
         const isBasicSuggestion = isBasicUser && suggestionKeywords.test(userText);
+        let pointsAwardedForSuggestion = 0;
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session && userProfile.outletCode) {
@@ -102,18 +103,10 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
                     : supabase.from('outlets').select('id').eq('outlet_id', userProfile.outletCode).maybeSingle()
                 );
                 if (outletRow?.id) {
-                    await awardPoints(session.user.id, 'Mila Comment', outletRow.id);
-                    window.dispatchEvent(new Event('ecometricus_points_updated'));
-                    // Show points-earned toast in chat for basic users who made a suggestion
-                    if (isBasicSuggestion) {
-                        setMessages(prev => [...prev, {
-                            id: `pts-${Date.now()}`,
-                            sender: 'tool',
-                            text: t('mila.pointsAwarded'),
-                            timestamp: new Date(),
-                            toolName: 'points_awarded',
-                            toolStatus: 'done',
-                        }]);
+                    const pts = await awardPoints(session.user.id, 'Mila Comment', outletRow.id);
+                    if (pts > 0) {
+                        pointsAwardedForSuggestion = pts;
+                        window.dispatchEvent(new Event('ecometricus_points_updated'));
                     }
                 }
             }
@@ -212,7 +205,7 @@ INSTRUCTIONS:
      • You are talking to a kitchen staff member (prep chef / line cook). They are busy and need instant, simple replies.
      • RESPONSE LENGTH: 1-2 SHORT SENTENCES MAXIMUM. No bullet points. No explanations. No markdown.
      • If they log a waste/water/energy entry: confirm it in one sentence, e.g. "Done, ${userFirstName} — logged. Keep it up!"
-     • If they make a suggestion, report an anomaly, or flag an issue: reply with ONE sentence of encouragement only, e.g. "Great catch, ${userFirstName} — noted and flagged for the supervisor!"
+     • If they make a suggestion, report an anomaly, or flag an issue: thank them AND mention they earned 5 extra points, e.g. "Great catch, ${userFirstName} — thank you! Noted and flagged for the supervisor. You just earned 5 extra points!"
      • NEVER give root cause analysis, impact breakdowns, or lengthy advice to basic users. They earn points for engaging — keep it fast and positive.` : ''}
 
 8. SAFETY: Never fabricate data. If a tool returns no results, say so honestly.`;
@@ -316,6 +309,12 @@ INSTRUCTIONS:
             }
 
             setActiveTool(null);
+
+            // For basic users who made a suggestion and earned points, append the +5 pts notification
+            if (isBasicSuggestion && pointsAwardedForSuggestion > 0) {
+                const ptsLine = `\n\n**+${pointsAwardedForSuggestion} points** — thank you for your contribution!`;
+                finalText = finalText + ptsLine;
+            }
 
             const milaMsg: Message = {
                 id: (Date.now() + 1).toString(),

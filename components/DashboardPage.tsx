@@ -764,7 +764,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       if (wErr) console.error('[DirectFetch] waste error:', wErr.message);
       else {
         console.log('[DirectFetch] waste rows:', waste?.length, waste);
-        if (waste && waste.length > 0) setRawWasteLogs(waste);
+        setRawWasteLogs(waste || []);
       }
 
       // Fetch resource logs by user_id
@@ -776,7 +776,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       if (rErr) console.error('[DirectFetch] resource error:', rErr.message);
       else {
         console.log('[DirectFetch] resource rows:', resources?.length, resources);
-        if (resources && resources.length > 0) setRawResourceLogs(resources);
+        setRawResourceLogs(resources || []);
       }
     };
 
@@ -1320,12 +1320,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       }
 
       // Build query filters — admin: all data, non-admin: own outlet data
-      // For non-admins: resource_logs uses outlet_name; other tables use outlet_id.
+      // All tables now use outlet_id (UUID) consistently.
       // Final fallback: filter by user_id (always set on insert).
-      const scopeQuery = (base: any, useOutletName = false) => {
+      const scopeQuery = (base: any) => {
         if (isAdmin) return base;
-        if (useOutletName && resolvedOutletName) return base.eq('outlet_name', resolvedOutletName);
         if (resolvedOutletId) return base.eq('outlet_id', resolvedOutletId);
+        if (resolvedOutletName) return base.eq('outlet_name', resolvedOutletName);
         // Guaranteed fallback: user submitted this data themselves
         return base.eq('user_id', session.user.id);
       };
@@ -1340,7 +1340,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         scopeQuery(supabase.from('profit_margins_logs').select('*')),
         scopeQuery(supabase.from('sentiment_logs').select('*')),
         scopeQuery(supabase.from('food_waste_logs').select('*')),
-        scopeQuery(supabase.from('resource_logs').select('*'), true),
+        scopeQuery(supabase.from('resource_logs').select('*')),
         scopeQuery(supabase.from('sales_logs').select('*')),
         scopeQuery(supabase.from('avg_check_logs').select('*')),
       ]);
@@ -1401,13 +1401,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         setSentimentLogs(mapped);
       } else { setSentimentLogs([]); }
 
-      // 7. Process waste logs — only update if results found (don't overwrite DirectFetch data)
+      // 7. Process waste logs — always update (clears stale data when entries are deleted)
       const filteredWaste = (wasteRes.data || []).filter((w: any) => !w.is_mock);
-      if (filteredWaste.length > 0) setRawWasteLogs(filteredWaste);
+      setRawWasteLogs(filteredWaste);
 
-      // 8. Process resource logs — only update if results found
+      // 8. Process resource logs — always update
       const filteredResources = resourceRes.data || [];
-      if (filteredResources.length > 0) setRawResourceLogs(filteredResources);
+      setRawResourceLogs(filteredResources);
 
       // 9. Process sales logs
       if (salesRes.data) {
@@ -2722,13 +2722,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </span>
                       </p>
                     </div>
-                    {isBasicOrSupervisor && user.role?.toLowerCase() === 'basic' && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-gold/10 border border-brand-gold/25 shrink-0">
-                        <Trophy size={14} className="text-brand-gold" />
-                        <span className="text-sm font-black text-brand-gold tabular-nums">{navPoints.toLocaleString()}</span>
-                        <span className="text-[9px] font-bold text-brand-gold/50 uppercase tracking-wider">pts</span>
-                      </div>
-                    )}
                   </div>
                 );
               })()}

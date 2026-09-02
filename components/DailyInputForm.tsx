@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Trash2, Edit2, Plus, RotateCcw, CheckCircle2, AlertTriangle, ShieldCheck,
-  Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown,
+  Leaf, Droplets, Zap, Cloud, DollarSign, Cpu, Camera, Info, TrendingDown, Scale, Search, ChevronDown, Lightbulb,
   ImagePlus, X, Loader2
 } from 'lucide-react';
 import { UserProfile } from '../types';
@@ -861,7 +861,10 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
           p_outlet_code: user.outletCode,
           p_entry_type: 'waste',
         });
-        if (!checkinErr) {
+        if (checkinErr) {
+          console.error('[DailyInput] Check-in RPC failed:', checkinErr.message);
+        } else {
+          console.log('[DailyInput] Check-in recorded:', checkinData);
           window.dispatchEvent(new Event('ecometricus_checkin_updated'));
           // Check if a 5-day streak milestone was just reached
           const streak = Array.isArray(checkinData) ? checkinData[0]?.streak_days : checkinData?.streak_days;
@@ -869,15 +872,22 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
             await awardPoints(session.user.id, '5-Day Streak Bonus', outlet.id);
           }
         }
-      } catch (e) { /* non-fatal — streak tracking is optional */ }
+      } catch (e: any) {
+        console.error('[DailyInput] Check-in exception:', e?.message || e);
+      }
 
       // ── Award gamification points for new entries only ──
       if (!editingId && outlet?.id) {
-        await awardPoints(session.user.id, 'On-Time Entry', outlet.id);
+        let anyPointsAwarded = false;
+        const onTimePts = await awardPoints(session.user.id, 'On-Time Entry', outlet.id);
+        if (onTimePts > 0) anyPointsAwarded = true;
         if (finalImageUrls.length > 0) {
-          await awardPoints(session.user.id, 'Entry with Image', outlet.id);
+          const imgPts = await awardPoints(session.user.id, 'Entry with Image', outlet.id);
+          if (imgPts > 0) anyPointsAwarded = true;
         }
-        window.dispatchEvent(new Event('ecometricus_points_updated'));
+        if (anyPointsAwarded) {
+          window.dispatchEvent(new Event('ecometricus_points_updated'));
+        }
       }
     } catch (err) {
       console.error('[DailyInput] Failed to sync waste entry to Supabase:', err);
@@ -1051,22 +1061,32 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
           p_outlet_code: user.outletCode,
           p_entry_type: type,
         });
-        if (!checkinErr) {
+        if (checkinErr) {
+          console.error('[DailyInput] Check-in RPC failed:', checkinErr.message);
+        } else {
+          console.log('[DailyInput] Check-in recorded:', checkinData);
           window.dispatchEvent(new Event('ecometricus_checkin_updated'));
           const streak = Array.isArray(checkinData) ? checkinData[0]?.streak_days : checkinData?.streak_days;
           if (streak && streak % 5 === 0 && outlet?.id) {
             await awardPoints(session.user.id, '5-Day Streak Bonus', outlet.id);
           }
         }
-      } catch (e) { /* non-fatal — streak tracking is optional */ }
+      } catch (e: any) {
+        console.error('[DailyInput] Check-in exception:', e?.message || e);
+      }
 
       // ── Award gamification points for new entries only ──
       if (!editingResourceId && outlet?.id) {
-        await awardPoints(session.user.id, 'On-Time Entry', outlet.id);
+        let anyPointsAwarded = false;
+        const onTimePts = await awardPoints(session.user.id, 'On-Time Entry', outlet.id);
+        if (onTimePts > 0) anyPointsAwarded = true;
         if (type === 'energy') {
-          await awardPoints(session.user.id, 'Energy Reading', outlet.id);
+          const energyPts = await awardPoints(session.user.id, 'Energy Reading', outlet.id);
+          if (energyPts > 0) anyPointsAwarded = true;
         }
-        window.dispatchEvent(new Event('ecometricus_points_updated'));
+        if (anyPointsAwarded) {
+          window.dispatchEvent(new Event('ecometricus_points_updated'));
+        }
       }
     } catch (err) {
       console.error('[DailyInput] Failed to sync resource entry to Supabase:', err);
@@ -1887,6 +1907,44 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
             </div>
           </div>
         </div>
+
+        {/* ── MILA SUGGESTION ── */}
+        {(() => {
+          const suggestions: { icon: 'alert' | 'warn' | 'ok'; text: string }[] = [];
+          if (showAlertCarbon || totals.carbonImpact > 180) {
+            suggestions.push({ icon: 'alert', text: t('dailyInput.milaSuggestionCarbon') });
+          }
+          if (showAlertFinance || totals.totalFinancialLoss > 650) {
+            suggestions.push({ icon: 'warn', text: t('dailyInput.milaSuggestionFinance', { savings: Math.round(totals.totalFinancialLoss * 0.10) }) });
+          }
+          if (showAlertWater || totals.waterFootprint > 400) {
+            suggestions.push({ icon: 'warn', text: t('dailyInput.milaSuggestionWater') });
+          }
+          if (totals.waste > BENCHMARKS.waste) {
+            suggestions.push({ icon: 'alert', text: t('dailyInput.milaSuggestionWaste', { pct: Math.round(((totals.waste - BENCHMARKS.waste) / BENCHMARKS.waste) * 100) }) });
+          }
+          if (suggestions.length === 0) {
+            suggestions.push({ icon: 'ok', text: t('dailyInput.milaSuggestionOk') });
+          }
+          return (
+            <div className="mt-4 rounded-2xl border border-brand-gold/15 bg-[#1c3933]/60 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Lightbulb size={14} className="text-brand-gold" />
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('dailyInput.milaSuggestion')}</h4>
+              </div>
+              <div className="space-y-2">
+                {suggestions.map((s, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    {s.icon === 'alert' && <AlertTriangle size={13} className="text-brand-alert shrink-0 mt-0.5" />}
+                    {s.icon === 'warn' && <AlertTriangle size={13} className="text-brand-gold shrink-0 mt-0.5" />}
+                    {s.icon === 'ok' && <CheckCircle2 size={13} className="text-brand-eco shrink-0 mt-0.5" />}
+                    <p className="text-[11px] text-white/70 leading-relaxed">{s.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── IMAGE LIGHTBOX ── */}
