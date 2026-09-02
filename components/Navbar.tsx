@@ -2,9 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Page } from '../types';
 import Logo from './Logo';
-import { Menu, X, LogIn, UserPlus, LogOut, Trophy } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, LogOut } from 'lucide-react';
 import { useI18n } from '../lib/useI18n';
-import { fetchUserStats } from '../lib/gamification';
 
 interface NavbarProps {
   currentPage: Page;
@@ -20,27 +19,9 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = false, userInitial = 'A', onLogout, userRole, userPosition, userId }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [points, setPoints] = useState(0);
   const { t, lang, changeLang } = useI18n();
 
   const isBasicUser = isLoggedIn && !!userId && userRole?.toLowerCase() === 'basic';
-
-  const loadPoints = useCallback(async () => {
-    if (!userId) return;
-    const s = await fetchUserStats(userId);
-    setPoints(s.totalPoints);
-  }, [userId]);
-
-  useEffect(() => {
-    if (isBasicUser) loadPoints();
-  }, [isBasicUser, loadPoints]);
-
-  useEffect(() => {
-    if (!isBasicUser) return;
-    const handler = () => loadPoints();
-    window.addEventListener('ecometricus_points_updated', handler);
-    return () => window.removeEventListener('ecometricus_points_updated', handler);
-  }, [isBasicUser, loadPoints]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -124,15 +105,6 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
             <div className="w-px h-5 bg-white/10" />
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
-                {/* Points badge — basic users only */}
-                {isBasicUser && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-gold/10 border border-brand-gold/25">
-                    <Trophy size={12} className="text-brand-gold" />
-                    <span className="text-[11px] font-black text-brand-gold tabular-nums">{points.toLocaleString()}</span>
-                    <span className="text-[9px] font-bold text-brand-gold/50 uppercase tracking-wider">pts</span>
-                  </div>
-                )}
-
                 {/* Divider */}
                 <div className="hidden sm:block w-px h-7 bg-white/8" />
 
@@ -244,13 +216,6 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, isLoggedIn = f
             {/* Auth actions */}
             {isLoggedIn ? (
               <div className="flex items-center gap-2">
-                {isBasicUser && (
-                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-gold/10 border border-brand-gold/25">
-                    <Trophy size={13} className="text-brand-gold" />
-                    <span className="text-xs font-black text-brand-gold tabular-nums">{points.toLocaleString()}</span>
-                    <span className="text-[9px] font-bold text-brand-gold/50 uppercase">pts</span>
-                  </div>
-                )}
                 {(userPosition || userRole) && (
                   <p className="text-[10px] text-brand-gold/70 font-semibold tracking-widest uppercase">
                     {userRole?.toLowerCase() === 'super_admin' ? 'Super Admin' : userPosition || (userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : '')}

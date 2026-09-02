@@ -58,10 +58,10 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
           .from('resource_logs')
           .select('*')
           .gte('created_at', weekStartISO);
-        if (scopeOutletName) {
+        if (scopeOutletId) {
+          resourceQuery = resourceQuery.eq('outlet_id', scopeOutletId);
+        } else if (scopeOutletName) {
           resourceQuery = resourceQuery.eq('outlet_name', scopeOutletName);
-        } else if (scopeOutletId) {
-          resourceQuery = resourceQuery.eq('outlet_code', scopeOutletId);
         }
         const { data: resourceLogs, error } = await resourceQuery
           .order('created_at', { ascending: false })
