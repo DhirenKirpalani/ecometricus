@@ -19,11 +19,27 @@ export async function extractPdfText(file: File): Promise<string> {
   // @ts-ignore
   const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
 
-  // Use the bundled worker
+  // Configure the worker — Vite's ?url import returns { default: urlString }
   // @ts-ignore
-  if (pdfjs.GlobalWorkerOptions) {
-    // @ts-ignore
-    pdfjs.GlobalWorkerOptions.workerSrc = await import('pdfjs-dist/build/pdf.worker.mjs?url');
+  if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
+    try {
+      // @ts-ignore
+      const workerModule = await import('pdfjs-dist/build/pdf.worker.mjs?url');
+      // @ts-ignore
+      pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default || workerModule;
+    } catch {
+      // Fallback: use the minified worker
+      try {
+        // @ts-ignore
+        const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+        // @ts-ignore
+        pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default || workerModule;
+      } catch {
+        // Final fallback: disable worker (runs on main thread)
+        // @ts-ignore
+        pdfjs.GlobalWorkerOptions.workerSrc = '';
+      }
+    }
   }
 
   // @ts-ignore
