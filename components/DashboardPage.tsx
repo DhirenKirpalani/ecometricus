@@ -754,12 +754,36 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const uid = session.user.id;
       console.log('[DirectFetch] Fetching data for non-admin user_id:', uid);
 
-      // Fetch waste logs by user_id
-      const { data: waste, error: wErr } = await supabase
+      // Resolve outlet_id from personnel table — waste/resource logs are scoped
+      // by outlet_id, not user_id (the user_id on logs may be the admin's or
+      // whoever submitted the entry, not the supervisor's own auth ID)
+      let outletId: string | null = null;
+      let { data: personnelRow } = await supabase
+        .from('personnel')
+        .select('outlet_id')
+        .eq('user_id', uid)
+        .maybeSingle();
+      if (!personnelRow && user.email) {
+        const { data: byEmail } = await supabase
+          .from('personnel')
+          .select('outlet_id')
+          .ilike('email', user.email)
+          .maybeSingle();
+        personnelRow = byEmail;
+      }
+      outletId = personnelRow?.outlet_id || null;
+
+      // Fetch waste logs — prefer outlet_id, fall back to user_id
+      let wasteQuery = supabase
         .from('food_waste_logs')
         .select('*')
-        .eq('user_id', uid)
         .eq('is_mock', false);
+      if (outletId) {
+        wasteQuery = wasteQuery.eq('outlet_id', outletId);
+      } else {
+        wasteQuery = wasteQuery.eq('user_id', uid);
+      }
+      const { data: waste, error: wErr } = await wasteQuery;
 
       if (wErr) console.error('[DirectFetch] waste error:', wErr.message);
       else {
@@ -767,11 +791,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         setRawWasteLogs(waste || []);
       }
 
-      // Fetch resource logs by user_id
-      const { data: resources, error: rErr } = await supabase
+      // Fetch resource logs — resource_logs has no outlet_id column, use outlet_name
+      // Resolve outlet_name from outlet_id
+      let outletName: string | null = null;
+      if (outletId) {
+        const { data: outletRow } = await supabase
+          .from('outlets')
+          .select('outlet_name')
+          .eq('id', outletId)
+          .maybeSingle();
+        outletName = outletRow?.outlet_name || null;
+      }
+      let resourceQuery = supabase
         .from('resource_logs')
-        .select('*')
-        .eq('user_id', uid);
+        .select('*');
+      if (outletName) {
+        resourceQuery = resourceQuery.eq('outlet_name', outletName);
+      } else {
+        resourceQuery = resourceQuery.eq('user_id', uid);
+      }
+      const { data: resources, error: rErr } = await resourceQuery;
 
       if (rErr) console.error('[DirectFetch] resource error:', rErr.message);
       else {
@@ -781,7 +820,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     };
 
     fetchMyData();
-  }, [user.id, user.role]);
+  }, [user.id, user.role, user.email]);
   // ────────────────────────────────────────────────────────────────────────────
 
   // Redirect bare /dashboard to the user's default tab
@@ -1319,14 +1358,34 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         }
       }
 
-      // Build query filters — admin: all data, non-admin: own outlet data
-      // All tables now use outlet_id (UUID) consistently.
+      // Build query filters — admin: own outlets only, non-admin: own outlet data
+      // Most tables use outlet_id (UUID). resource_logs uses outlet_name (no outlet_id column).
       // Final fallback: filter by user_id (always set on insert).
+      const adminOutletIds = isAdmin ? outlets.map((o: any) => o.id).filter(Boolean) : [];
+      const adminOutletNames = isAdmin ? outlets.map((o: any) => o.outlet_name || o.name).filter(Boolean) : [];
       const scopeQuery = (base: any) => {
-        if (isAdmin) return base;
+        if (isAdmin) {
+          // Admin/GM: scope to their own outlets only (not all platform data)
+          if (adminOutletIds.length > 0) return base.in('outlet_id', adminOutletIds);
+          return base.eq('user_id', session.user.id);
+        }
         if (resolvedOutletId) return base.eq('outlet_id', resolvedOutletId);
         if (resolvedOutletName) return base.eq('outlet_name', resolvedOutletName);
         // Guaranteed fallback: user submitted this data themselves
+        return base.eq('user_id', session.user.id);
+      };
+      // Separate scope for resource_logs (uses outlet_name, not outlet_id)
+      const scopeResourceQuery = (base: any) => {
+        if (isAdmin) {
+          if (adminOutletNames.length > 0) return base.in('outlet_name', adminOutletNames);
+          return base.eq('user_id', session.user.id);
+        }
+        if (resolvedOutletName) return base.eq('outlet_name', resolvedOutletName);
+        if (resolvedOutletId) {
+          // Resolve outlet_name from outlets array
+          const o = outlets.find((out: any) => out.id === resolvedOutletId);
+          if (o?.outlet_name || o?.name) return base.eq('outlet_name', o.outlet_name || o.name);
+        }
         return base.eq('user_id', session.user.id);
       };
 
@@ -1340,7 +1399,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         scopeQuery(supabase.from('profit_margins_logs').select('*')),
         scopeQuery(supabase.from('sentiment_logs').select('*')),
         scopeQuery(supabase.from('food_waste_logs').select('*')),
-        scopeQuery(supabase.from('resource_logs').select('*')),
+        scopeResourceQuery(supabase.from('resource_logs').select('*')),
         scopeQuery(supabase.from('sales_logs').select('*')),
         scopeQuery(supabase.from('avg_check_logs').select('*')),
       ]);
