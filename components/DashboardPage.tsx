@@ -100,6 +100,7 @@ import EnergyUsageTemplateChart from './EnergyUsageTemplateChart';
 import Co2EmissionsTemplateChart from './Co2EmissionsTemplateChart';
 import { useFoodWasteChartData } from '../hooks/useFoodWasteChartData';
 import { useResourceChartData } from '../hooks/useResourceChartData';
+import { getPlatformSettings, getWeekStartISO } from '../lib/platformSettings';
 import LegalConsentModal from './LegalConsentModal';
 import { UserProfile, StaffPosition, Outlet } from '../types';
 import Logo from './Logo';
@@ -972,6 +973,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [avgCheckLogs, setAvgCheckLogs] = useState<any[]>([]);
   const [rawWasteLogs, setRawWasteLogs] = useState<any[]>([]);
   const [rawResourceLogs, setRawResourceLogs] = useState<any[]>([]);
+  const [weekStartISO, setWeekStartISO] = useState<string>('');
+
+  // Fetch the weekly reset day from platform settings
+  useEffect(() => {
+    getPlatformSettings().then(settings => {
+      setWeekStartISO(getWeekStartISO(settings.weekly_reset_day));
+    });
+  }, []);
 
   // ── Audit Log ──
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -2475,14 +2484,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const isFnBEditable = isEditingFnB;
 
   // Session entries come from Supabase (rawWasteLogs/rawResourceLogs) — no localStorage
-  const sessionWasteEntries = rawWasteLogs;
-  const sessionResourceEntries = rawResourceLogs;
+  // Weekly-filtered logs (cumulative from week start — resets at Saturday midnight by default)
+  const sessionWasteEntries = useMemo(() => {
+    if (!weekStartISO) return rawWasteLogs;
+    return rawWasteLogs.filter(e => e.created_at && new Date(e.created_at).toISOString() >= weekStartISO);
+  }, [rawWasteLogs, weekStartISO]);
+  const sessionResourceEntries = useMemo(() => {
+    if (!weekStartISO) return rawResourceLogs;
+    return rawResourceLogs.filter(e => e.created_at && new Date(e.created_at).toISOString() >= weekStartISO);
+  }, [rawResourceLogs, weekStartISO]);
 
   const sessionData = useMemo(() => {
-    // Live Supabase Data only — no mock/fallback values
-    const totalWasteKg = rawWasteLogs.reduce((sum, e) => sum + (parseFloat(e.mass_kg) || 0), 0);
-    const totalWaterUsage = rawResourceLogs.reduce((sum, e) => sum + (parseFloat(e.water_liters) || 0), 0);
-    const totalEnergyUsage = rawResourceLogs.reduce((sum, e) => sum + (parseFloat(e.energy_kwh) || 0), 0);
+    // Weekly cumulative data (resets at Saturday midnight by default)
+    const totalWasteKg = sessionWasteEntries.reduce((sum, e) => sum + (parseFloat(e.mass_kg) || 0), 0);
+    const totalWaterUsage = sessionResourceEntries.reduce((sum, e) => sum + (parseFloat(e.water_liters) || 0), 0);
+    const totalEnergyUsage = sessionResourceEntries.reduce((sum, e) => sum + (parseFloat(e.energy_kwh) || 0), 0);
 
     // CO2 conversion factors (matching useCo2ChartData hook)
     const wasteCo2Coeff = 2.85;   // kg CO2e per kg food waste
@@ -2522,7 +2538,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         isDeviating: totalWasteKg > wasteBenchmark
       }
     };
-  }, [rawWasteLogs, rawResourceLogs, effectiveParams.wasteTarget]);
+  }, [sessionWasteEntries, sessionResourceEntries, effectiveParams.wasteTarget]);
 
   const impacts = sessionData.impacts;
 
@@ -2548,21 +2564,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       laborCost: effectiveParams.laborCostTarget || 30.0,
       profitMargin: effectiveParams.profitMarginTarget || 15.0
     },
-    // Real-time aggregate data
+    // Real-time aggregate data (weekly cumulative)
     metrics: {
       totalOutlets: outlets.length,
       activeOutlets: new Set([
-        ...rawWasteLogs.map(e => e.outlet_id), 
-        ...rawResourceLogs.map(e => e.outlet_id)
+        ...sessionWasteEntries.map(e => e.outlet_id), 
+        ...sessionResourceEntries.map(e => e.outlet_id)
       ]).size,
       financials: impacts, // Inherit the calculated impacts
       wasteVolume: sessionData.waste.kg,
-      waterVolume: rawResourceLogs.reduce((s, r) => s + (Number(r.water_liters) || 0), 0),
-      energyVolume: rawResourceLogs.reduce((s, r) => s + (Number(r.energy_kwh) || 0), 0),
+      waterVolume: sessionResourceEntries.reduce((s, r) => s + (Number(r.water_liters) || 0), 0),
+      energyVolume: sessionResourceEntries.reduce((s, r) => s + (Number(r.energy_kwh) || 0), 0),
       efficiencyScore: Math.round((impacts.carbonImpact / (sessionData.waste.kg || 1)) * 100) // Rough metric
     },
-    // Pass raw session data for deep reasoning if needed
-    recentLogs: [...rawWasteLogs].slice(-10), // Last 10 entries for context
+    // Pass raw session data for deep reasoning if needed (weekly)
+    recentLogs: [...sessionWasteEntries].slice(-10), // Last 10 entries for context
     marketingModality: "Admin-Level Strategic Oversight",
     activeAlerts: {
       kpi: impacts.totalFinancialLoss > 500,
@@ -2593,8 +2609,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     metrics: {
       totalOutlets: outlets.length,
       wasteVolume: sessionData.waste.kg,
-      waterVolume: rawResourceLogs.reduce((s, r) => s + (Number(r.water_liters) || 0), 0),
-      energyVolume: rawResourceLogs.reduce((s, r) => s + (Number(r.energy_kwh) || 0), 0),
+      waterVolume: sessionResourceEntries.reduce((s, r) => s + (Number(r.water_liters) || 0), 0),
+      energyVolume: sessionResourceEntries.reduce((s, r) => s + (Number(r.energy_kwh) || 0), 0),
       financials: impacts,
     },
     activeAlerts: {
@@ -2893,7 +2909,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   )}
                                 </div>
                                 <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
-                                  {impacts.carbonImpact.toFixed(1)}
+                                  {impacts.carbonImpact.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                                   <span className="text-xs font-medium text-white/50 uppercase ml-1.5">kg CO₂e</span>
                                 </p>
                                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
@@ -2913,7 +2929,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   </div>
                                 </div>
                                 <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
-                                  {impacts.waterFootprint.toFixed(1)}
+                                  {impacts.waterFootprint.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                                   <span className="text-xs font-medium text-white/50 uppercase ml-1.5">L</span>
                                 </p>
                                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
@@ -2939,7 +2955,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   )}
                                 </div>
                                 <p className={`text-3xl font-geometric font-black leading-none mb-2 ${impacts.isDeviating ? 'text-brand-alert' : 'text-brand-eco'}`}>
-                                  ${impacts.totalFinancialLoss.toFixed(2)}
+                                  ${impacts.totalFinancialLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-3">
                                   {impacts.isDeviating ? t('dashboard.supervisorNotified') : t('dashboard.withinFinancialCap')}
@@ -2947,11 +2963,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 <div className={`space-y-1 pt-2 border-t ${impacts.isDeviating ? 'border-brand-alert/20' : 'border-brand-eco/20'}`}>
                                   <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest text-white/40">
                                     <span>{t('dailyInput.itemLoss')}</span>
-                                    <span className="text-white">${sessionData.waste.cost.toFixed(2)}</span>
+                                    <span className="text-white">${sessionData.waste.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest text-white/40">
                                     <span>{t('dailyInput.logistics')}</span>
-                                    <span className="text-white">${sessionData.waste.disposalCost.toFixed(2)}</span>
+                                    <span className="text-white">${sessionData.waste.disposalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                 </div>
                               </div>
@@ -2977,8 +2993,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                             <AlertsPanel
                               impacts={sessionData.impacts}
-                              rawWasteLogs={rawWasteLogs}
-                              rawResourceLogs={rawResourceLogs}
+                              rawWasteLogs={sessionWasteEntries}
+                              rawResourceLogs={sessionResourceEntries}
                               outlets={outlets}
                               effectiveParams={effectiveParams}
                             />
@@ -2991,11 +3007,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           {/* "Position the Earth Keeper Engagement % Chart directly BELOW the Mila Actionable Intelligence container... only element in this section" */}
                           {(() => {
                             // "Calculate Outlet Engagement % (Unique Outlets in Session Data)"
-                            // Logic: Count outlets that have at least one log entry
+                            // Logic: Count outlets that have at least one log entry this week
                             const outletIds = new Set(outlets.map(o => o.id));
                             const activeOutletIds = new Set<string>();
-                            rawWasteLogs.forEach(e => { if (e.outlet_id && outletIds.has(e.outlet_id)) activeOutletIds.add(e.outlet_id); });
-                            rawResourceLogs.forEach(e => {
+                            sessionWasteEntries.forEach(e => { if (e.outlet_id && outletIds.has(e.outlet_id)) activeOutletIds.add(e.outlet_id); });
+                            sessionResourceEntries.forEach(e => {
                                 const id = e.outlet_id || outlets.find((o: any) => o.code === e.outlet_code || o.name === e.outlet_name)?.id;
                                 if (id && outletIds.has(id)) activeOutletIds.add(id);
                             });

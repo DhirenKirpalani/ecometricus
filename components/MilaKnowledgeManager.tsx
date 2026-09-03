@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Upload, Trash2, FileText, Search, Plus, RefreshCw, CheckCircle2, AlertTriangle,
-  BookOpen, Sparkles, Layers, Zap, TrendingUp, Database, Award, X, FileCode, Globe, Leaf, Users, DollarSign, FlaskConical, FolderOpen
+  BookOpen, Sparkles, Layers, Zap, TrendingUp, Database, Award, X, FileCode, Globe, Leaf, Users, DollarSign, FlaskConical, FolderOpen, Eye, Calendar
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import {
@@ -59,7 +60,9 @@ const MilaKnowledgeManager: React.FC = () => {
   const [uploadForm, setUploadForm] = useState({ category: 'general', autoChunk: true });
   const [uploadStatus, setUploadStatus] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [xpGained, setXpGained] = useState<number | null>(null);
-  const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<GroupedDoc | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const showConfirm = (message: string, onConfirm: () => void) => setConfirmModal({ message, onConfirm });
 
   // Multi-file upload queue
   interface FileQueueItem {
@@ -140,7 +143,7 @@ const MilaKnowledgeManager: React.FC = () => {
       setFileQueue(prev => prev.map(f => f.id === item.id ? { ...f, status: 'uploading' } : f));
 
       const result = await uploadDocument(
-        item.name, item.content, 'manual', uploadForm.category, uploadForm.autoChunk
+        item.name, item.content, 'manual', uploadForm.category, uploadForm.autoChunk, item.file
       );
 
       if (result.success) {
@@ -175,20 +178,23 @@ const MilaKnowledgeManager: React.FC = () => {
   };
 
   const handleDelete = async (baseTitle: string) => {
-    const ok = await deleteDocumentGroup(baseTitle);
-    if (ok) loadDocs();
+    showConfirm(t('mila.kbConfirmDelete', { title: baseTitle }), async () => {
+      const ok = await deleteDocumentGroup(baseTitle);
+      if (ok) loadDocs();
+    });
   };
 
   const handleClearAll = async () => {
-    if (!confirm(t('mila.kbConfirmClearAll'))) return;
-    const result = await clearAllDocuments();
-    if (result.success) {
-      setUploadStatus({ msg: t('mila.kbStatusDeleted'), type: 'success' });
-      loadDocs();
-    } else {
-      setUploadStatus({ msg: result.error || t('mila.kbStatusClearFailed'), type: 'error' });
-    }
-    setTimeout(() => setUploadStatus(null), 4000);
+    showConfirm(t('mila.kbConfirmClearAll'), async () => {
+      const result = await clearAllDocuments();
+      if (result.success) {
+        setUploadStatus({ msg: t('mila.kbStatusDeleted'), type: 'success' });
+        loadDocs();
+      } else {
+        setUploadStatus({ msg: result.error || t('mila.kbStatusClearFailed'), type: 'error' });
+      }
+      setTimeout(() => setUploadStatus(null), 4000);
+    });
   };
 
   // Add files to queue and start extracting sequentially
@@ -255,6 +261,7 @@ const MilaKnowledgeManager: React.FC = () => {
     totalWords: number;
     createdAt: string;
     preview: string;
+    fileUrl: string | null;
   }
 
   const groupedDocs = useMemo((): GroupedDoc[] => {
@@ -271,6 +278,10 @@ const MilaKnowledgeManager: React.FC = () => {
         if (doc.created_at && doc.created_at < existing.createdAt) {
           existing.createdAt = doc.created_at;
         }
+        // Inherit file_url from any chunk that has it
+        if (doc.file_url && !existing.fileUrl) {
+          existing.fileUrl = doc.file_url;
+        }
       } else {
         groups.set(baseTitle, {
           baseTitle,
@@ -280,6 +291,7 @@ const MilaKnowledgeManager: React.FC = () => {
           totalWords: doc.content.split(/\s+/).length,
           createdAt: doc.created_at || new Date().toISOString(),
           preview: doc.content.substring(0, 200),
+          fileUrl: doc.file_url || null,
         });
       }
     }
@@ -618,86 +630,189 @@ const MilaKnowledgeManager: React.FC = () => {
           {filteredDocs.map((doc, idx) => {
             const meta = CATEGORY_META[doc.category] || CATEGORY_META['general'];
             const Icon = meta.icon;
-            const isExpanded = expandedDoc === doc.baseTitle;
-            const fullContent = doc.chunks.map(c => c.content).join('\n\n');
             return (
               <div
                 key={doc.baseTitle}
-                className="group relative bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-4 hover:border-brand-gold/30 transition-all overflow-hidden animate-in fade-in slide-in-from-bottom-2"
+                className="group relative bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-4 hover:border-brand-gold/40 transition-all overflow-hidden animate-in fade-in slide-in-from-bottom-2"
                 style={{ animationDelay: `${idx * 40}ms`, animationDuration: '400ms' }}
               >
                 {/* Category accent bar */}
                 <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: meta.color, opacity: 0.5 }} />
 
-                <div className="flex items-start gap-3">
+                <div className="flex items-center gap-3">
                   {/* Category icon */}
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+                    className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
                     style={{ background: `${meta.color}15`, border: `1px solid ${meta.color}30` }}
                   >
-                    <Icon size={16} style={{ color: meta.color }} />
+                    <Icon size={18} style={{ color: meta.color }} />
                   </div>
 
-                  {/* Content */}
+                  {/* Document name + date */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-white truncate leading-tight mb-1.5">{doc.baseTitle}</h4>
-
-                    {/* Meta row */}
-                    <div className="flex items-center gap-2 mb-2.5 flex-wrap">
-                      <span
-                        className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded"
-                        style={{ background: `${meta.color}15`, color: meta.color }}
-                      >
-                        {meta.label}
+                    <h4 className="text-sm font-bold text-white truncate leading-tight mb-1">{doc.baseTitle}</h4>
+                    <div className="flex items-center gap-1.5">
+                      <Calendar size={11} className="text-white/30 shrink-0" />
+                      <span className="text-[10px] text-white/40 font-medium">
+                        {new Date(doc.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
-                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/25 bg-brand-dark/60 px-2 py-0.5 rounded">
-                        {doc.source}
-                      </span>
-                      {doc.chunks.length > 1 && (
-                        <span className="text-[8px] font-bold uppercase tracking-widest text-brand-gold/40 bg-brand-gold/5 px-2 py-0.5 rounded">
-                          {doc.chunks.length} chunks
-                        </span>
-                      )}
-                      <span className="text-[8px] text-white/20 font-medium">
-                        {new Date(doc.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    </div>
-
-                    {/* Preview / Expanded content */}
-                    <p
-                      className={`text-[11px] text-white/45 leading-relaxed ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-2'} cursor-pointer`}
-                      onClick={() => setExpandedDoc(isExpanded ? null : doc.baseTitle)}
-                    >
-                      {isExpanded ? fullContent.substring(0, 1200) : doc.preview.substring(0, 150)}
-                      {(isExpanded ? fullContent.length > 1200 : doc.preview.length > 150) ? '...' : ''}
-                    </p>
-                    {fullContent.length > 150 && (
-                      <button
-                        onClick={() => setExpandedDoc(isExpanded ? null : doc.baseTitle)}
-                        className="text-[9px] font-bold uppercase tracking-widest text-brand-gold/50 hover:text-brand-gold mt-1.5 transition-colors"
-                      >
-                        {isExpanded ? t('mila.kbShowLess') : t('mila.kbReadMore')}
-                      </button>
-                    )}
-
-                    {/* Footer: word count + delete */}
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-brand-gold/15">
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-white/20">
-                        {doc.totalWords.toLocaleString()} words · +{doc.chunks.length * XP_PER_DOC} XP
-                      </span>
-                      <button
-                        onClick={() => handleDelete(doc.baseTitle)}
-                        className="p-1.5 rounded-lg text-white/15 hover:text-brand-alert hover:bg-brand-alert/10 transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 size={13} />
-                      </button>
                     </div>
                   </div>
+
+                  {/* Preview button — opens original file if available, else text modal */}
+                  <button
+                    onClick={() => {
+                      if (doc.fileUrl) {
+                        window.open(doc.fileUrl, '_blank', 'noopener,noreferrer');
+                      } else {
+                        setPreviewDoc(doc);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-gold/10 border border-brand-gold/30 text-brand-gold text-[10px] font-black uppercase tracking-widest hover:bg-brand-gold/20 hover:border-brand-gold/50 transition-all shrink-0"
+                  >
+                    <Eye size={13} />
+                    {t('mila.kbPreview')}
+                  </button>
+
+                  {/* Delete (hover only) */}
+                  <button
+                    onClick={() => handleDelete(doc.baseTitle)}
+                    className="p-2 rounded-lg text-white/15 hover:text-brand-alert hover:bg-brand-alert/10 transition-all opacity-0 group-hover:opacity-100 shrink-0"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* ── Preview Modal ── */}
+      {previewDoc && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            className="bg-[#1c3933] border border-brand-gold/30 rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between gap-3 p-5 border-b border-brand-gold/20">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: `${CATEGORY_META[previewDoc.category]?.color || '#94A3B8'}15`, border: `1px solid ${CATEGORY_META[previewDoc.category]?.color || '#94A3B8'}30` }}
+                >
+                  {(() => {
+                    const Icon = CATEGORY_META[previewDoc.category]?.icon || FileText;
+                    return <Icon size={18} style={{ color: CATEGORY_META[previewDoc.category]?.color || '#94A3B8' }} />;
+                  })()}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-white truncate leading-tight">{previewDoc.baseTitle}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
+                      {new Date(previewDoc.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-white/20" />
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">
+                      {previewDoc.totalWords.toLocaleString()} {t('mila.kbWords')}
+                    </span>
+                    {previewDoc.chunks.length > 1 && (
+                      <>
+                        <span className="w-1 h-1 rounded-full bg-white/20" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-brand-gold/60">
+                          {previewDoc.chunks.length} chunks
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setPreviewDoc(null)}
+                className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-brand-gold/10 transition-all shrink-0"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal body — full content */}
+            <div className="flex-1 overflow-y-auto p-5">
+              <p className="text-[12px] text-white/60 leading-relaxed whitespace-pre-wrap">
+                {previewDoc.chunks.map(c => c.content).join('\n\n')}
+              </p>
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex items-center justify-between gap-3 p-4 border-t border-brand-gold/20">
+              <span className="text-[9px] font-black uppercase tracking-widest text-white/30">
+                {CATEGORY_META[previewDoc.category]?.label || 'General'}
+              </span>
+              <div className="flex items-center gap-2">
+                {previewDoc.fileUrl && (
+                  <a
+                    href={previewDoc.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-eco/10 border border-brand-eco/30 text-brand-eco font-black text-xs uppercase tracking-wider hover:bg-brand-eco/20 transition-all"
+                  >
+                    <FileText size={14} />
+                    {t('mila.kbPreview')}
+                  </a>
+                )}
+                <button
+                  onClick={() => setPreviewDoc(null)}
+                  className="px-5 py-2.5 rounded-xl bg-brand-gold text-brand-dark font-black text-xs uppercase tracking-wider hover:bg-brand-gold/90 transition-all"
+                >
+                  {t('mila.kbClose')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirmation Modal ── */}
+      {confirmModal && createPortal(
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-brand-dark/90 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setConfirmModal(null)}
+        >
+          <div
+            className="relative bg-gradient-to-br from-[#1c3933] to-[#152e2a] border border-brand-alert/30 rounded-3xl p-8 shadow-[0_24px_80px_rgba(0,0,0,0.8)] max-w-[400px] w-[calc(100%-2rem)] animate-in zoom-in-95 fade-in slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="flex justify-center mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-brand-alert/15 border border-brand-alert/40 flex items-center justify-center shadow-[0_0_24px_rgba(239,68,68,0.2)]">
+                <Trash2 size={28} className="text-brand-alert" />
+              </div>
+            </div>
+
+            {/* Message */}
+            <p className="text-center text-sm text-white/60 leading-relaxed mb-7">{confirmModal.message}</p>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-white/5 border border-brand-gold/15 text-white/70 font-black text-xs uppercase tracking-widest hover:bg-white/10 hover:text-white hover:border-brand-gold/30 transition-all"
+              >
+                {t('mila.kbCancel')}
+              </button>
+              <button
+                onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
+                className="flex-1 px-5 py-3.5 rounded-xl bg-brand-alert/20 border border-brand-alert/50 text-brand-alert font-black text-xs uppercase tracking-widest hover:bg-brand-alert/30 hover:border-brand-alert/70 transition-all flex items-center justify-center gap-2"
+              >
+                <Trash2 size={14} /> {t('mila.kbDelete')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

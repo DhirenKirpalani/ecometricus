@@ -7,6 +7,7 @@ export interface MilaDocument {
   content: string;
   source: string;
   category: string;
+  file_url?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -45,7 +46,8 @@ export async function uploadDocument(
   content: string,
   source = 'manual',
   category = 'general',
-  autoChunk = true
+  autoChunk = true,
+  file?: File
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
     // Dedup: check if documents with the same title prefix already exist
@@ -61,11 +63,40 @@ export async function uploadDocument(
       return { success: true, count: 0, error: 'Document already exists (skipped duplicate)' };
     }
 
+    // Upload original file to storage (if provided)
+    let fileUrl: string | null = null;
+    if (file) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+      const safeName = baseTitle.replace(/[^a-zA-Z0-9-_]/g, '_').toLowerCase();
+      const filePath = `${Date.now()}-${safeName}.${ext}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('mila-documents')
+        .upload(filePath, file, { contentType: file.type || 'application/octet-stream' });
+
+      if (!uploadError && uploadData) {
+        const { data: urlData } = supabase.storage
+          .from('mila-documents')
+          .getPublicUrl(filePath);
+        fileUrl = urlData?.publicUrl || null;
+      }
+      // If upload fails, continue without file_url (text-only fallback)
+    }
+
     if (!autoChunk || content.length <= 600) {
       const { error } = await supabase.from('mila_documents').insert({
-        title, content, source, category
+        title, content, source, category, file_url: fileUrl
       });
-      if (error) return { success: false, count: 0, error: error.message };
+      if (error) {
+        // Retry without file_url if column doesn't exist yet
+        if (error.message.includes('file_url') || error.code === '42703') {
+          const { error: retryError } = await supabase.from('mila_documents').insert({
+            title, content, source, category
+          });
+          if (retryError) return { success: false, count: 0, error: retryError.message };
+        } else {
+          return { success: false, count: 0, error: error.message };
+        }
+      }
       return { success: true, count: 1 };
     }
 
@@ -75,10 +106,20 @@ export async function uploadDocument(
       title: chunks.length > 1 ? `${title} (Part ${i + 1}/${chunks.length})` : title,
       content: chunk,
       source,
-      category
+      category,
+      file_url: i === 0 ? fileUrl : null, // Store file_url on first chunk only
     }));
     const { error } = await supabase.from('mila_documents').insert(rows);
-    if (error) return { success: false, count: 0, error: error.message };
+    if (error) {
+      // Retry without file_url if column doesn't exist yet
+      if (error.message.includes('file_url') || error.code === '42703') {
+        const fallbackRows = rows.map(({ file_url, ...rest }) => rest);
+        const { error: retryError } = await supabase.from('mila_documents').insert(fallbackRows);
+        if (retryError) return { success: false, count: 0, error: retryError.message };
+      } else {
+        return { success: false, count: 0, error: error.message };
+      }
+    }
     return { success: true, count: rows.length };
   } catch (err: any) {
     return { success: false, count: 0, error: err.message };
