@@ -149,16 +149,16 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
       if (personnelRes.error) console.error('personnel query error:', personnelRes.error);
 
       // Fetch profiles (all registered users on the platform)
-      // Try with updated_at first, fall back to without it
+      // The profiles table may not have created_at — use updated_at as fallback
       let profilesData: any[] | null = null;
       const profilesRes = await supabase
         .from('profiles')
-        .select('id, email, role, full_name, created_at, updated_at');
+        .select('id, email, role, full_name, position, updated_at');
       if (profilesRes.error) {
-        console.warn('profiles query with updated_at failed, retrying without:', profilesRes.error);
+        console.warn('profiles query failed, retrying with minimal columns:', profilesRes.error);
         const profilesFallback = await supabase
           .from('profiles')
-          .select('id, email, role, full_name, created_at');
+          .select('id, email, role, full_name, position');
         profilesData = profilesFallback.data;
         if (profilesFallback.error) console.error('profiles fallback query error:', profilesFallback.error);
       } else {
@@ -186,15 +186,22 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
         .select('water_liters, energy_kwh, resource_type, amount');
 
       const totalOutlets = outletData?.length || 0;
-      // Count ALL unique users: profiles + personnel (matching the table logic)
-      const profileIds = new Set((profilesData || []).map((p: any) => p.id));
-      // Personnel: use user_id if available, otherwise use id
-      const personnelIds = new Set(
-        (personnelData || []).map((p: any) => (p.user_id || p.id)).filter(Boolean)
-      );
-      // Merge: anyone in profiles OR personnel
-      const allUserIds = new Set([...profileIds, ...personnelIds]);
-      const totalUsers = allUserIds.size;
+      // Count ALL unique users: dedup by email (since personnel.user_id is the admin's ID)
+      const allEmails = new Set<string>();
+      const allIds = new Set<string>();
+      (profilesData || []).forEach((p: any) => {
+        if (p.id) allIds.add(p.id);
+        if (p.email) allEmails.add(p.email.toLowerCase());
+      });
+      (personnelData || []).forEach((p: any) => {
+        if (p.email && !allEmails.has(p.email.toLowerCase())) {
+          allEmails.add(p.email.toLowerCase());
+          allIds.add(p.id);
+        } else if (!p.email && p.id) {
+          allIds.add(p.id);
+        }
+      });
+      const totalUsers = allIds.size;
       // Count companies: company_settings rows + admins in profiles without company_settings
       const companySettingUserIds = new Set((companyData || []).map((c: any) => c.user_id));
       const adminProfileCount = (profilesData || []).filter((p: any) => {
@@ -303,12 +310,15 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
       });
 
       const users: PlatformUser[] = [];
+      const seenEmails = new Set<string>();
       const seenIds = new Set<string>();
 
       // From profiles (registered auth users)
       (profilesData || []).forEach((p: any) => {
         if (seenIds.has(p.id)) return;
         seenIds.add(p.id);
+        const emailLower = (p.email || '').toLowerCase();
+        if (emailLower) seenEmails.add(emailLower);
         const userOutlets = (outletData || []).filter((o: any) => o.user_id === p.id);
         users.push({
           id: p.id,
@@ -323,14 +333,28 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user }) => {
       });
 
       // From personnel (invited staff, may not be in profiles yet)
+      // NOTE: personnel.user_id stores the ADMIN's ID (the inviter), not the
+      // person's own auth ID. So we dedup by email, not by user_id.
       (personnelData || []).forEach((p: any) => {
-        const uid = p.user_id || p.id;
-        if (seenIds.has(uid)) return;
-        seenIds.add(uid);
-        const outletName = p.outlet_id ? (outletMap.get(p.outlet_id) || '—') : '—';
+        const emailLower = (p.email || '').toLowerCase();
+        if (emailLower && seenEmails.has(emailLower)) return;
+        if (!emailLower && seenIds.has(p.id)) return;
+        if (emailLower) seenEmails.add(emailLower);
+        seenIds.add(p.id);
+        // Resolve outlet name: personnel.outlet_id can be a UUID (outlets.id) or a code (outlets.outlet_id)
+        let outletName = '—';
+        if (p.outlet_id) {
+          outletName = outletMap.get(p.outlet_id) || '—';
+          // If not found by UUID, try by outlet_id code
+          if (outletName === '—') {
+            const byCode = (outletData || []).find((o: any) => o.outlet_id === p.outlet_id);
+            if (byCode) outletName = byCode.outlet_name || '—';
+          }
+        }
+        // Find the admin's company — personnel.user_id is the admin's user_id
         const adminCompany = companyData?.find((c: any) => c.user_id === p.user_id);
         users.push({
-          id: uid,
+          id: p.id,
           full_name: p.full_name || '—',
           email: p.email || '—',
           role: p.role || '—',
