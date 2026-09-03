@@ -4,7 +4,7 @@ import { useI18n } from '../lib/useI18n';
 import {
     Trophy, Crown, Medal, Sparkles, CheckCircle2, Clock, Zap,
     RefreshCw, Flame, Target, TrendingUp, Award, Users, Building2,
-    Calendar, Star, Camera, Leaf, Droplets
+    Calendar, Star, Camera, Leaf, Droplets, ChevronUp, ChevronDown
 } from 'lucide-react';
 
 // --- Interfaces ---
@@ -49,9 +49,11 @@ interface CheckinData {
 interface GamificationHubProps {
     goal?: number;
     outletIds?: string[];
+    allOutlets?: { id?: string; name: string; code: string }[];
+    isAdmin?: boolean;
 }
 
-const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletIds = [] }) => {
+const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletIds = [], allOutlets = [], isAdmin = false }) => {
     const { t } = useI18n();
     const [outlets, setOutlets] = useState<OutletData[]>([]);
     const [leaderboard, setLeaderboard] = useState<LeaderboardData[]>([]);
@@ -62,11 +64,18 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
     const [leaderboardPeriod, setLeaderboardPeriod] = useState<'all' | 'month' | 'week'>('all');
     const [rawLedger, setRawLedger] = useState<{ profile_id: string; points_awarded: number; created_at: string; outlet_id: string }[]>([]);
     const [profileMap, setProfileMap] = useState<Map<string, { name: string; outlet_name: string; outlet_dot_color: string }>>(new Map());
+    const [selectedOutletId, setSelectedOutletId] = useState<string>('all');
 
     const OUTLET_GOAL = goal;
 
+    // Compute effective outlet IDs based on filter
+    const effectiveOutletIds = useMemo(() => {
+        if (selectedOutletId === 'all') return outletIds;
+        return [selectedOutletId];
+    }, [outletIds, selectedOutletId]);
+
     // Stabilize outletIds to avoid re-fetching on every render
-    const outletIdsKey = outletIds.sort().join(',');
+    const outletIdsKey = effectiveOutletIds.sort().join(',');
     const fetchData = useCallback(async () => {
         const ids = outletIdsKey.split(',').filter(Boolean);
         if (ids.length === 0) {
@@ -357,7 +366,24 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                    {/* Outlet filter — admin/GM only */}
+                    {isAdmin && allOutlets.length > 1 && (
+                        <div className="relative">
+                            <select
+                                value={selectedOutletId}
+                                onChange={(e) => setSelectedOutletId(e.target.value)}
+                                className="appearance-none bg-brand-dark/60 border border-brand-gold/20 rounded-xl pl-9 pr-8 py-2.5 text-[11px] font-black uppercase tracking-widest text-white/70 hover:border-brand-gold/40 transition-all cursor-pointer outline-none focus:border-brand-gold/50"
+                            >
+                                <option value="all">All Outlets</option>
+                                {allOutlets.filter(o => o.id).map(o => (
+                                    <option key={o.id} value={o.id}>{o.name}</option>
+                                ))}
+                            </select>
+                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-gold/50 pointer-events-none" />
+                            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                        </div>
+                    )}
                     <button onClick={fetchData} className="p-3 bg-brand-dark/60 border border-brand-gold/20 rounded-xl hover:border-brand-gold/40 transition-all text-white/50 hover:text-brand-gold">
                         <RefreshCw size={16} />
                     </button>
@@ -534,56 +560,85 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                         </div>
                     </div>
 
-                    {/* Rankings table */}
-                    <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
-                        {/* Column headers */}
-                        <div className="flex items-center px-6 py-2.5 border-b border-brand-gold/10 bg-brand-gold/5">
-                            <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] w-12">Rank</span>
-                            <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] flex-1">User Name</span>
-                            <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Points</span>
-                        </div>
+                    {/* Podium — Top 3 (adapts to available users) */}
+                    {filteredLeaderboard.length > 0 && (() => {
+                        const top3 = filteredLeaderboard.slice(0, 3);
+                        // 1 user: single column, 2 users: 2 cols (1st right, 2nd left), 3 users: 3 cols
+                        const cols = top3.length;
+                        const order = cols === 1 ? [0] : cols === 2 ? [1, 0] : [1, 0, 2];
+                        const accents = ['#C8A413', '#94a3b8', '#cd7f32'];
+                        const heights = ['h-40', 'h-32', 'h-28'];
+                        const icons = [
+                            <Crown size={18} key="c" className="text-brand-gold" />,
+                            <Medal size={16} key="s" className="text-slate-300" />,
+                            <Medal size={16} key="b" className="text-[#cd7f32]" />,
+                        ];
+                        return (
+                            <div className={`grid gap-2 sm:gap-4 items-end ${cols === 1 ? 'grid-cols-1 max-w-xs mx-auto' : cols === 2 ? 'grid-cols-2 max-w-md mx-auto' : 'grid-cols-3'}`}>
+                                {order.map((dataIdx, slotIdx) => {
+                                    const s = top3[dataIdx];
+                                    const rank = dataIdx + 1;
+                                    return (
+                                        <PodiumCard
+                                            key={s.id}
+                                            rank={rank}
+                                            name={s.name}
+                                            points={s.total_points}
+                                            outlet={s.outlet_name}
+                                            color={s.outlet_dot_color}
+                                            icon={icons[dataIdx]}
+                                            accent={accents[dataIdx]}
+                                            height={heights[dataIdx]}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
 
-                        {/* Rows */}
-                        <div className="divide-y divide-brand-gold/5">
-                            {filteredLeaderboard.length > 0 ? filteredLeaderboard.map((s, idx) => (
-                                <div key={s.id} className={`flex items-center px-6 py-3 transition-all ${idx === 0 ? 'bg-brand-gold/5 hover:bg-brand-gold/8' : 'hover:bg-brand-gold/5'}`}>
-                                    <span className={`w-12 text-sm font-black shrink-0 ${
-                                        idx === 0 ? 'text-brand-gold' :
-                                        idx === 1 ? 'text-slate-300' :
-                                        idx === 2 ? 'text-[#cd7f32]' :
-                                        'text-white/30'
-                                    }`}>
-                                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`}
-                                    </span>
-                                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
-                                            idx === 0 ? 'bg-brand-gold/20 border-brand-gold/40 shadow-[0_0_10px_rgba(200,164,19,0.25)]' :
-                                            'bg-brand-gold/10 border-brand-gold/20'
-                                        }`}>
-                                            <span className="text-brand-gold text-[10px] font-black">{s.name.charAt(0).toUpperCase()}</span>
+                    {/* Remaining ranks 4+ — scrollable list */}
+                    {filteredLeaderboard.length > 3 && (
+                        <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
+                            <div className="px-4 sm:px-6 py-2 border-b border-brand-gold/10 bg-brand-gold/5 flex items-center justify-between">
+                                <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">Also Running</span>
+                                <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest">{filteredLeaderboard.length - 3} more</span>
+                            </div>
+                            <div className="divide-y divide-brand-gold/5 max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-brand-gold/20 scrollbar-track-transparent">
+                                {filteredLeaderboard.slice(3).map((s, idx) => {
+                                    const rank = idx + 4;
+                                    const maxPts = filteredLeaderboard[0]?.total_points || 1;
+                                    const pct = Math.round((s.total_points / maxPts) * 100);
+                                    return (
+                                        <div key={s.id} className="flex items-center gap-3 px-4 sm:px-6 py-3 hover:bg-brand-gold/5 transition-all">
+                                            <span className="w-7 text-center text-xs font-black text-white/30 shrink-0">{rank}</span>
+                                            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-brand-gold/20 bg-brand-gold/10">
+                                                <span className="text-brand-gold text-[10px] font-black">{s.name.charAt(0).toUpperCase()}</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <p className="text-sm font-bold text-white truncate">{s.name}</p>
+                                                    {s.outlet_name && <span className="text-[8px] font-black text-white/30 uppercase tracking-wider shrink-0 hidden sm:inline">{s.outlet_name}</span>}
+                                                </div>
+                                                <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full bg-gradient-to-r from-brand-gold/40 to-brand-gold transition-all duration-700" style={{ width: `${pct}%` }} />
+                                                </div>
+                                            </div>
+                                            <span className="text-sm font-black text-white/60 shrink-0">{s.total_points.toLocaleString()}</span>
                                         </div>
-                                        <div className="min-w-0">
-                                            <p className={`text-sm font-bold truncate ${idx === 0 ? 'text-brand-gold' : 'text-white'}`}>{s.name}</p>
-                                            {s.outlet_name && <p className="text-[9px] text-white/30 uppercase tracking-wider truncate">{s.outlet_name}</p>}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        {idx === 0 && <Sparkles size={11} className="text-brand-gold/60 animate-pulse" />}
-                                        <span className={`text-sm font-black ${idx === 0 ? 'text-brand-gold' : idx < 3 ? 'text-white/80' : 'text-white/50'}`}>
-                                            {s.total_points.toLocaleString()}
-                                        </span>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="py-12 text-center">
-                                    <Trophy size={28} className="text-white/10 mx-auto mb-3" />
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
-                                        {t('gamification.awaitingSyncData')}
-                                    </p>
-                                </div>
-                            )}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {filteredLeaderboard.length === 0 && (
+                        <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] py-12 text-center">
+                            <Trophy size={28} className="text-white/10 mx-auto mb-3" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
+                                {t('gamification.awaitingSyncData')}
+                            </p>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -695,87 +750,233 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
 
             {/* ── Live Activity Tab ── */}
             {activeView === 'activity' && (
-                <div className="animate-in fade-in duration-500">
-                    <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-2 h-2 bg-brand-eco rounded-full animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.5)]"></div>
-                            <h3 className="text-sm font-black uppercase tracking-widest text-white">{t('gamification.tabLiveActivity')}</h3>
-                        </div>
+                <LiveActivityTab logs={logs} t={t} />
+            )}
+        </div>
+    );
+};
 
-                        {logs.length === 0 ? (
-                            <div className="text-center py-12">
-                                <Zap size={32} className="text-white/20 mx-auto mb-3" />
-                                <p className="text-sm text-white/40">{t('gamification.noRecentActivity')}</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {logs.map(log => {
-                                    const actionLabels: Record<string, string> = {
-                                        // Keys as stored in gamification_actions (action_key = display_name.toLowerCase().replace(/\s+/g,'_'))
-                                        'on-time_entry':       'On-Time Entry',
-                                        'on_time_entry':       'On-Time Entry',
-                                        'entry_with_image':    'Entry with Photo',
-                                        'energy_reading':      'Energy Reading',
-                                        '5-day_streak_bonus':  '5-Day Streak Bonus',
-                                        '5_day_streak_bonus':  '5-Day Streak Bonus',
-                                        'mila_comment':        'Mila AI Comment',
-                                        'mila_suggestion':     'Mila AI Suggestion',
-                                        'accuracy_bonus':      'Accuracy Bonus',
-                                        'daily_checkin':       'Daily Check-in',
-                                        'waste_log':           'Waste Log',
-                                        'water_log':           'Water Log',
-                                        'points_earned':       'Points Earned',
-                                    };
-                                    // Use raw action_key first (most reliable), fall back to action_name
-                                    const lookupKey = log.action_key || log.action_name.replace(/\s+/g, '_');
-                                    const actionLabel = actionLabels[lookupKey]
-                                        || (log.action_name && log.action_name !== 'points earned'
-                                            ? log.action_name.replace(/\b\w/g, c => c.toUpperCase())
-                                            : 'Points Earned');
-                                    const timeStr = new Date(log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                                    const dateStr = new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                                    // Icon + color per action type
-                                    const actionMeta: Record<string, { icon: React.ReactNode; color: string }> = {
-                                        'on-time_entry':      { icon: <Clock size={14} />,        color: '#22c55e' },
-                                        'on_time_entry':      { icon: <Clock size={14} />,        color: '#22c55e' },
-                                        'entry_with_image':   { icon: <Camera size={14} />,       color: '#60a5fa' },
-                                        'energy_reading':     { icon: <Zap size={14} />,          color: '#fbbf24' },
-                                        '5-day_streak_bonus': { icon: <Flame size={14} />,        color: '#f97316' },
-                                        '5_day_streak_bonus': { icon: <Flame size={14} />,        color: '#f97316' },
-                                        'mila_comment':       { icon: <Star size={14} />,         color: '#a78bfa' },
-                                        'mila_suggestion':    { icon: <Star size={14} />,         color: '#a78bfa' },
-                                        'accuracy_bonus':     { icon: <CheckCircle2 size={14} />, color: '#34d399' },
-                                        'daily_checkin':      { icon: <CheckCircle2 size={14} />, color: '#22c55e' },
-                                        'waste_log':          { icon: <Leaf size={14} />,         color: '#4ade80' },
-                                        'water_log':          { icon: <Droplets size={14} />,     color: '#38bdf8' },
-                                    };
-                                    const meta = actionMeta[lookupKey] || { icon: <Trophy size={14} />, color: '#C8A413' };
-                                    return (
-                                    <div key={log.id} className="bg-brand-dark/40 border border-brand-gold/10 rounded-xl p-4 flex items-start gap-3 hover:border-brand-gold/25 transition-all">
-                                        <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                                             style={{ backgroundColor: `${meta.color}18`, border: `1px solid ${meta.color}40`, color: meta.color }}>
-                                            {meta.icon}
-                                        </div>
-                                        <div className="flex-grow space-y-1">
-                                            <p className="text-[11px] font-bold text-white uppercase leading-tight">{actionLabel}</p>
-                                            <div className="flex items-center gap-2 text-white/30">
-                                                <Clock size={9} />
-                                                <span className="text-[9px] font-black uppercase tracking-widest">{log.staff_name}</span>
-                                                <span className="text-white/15">·</span>
-                                                <span className="text-[9px] font-medium normal-case tracking-normal">{timeStr} · {dateStr}</span>
-                                            </div>
-                                        </div>
-                                        <div className="shrink-0">
-                                            <span className="text-sm font-black" style={{ color: meta.color }}>+{log.points_awarded}</span>
-                                        </div>
-                                    </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+// ── Live Activity Tab — grouped by date, collapsible ──
+const ACTION_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
+    'on-time_entry':      { icon: <Clock size={13} />,        color: '#22c55e', label: 'On-Time Entry' },
+    'on_time_entry':      { icon: <Clock size={13} />,        color: '#22c55e', label: 'On-Time Entry' },
+    'entry_with_image':   { icon: <Camera size={13} />,       color: '#60a5fa', label: 'Entry with Photo' },
+    'energy_reading':     { icon: <Zap size={13} />,          color: '#fbbf24', label: 'Energy Reading' },
+    '5-day_streak_bonus': { icon: <Flame size={13} />,        color: '#f97316', label: '5-Day Streak Bonus' },
+    '5_day_streak_bonus': { icon: <Flame size={13} />,        color: '#f97316', label: '5-Day Streak Bonus' },
+    'mila_comment':       { icon: <Star size={13} />,         color: '#a78bfa', label: 'Mila AI Comment' },
+    'mila_suggestion':    { icon: <Star size={13} />,         color: '#a78bfa', label: 'Mila AI Suggestion' },
+    'accuracy_bonus':     { icon: <CheckCircle2 size={13} />, color: '#34d399', label: 'Accuracy Bonus' },
+    'daily_checkin':      { icon: <CheckCircle2 size={13} />, color: '#22c55e', label: 'Daily Check-in' },
+    'waste_log':          { icon: <Leaf size={13} />,         color: '#4ade80', label: 'Waste Log' },
+    'water_log':          { icon: <Droplets size={13} />,     color: '#38bdf8', label: 'Water Log' },
+    'points_earned':      { icon: <Trophy size={13} />,       color: '#C8A413', label: 'Points Earned' },
+};
+
+const LiveActivityTab: React.FC<{
+    logs: ActionLogEntry[];
+    t: (key: string, opts?: any) => string;
+}> = ({ logs, t }) => {
+    const [expanded, setExpanded] = useState(false);
+    const VISIBLE_COUNT = 6;
+
+    // Group logs by date
+    const grouped = useMemo(() => {
+        const groups: Record<string, ActionLogEntry[]> = {};
+        logs.forEach(log => {
+            const dateKey = new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (!groups[dateKey]) groups[dateKey] = [];
+            groups[dateKey].push(log);
+        });
+        return Object.entries(groups).sort((a, b) => {
+            const da = new Date(a[1][0].created_at).getTime();
+            const db = new Date(b[1][0].created_at).getTime();
+            return db - da;
+        });
+    }, [logs]);
+
+    if (logs.length === 0) {
+        return (
+            <div className="animate-in fade-in duration-500">
+                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] py-12 text-center">
+                    <Zap size={32} className="text-white/20 mx-auto mb-3" />
+                    <p className="text-sm text-white/40">{t('gamification.noRecentActivity')}</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Flatten for visible count
+    const flatLogs = logs;
+    const visibleLogs = expanded ? flatLogs : flatLogs.slice(0, VISIBLE_COUNT);
+
+    // Re-group visible logs by date
+    const visibleGrouped = useMemo(() => {
+        const groups: Record<string, ActionLogEntry[]> = {};
+        visibleLogs.forEach(log => {
+            const dateKey = new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (!groups[dateKey]) groups[dateKey] = [];
+            groups[dateKey].push(log);
+        });
+        return Object.entries(groups).sort((a, b) => {
+            const da = new Date(a[1][0].created_at).getTime();
+            const db = new Date(b[1][0].created_at).getTime();
+            return db - da;
+        });
+    }, [visibleLogs]);
+
+    return (
+        <div className="animate-in fade-in duration-500">
+            <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-brand-gold/10 bg-brand-gold/5">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-2 h-2 bg-brand-eco rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
+                        <h3 className="text-[11px] font-black uppercase tracking-widest text-white">{t('gamification.tabLiveActivity')}</h3>
                     </div>
+                    <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest">{logs.length} events</span>
+                </div>
+
+                {/* Timeline */}
+                <div className="p-4 sm:p-5 space-y-5 max-h-[520px] overflow-y-auto scrollbar-thin scrollbar-thumb-brand-gold/20 scrollbar-track-transparent">
+                    {visibleGrouped.map(([dateKey, dateLogs]) => {
+                        const dayPoints = dateLogs.reduce((s, l) => s + l.points_awarded, 0);
+                        return (
+                            <div key={dateKey}>
+                                {/* Date header */}
+                                <div className="flex items-center gap-3 mb-2.5">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar size={11} className="text-brand-gold/50" />
+                                        <span className="text-[10px] font-black text-brand-gold/70 uppercase tracking-widest">{dateKey}</span>
+                                    </div>
+                                    <div className="flex-1 h-px bg-brand-gold/10" />
+                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">+{dayPoints} pts</span>
+                                </div>
+
+                                {/* Activity rows */}
+                                <div className="space-y-1.5 ml-1">
+                                    {dateLogs.map(log => {
+                                        const lookupKey = log.action_key || log.action_name.replace(/\s+/g, '_');
+                                        const meta = ACTION_META[lookupKey] || { icon: <Trophy size={13} />, color: '#C8A413', label: 'Points Earned' };
+                                        const timeStr = new Date(log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                                        return (
+                                            <div key={log.id} className="flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-brand-gold/5 transition-all group">
+                                                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                                     style={{ backgroundColor: `${meta.color}15`, border: `1px solid ${meta.color}30`, color: meta.color }}>
+                                                    {meta.icon}
+                                                </div>
+                                                <div className="flex-1 min-w-0 flex items-center gap-2">
+                                                    <span className="text-[11px] font-bold text-white truncate">{meta.label}</span>
+                                                    <span className="text-white/15 text-[10px]">·</span>
+                                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-wider truncate">{log.staff_name}</span>
+                                                </div>
+                                                <span className="text-[9px] text-white/25 font-medium shrink-0 hidden sm:inline">{timeStr}</span>
+                                                <span className="text-xs font-black shrink-0" style={{ color: meta.color }}>+{log.points_awarded}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Show more / less */}
+                {logs.length > VISIBLE_COUNT && (
+                    <button
+                        onClick={() => setExpanded(!expanded)}
+                        className="w-full flex items-center justify-center gap-2 py-3 border-t border-brand-gold/10 hover:bg-brand-gold/5 transition-all text-[10px] font-black uppercase tracking-widest text-brand-gold/60 hover:text-brand-gold"
+                    >
+                        {expanded ? (
+                            <><ChevronUp size={14} /> Show Less</>
+                        ) : (
+                            <><ChevronDown size={14} /> Show {logs.length - VISIBLE_COUNT} More</>
+                        )}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ── Podium Card for top 3 leaderboard entries ──
+const PodiumCard: React.FC<{
+    rank: number;
+    name: string;
+    points: number;
+    outlet: string;
+    color: string;
+    icon: React.ReactNode;
+    accent: string;
+    height: string;
+}> = ({ rank, name, points, outlet, color, icon, accent, height }) => {
+    const isFirst = rank === 1;
+    return (
+        <div className="flex flex-col items-center w-full">
+            {/* Crown for 1st */}
+            {isFirst && (
+                <div className="mb-1">
+                    <Crown size={18} className="text-brand-gold" fill="currentColor" />
                 </div>
             )}
+
+            {/* Avatar */}
+            <div className="relative mb-2">
+                <div
+                    className={`rounded-full flex items-center justify-center border-2 shrink-0 ${isFirst ? 'w-14 h-14 sm:w-16 sm:h-16' : 'w-11 h-11 sm:w-12 sm:h-12'}`}
+                    style={{
+                        borderColor: isFirst ? '#C8A413' : `${accent}50`,
+                        backgroundColor: '#1c3933',
+                        boxShadow: isFirst ? '0 0 12px rgba(200,164,19,0.25)' : 'none',
+                    }}
+                >
+                    <span
+                        className="font-black"
+                        style={{
+                            color: isFirst ? '#C8A413' : accent,
+                            fontSize: isFirst ? '16px' : '13px',
+                        }}
+                    >
+                        {name.charAt(0).toUpperCase()}
+                    </span>
+                </div>
+                {/* Rank badge */}
+                <div
+                    className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black border-2 border-[#1c3933]"
+                    style={{
+                        backgroundColor: isFirst ? '#C8A413' : accent,
+                        color: isFirst ? '#1c3933' : '#fff',
+                    }}
+                >
+                    {rank}
+                </div>
+            </div>
+
+            {/* Name */}
+            <p className={`text-center font-geometric font-bold text-white truncate max-w-full leading-tight ${isFirst ? 'text-sm' : 'text-[11px]'}`}>{name}</p>
+            {outlet && <p className="text-[8px] font-bold uppercase tracking-wider text-brand-gold/40 truncate max-w-full mb-1">{outlet}</p>}
+
+            {/* Podium platform */}
+            <div
+                className={`relative ${height} w-full rounded-t-lg flex flex-col items-center justify-end pb-3 overflow-hidden border-t-2 border-x border-brand-gold/10 bg-[#1c3933]`}
+            >
+                {/* Accent top bar */}
+                <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: isFirst ? '#C8A413' : `${accent}60` }} />
+
+                {/* Icon */}
+                <div className="mb-1.5 opacity-70" style={{ color: isFirst ? '#C8A413' : accent }}>
+                    {icon}
+                </div>
+
+                {/* Points */}
+                <p
+                    className="font-geometric font-black leading-none"
+                    style={{ color: isFirst ? '#C8A413' : '#fff', fontSize: isFirst ? '18px' : '15px' }}
+                >
+                    {points.toLocaleString()}
+                </p>
+                <p className="text-[7px] font-black uppercase tracking-widest text-white/25 mt-1">pts</p>
+            </div>
         </div>
     );
 };

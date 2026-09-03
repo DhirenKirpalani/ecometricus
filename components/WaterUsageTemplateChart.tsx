@@ -27,11 +27,6 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
     const weeklyUsage = useMemo(() => data.reduce((acc, curr) => acc + curr.usage, 0).toLocaleString(), [data]);
     const avgUsage = useMemo(() => Math.round(data.reduce((acc, curr) => acc + curr.usage, 0) / (data.length || 1)).toLocaleString(), [data]);
 
-    // Build smooth area path
-    const points = data.map((d, i) => ({ x: getX(i, data.length), y: getY(Math.max(minVal, Math.min(maxVal, d.usage))) }));
-    const linePath = points.length > 0 ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') : '';
-    const areaPath = points.length > 0 ? `${linePath} L ${points[points.length - 1].x} 100 L ${points[0].x} 100 Z` : '';
-
     return (
         <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-6 shadow-xl w-full h-full flex flex-col transition-all duration-300 hover:border-blue-400/30">
             {/* Header */}
@@ -85,7 +80,7 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
                     ))}
                 </div>
 
-                {/* Grid + Area */}
+                {/* Grid + Bars */}
                 <div className="absolute left-14 right-0 top-0 bottom-6">
                     {/* Grid lines */}
                     <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
@@ -104,25 +99,31 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
                         </div>
                     </div>
 
-                    {/* SVG Area Chart */}
+                    {/* SVG Bar Chart */}
                     <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
                         <defs>
-                            <linearGradient id="waterArea" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.4" />
-                                <stop offset="100%" stopColor="#60A5FA" stopOpacity="0.02" />
+                            <linearGradient id="waterGood" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.9" />
+                                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.6" />
+                            </linearGradient>
+                            <linearGradient id="waterBad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.9" />
+                                <stop offset="100%" stopColor="#dc2626" stopOpacity="0.6" />
                             </linearGradient>
                         </defs>
                         {/* Gold dotted benchmark line */}
                         <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.85" />
-                        {areaPath && <path d={areaPath} fill="url(#waterArea)" />}
-                        {linePath && <path d={linePath} fill="none" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
-                        {points.map((p, i) => {
-                            const isGood = data[i].usage <= benchmark;
+                        {data.map((t, i) => {
+                            const x = getX(i, data.length);
+                            const clamped = Math.max(minVal, Math.min(maxVal, t.usage));
+                            const y = getY(clamped);
+                            const height = 100 - y;
+                            const isGood = t.usage <= benchmark;
                             return (
-                                <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(data[i])}>
-                                    <circle cx={p.x} cy={p.y} r="1.8" fill={isGood ? '#60A5FA' : '#ef4444'} stroke="#1c3933" strokeWidth="0.5"
-                                        className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.day !== data[i].day ? 0.3 : 1 }} />
-                                    <rect x={p.x - 8} y="0" width="16" height="100" fill="transparent" />
+                                <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
+                                    <rect x={x - 5} y={y} width="10" height={height} fill={isGood ? 'url(#waterGood)' : 'url(#waterBad)'} rx="3"
+                                        className="transition-all duration-300 hover:opacity-100" style={{ opacity: selectedDay && selectedDay.day !== t.day ? 0.4 : 0.85 }} />
+                                    <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
                                 </g>
                             );
                         })}

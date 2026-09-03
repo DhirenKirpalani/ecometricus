@@ -166,9 +166,15 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                                         <stop offset="100%" stopColor={o.color} stopOpacity="0.65" />
                                     </linearGradient>
                                 ))}
+                                <linearGradient id={`res-${safeId}-alert`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.9" />
+                                    <stop offset="100%" stopColor="#dc2626" stopOpacity="0.6" />
+                                </linearGradient>
                             </defs>
                             {data.map((t, i) => {
                                 const x = getX(i, data.length);
+                                const dayTotal = outletMeta.reduce((sum, o) => sum + (Number(t[o.key]) || 0), 0);
+                                const isOverBenchmark = dayTotal > benchmark;
                                 let cumulative = 0;
                                 const segments = outletMeta.map(o => {
                                     const val = Number(t[o.key]) || 0;
@@ -184,7 +190,9 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                                 return (
                                     <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
                                         {segments.map((s, si) => (
-                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h} fill={`url(#res-${safeId}-${s.key})`} rx={si === 0 ? "3" : "0"}
+                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h}
+                                                fill={isOverBenchmark ? `url(#res-${safeId}-alert)` : `url(#res-${safeId}-${s.key})`}
+                                                rx={si === 0 ? "3" : "0"}
                                                 className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.day !== t.day ? 0.4 : 0.85 }} />
                                         ))}
                                         <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />

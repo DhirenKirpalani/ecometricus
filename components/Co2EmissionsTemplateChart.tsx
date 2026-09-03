@@ -59,7 +59,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
     }, [data, outletKeys]);
 
     const minVal = 0;
-    const totals = normalizedData.map(d => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0));
+    const totals = normalizedData.map((d: any) => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0));
     const maxVal = Math.max(benchmark * 1.5, ...totals, 100);
     const range = maxVal - minVal;
 
@@ -152,11 +152,17 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                                         <stop offset="100%" stopColor={o.color} stopOpacity="0.65" />
                                     </linearGradient>
                                 ))}
+                                <linearGradient id="co2-alert" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.9" />
+                                    <stop offset="100%" stopColor="#dc2626" stopOpacity="0.6" />
+                                </linearGradient>
                             </defs>
                             {/* Gold dotted benchmark line */}
                             <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.85" />
-                            {normalizedData.map((t, i) => {
+                            {normalizedData.map((t: any, i) => {
                                 const x = getX(i, normalizedData.length);
+                                const dayTotal = outletMeta.reduce((sum, o) => sum + (Number(t[o.key]) || 0), 0);
+                                const isOverBenchmark = dayTotal > benchmark;
                                 let cumulative = 0;
                                 const segments = outletMeta.map(o => {
                                     const val = Number(t[o.key]) || 0;
@@ -172,7 +178,9 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                                 return (
                                     <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
                                         {segments.map((s, si) => (
-                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h} fill={`url(#co2-${s.key})`} rx={si === 0 ? "3" : "0"}
+                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h}
+                                                fill={isOverBenchmark ? `url(#co2-alert)` : `url(#co2-${s.key})`}
+                                                rx={si === 0 ? "3" : "0"}
                                                 className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.date !== t.date ? 0.4 : 0.85 }} />
                                         ))}
                                         <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
@@ -183,7 +191,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                     )}
 
                     {/* Data point dots with hover labels */}
-                    {normalizedData.map((t, i) => {
+                    {normalizedData.map((t: any, i) => {
                         const xPct = getX(i, normalizedData.length);
                         const total = outletMeta.reduce((sum, o) => sum + (Number(t[o.key]) || 0), 0);
                         const yPct = getY(Math.min(maxVal, Math.max(minVal, total)));
@@ -211,7 +219,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                     {selectedDay && (() => {
                         const index = normalizedData.findIndex(d => d.date === selectedDay.date);
                         const xPct = getX(index, data.length);
-                        const total = outletMeta.reduce((sum, o) => sum + (Number(selectedDay[o.key]) || 0), 0);
+                        const total = outletMeta.reduce((sum, o) => sum + (Number((selectedDay as any)[o.key]) || 0), 0);
                         const yPct = getY(Math.min(maxVal, total));
                         const isTop = yPct < 30;
                         return (
@@ -226,7 +234,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                                     <p className="text-base font-geometric font-black text-white text-center mb-1.5">{Math.round(total)}kg</p>
                                     <div className="space-y-0.5">
                                         {outletMeta.map(o => {
-                                            const val = Math.round(Number(selectedDay[o.key]) || 0);
+                                            const val = Math.round(Number((selectedDay as any)[o.key]) || 0);
                                             if (val === 0) return null;
                                             return (
                                                 <div key={o.key} className="flex justify-between items-center text-[8px] font-bold">
