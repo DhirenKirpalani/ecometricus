@@ -205,7 +205,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                   <SeverityIcon severity={alert.severity} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-white/40">{alert.category}</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-brand-alert">{alert.category}</span>
                       <span className="text-[9px] text-white/20">·</span>
                       <span className="text-[9px] text-white/30 uppercase tracking-wide">{alert.date}</span>
                     </div>
@@ -283,29 +283,28 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
 
           <div className="space-y-2">
             {pagedSuggestions.map((s, i) => {
-              // Use inline styles so colors always render regardless of Tailwind purging
-              const color = s.severity === 'critical' ? '#ff3131'
-                          : s.severity === 'warning'  ? '#C8A413'
-                                                       : '#22c55e';
+              // Category-based color: Food Waste/Carbon/Water/Energy = green, Financial = yellow
+              const isFinancial = s.category === 'Financial';
+              const catColor = isFinancial ? '#C8A413' : '#22c55e';
               return (
                 <div
                   key={i}
                   className="rounded-xl border px-4 py-3"
-                  style={{ borderColor: `${color}55`, backgroundColor: `${color}0e` }}
+                  style={{ borderColor: `${catColor}55`, backgroundColor: `${catColor}0e` }}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <SeverityIcon severity={s.severity} size={11} />
                     <span
                       className="text-[9px] font-black uppercase tracking-widest"
-                      style={{ color: `${color}bb` }}
+                      style={{ color: catColor }}
                     >
                       {s.category}
                     </span>
                     <span className="text-[9px] text-white/20">·</span>
                     <span className="text-[9px] text-white/30 uppercase tracking-wide">{s.date}</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed" style={{ color: `${color}cc` }}>
-                    <span className="font-bold" style={{ color }}>→ </span>{s.text}
+                  <p className="text-[11px] leading-relaxed text-white">
+                    <span className="font-bold" style={{ color: catColor }}>→ </span>{s.text}
                   </p>
                 </div>
               );

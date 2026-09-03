@@ -976,6 +976,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // ── Audit Log ──
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditFilter, setAuditFilter] = useState<string | null>(null);
+  const [auditOutletFilter, setAuditOutletFilter] = useState<string>('all');
 
   // Log an action to the audit_logs table (silently fails if table doesn't exist yet)
   const logAction = async (
@@ -3323,7 +3324,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       )}
 
                       {dashboardTab === DashboardTab.GAMIFICATION && (
-                        <GamificationHub goal={effectiveParams.gamificationGoal} outletIds={outlets.map(o => o.id).filter((id): id is string => !!id)} />
+                        <GamificationHub
+                          goal={effectiveParams.gamificationGoal}
+                          outletIds={outlets.map(o => o.id).filter((id): id is string => !!id)}
+                          allOutlets={outlets}
+                          isAdmin={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin' || user.position?.toLowerCase() === 'gm' || user.role?.toLowerCase() === 'gm'}
+                        />
                       )}
                     </div>
                   </div>
@@ -3817,7 +3823,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {/* Outlet filter — admin/GM only */}
+                        {(isHookAdmin || isGM) && outlets.length > 1 && (
+                          <div className="relative">
+                            <select
+                              value={auditOutletFilter}
+                              onChange={(e) => setAuditOutletFilter(e.target.value)}
+                              className="appearance-none bg-brand-dark/60 border border-brand-gold/20 rounded-xl pl-9 pr-8 py-2 text-[11px] font-black uppercase tracking-widest text-white/70 hover:border-brand-gold/40 transition-all cursor-pointer outline-none focus:border-brand-gold/50"
+                            >
+                              <option value="all">All Outlets</option>
+                              {outlets.filter(o => o.id).map(o => (
+                                <option key={o.id} value={o.id}>{o.name}</option>
+                              ))}
+                            </select>
+                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-gold/50 pointer-events-none" />
+                            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                          </div>
+                        )}
                         {auditLogs.length > 0 && (
                           <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-brand-dark/60 border border-brand-gold/15">
                             {auditLogs.length} {auditLogs.length === 1 ? 'Entry' : 'Entries'}
@@ -3912,9 +3935,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             energy_entry_updated: t('dashboard.auditDailyInput'),
                             energy_entry_deleted: t('dashboard.auditDailyInput'),
                           };
-                          const filtered = auditFilter
-                            ? auditLogs.filter((l: any) => (labelMap[l.action] || t('dashboard.other')) === auditFilter)
-                            : auditLogs;
+                          const filtered = auditLogs
+                            .filter((l: any) => {
+                              // Category filter
+                              if (auditFilter && (labelMap[l.action] || t('dashboard.other')) !== auditFilter) return false;
+                              // Outlet filter
+                              if (auditOutletFilter !== 'all') {
+                                const selectedOutlet = outlets.find(o => o.id === auditOutletFilter);
+                                const outletMatch = l.outlet_code === auditOutletFilter
+                                  || l.outlet_code === selectedOutlet?.code
+                                  || l.outlet_name === selectedOutlet?.name
+                                  || (l.metadata?.outlet_id === auditOutletFilter);
+                                if (!outletMatch) return false;
+                              }
+                              return true;
+                            });
 
                           if (filtered.length === 0) {
                             return (

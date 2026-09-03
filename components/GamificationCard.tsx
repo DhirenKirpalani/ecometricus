@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Trophy, Flame, Star, Zap, Camera, MessageSquare, Award, Sparkles, Target, Crown, Medal, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Trophy, Flame, Star, Zap, Camera, MessageSquare, Award, Sparkles, Target, Crown, Medal, CheckCircle2, ChevronDown, Clock, Image, Gauge, CalendarCheck, Lightbulb, ClipboardList } from 'lucide-react';
 import { fetchUserStats, fetchTodayCompletedActions, recalculateStreak, backfillPoints } from '../lib/gamification';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
@@ -17,11 +17,11 @@ const BADGE_TIERS = [
 ];
 
 const ACTIONS = [
-  { action: 'On-Time Entry',      pts: 10, descKey: 'gamification.questOnTime',      icon: Zap,           color: '#C8A413' },
-  { action: 'Entry with Image',   pts: 10, descKey: 'gamification.questPhoto',       icon: Camera,        color: '#3b82f6' },
-  { action: 'Energy Reading',     pts: 10, descKey: 'gamification.questEnergy',      icon: Zap,           color: '#f97316' },
-  { action: '5-Day Streak Bonus', pts: 50, descKey: 'gamification.questStreak',      icon: Flame,         color: '#ef4444' },
-  { action: 'Mila Comment',       pts: 5,  descKey: 'gamification.questMila',        icon: MessageSquare, color: '#77B139' },
+  { action: 'On-Time Entry',      pts: 10, descKey: 'gamification.questOnTime',      icon: Clock,         color: '#C8A413' },
+  { action: 'Entry with Image',   pts: 10, descKey: 'gamification.questPhoto',       icon: Image,         color: '#3b82f6' },
+  { action: 'Energy Reading',     pts: 10, descKey: 'gamification.questEnergy',      icon: Gauge,         color: '#f97316' },
+  { action: '5-Day Streak Bonus', pts: 50, descKey: 'gamification.questStreak',      icon: CalendarCheck, color: '#ef4444' },
+  { action: 'Mila Comment',       pts: 5,  descKey: 'gamification.questMila',        icon: Lightbulb,     color: '#77B139' },
 ];
 
 // Animated counter that counts up to the target value
@@ -192,9 +192,10 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
               {badge.emoji} {t(`gamification.tier${badge.label}`)}
             </p>
           </div>
-          <div className="flex items-center gap-1 shrink-0 text-white/30 group-hover/header:text-white/50 transition-colors">
-            <Target size={14} />
-            <ChevronDown size={14} className={`transition-transform duration-300 ${showQuests ? 'rotate-180' : ''}`} />
+          <div className="flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-lg bg-brand-gold/10 border border-brand-gold/20 group-hover/header:bg-brand-gold/15 group-hover/header:border-brand-gold/35 transition-all">
+            <ClipboardList size={13} className="text-brand-gold" />
+            <span className="text-[9px] font-black text-brand-gold uppercase tracking-widest hidden sm:inline">{t('gamification.quests')}</span>
+            <ChevronDown size={13} className={`text-brand-gold/70 transition-transform duration-300 ${showQuests ? 'rotate-180' : ''}`} />
           </div>
         </button>
 
@@ -203,7 +204,7 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
           <div className="mb-5 rounded-xl border border-brand-gold/15 bg-brand-dark/60 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="px-4 py-3 border-b border-brand-gold/10">
               <p className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1.5">
-                <Target size={11} /> {t('gamification.quests')}
+                <ClipboardList size={11} /> {t('gamification.quests')}
               </p>
             </div>
             <div className="p-3 grid grid-cols-1 gap-2">
@@ -215,17 +216,21 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
                     key={action}
                     className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
                       done
-                        ? 'bg-brand-eco/8 border-brand-eco/25 opacity-70'
+                        ? 'bg-brand-eco/8 border-brand-eco/25 opacity-60'
                         : 'bg-white/3 border-white/5 hover:border-white/10 hover:bg-white/5'
                     }`}
                   >
                     <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-                      style={{ background: done ? '#22c55e20' : `${color}15`, border: `1px solid ${done ? '#22c55e40' : `${color}30`}` }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+                      style={{
+                        background: done ? '#22c55e18' : `${color}12`,
+                        border: `1px solid ${done ? '#22c55e35' : `${color}35`}`,
+                        boxShadow: done ? 'none' : `0 0 8px ${color}15`,
+                      }}
                     >
                       {done
-                        ? <CheckCircle2 size={13} className="text-brand-eco" />
-                        : <Icon size={13} style={{ color }} />
+                        ? <CheckCircle2 size={15} className="text-brand-eco" />
+                        : <Icon size={15} color={color} strokeWidth={2.2} />
                       }
                     </div>
                     <span className={`text-[11px] flex-1 font-medium ${done ? 'text-brand-eco/70 line-through' : 'text-white/60'}`}>{t(descKey)}</span>

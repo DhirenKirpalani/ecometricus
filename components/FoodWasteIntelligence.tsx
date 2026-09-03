@@ -3,6 +3,7 @@ import { AlertCircle, AlertTriangle, TrendingDown, Scale, Cloud, DollarSign } fr
 import { useFoodWasteData } from '../hooks/useFoodWasteData';
 import { useFoodWasteChartData } from '../hooks/useFoodWasteChartData';
 import Co2EmissionsTemplateChart from './Co2EmissionsTemplateChart';
+import FoodWasteTemplateChart from './FoodWasteTemplateChart';
 import { Outlet } from '../types';
 import { useI18n } from '../lib/useI18n';
 
@@ -29,10 +30,19 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
     allOutlets
   );
   const activeOutletsCount = outletId ? 1 : allOutlets.length;
-  const { chartData: cumulativeData, dailyBenchmark, weeklyTotal, isLoading: isLoadingCumulative } = useFoodWasteChartData(
+  const { chartData: cumulativeData, outletKeys: wasteOutletKeys, dailyBenchmark, weeklyTotal, isLoading: isLoadingCumulative } = useFoodWasteChartData(
     benchmarks.food_waste_target_kg,
     activeOutletsCount
   );
+
+  // Transform hook data for FoodWasteTemplateChart (aggregate all outlets per day)
+  const foodWasteTemplateData = cumulativeData.map(d => {
+    const waste = wasteOutletKeys.reduce((s, k) => s + (Number((d as any)[k]) || 0), 0);
+    return {
+      day: d.date.charAt(0) + d.date.slice(1).toLowerCase(),
+      waste,
+    };
+  });
 
   // Targets
   const massTarget = benchmarks.food_waste_target_kg || 100;
@@ -136,19 +146,34 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
         </div>
       </div>
 
-      {/* CO2 Emissions Chart */}
+      {/* Food Waste + CO2 Emissions Charts */}
       <div className="pt-4 border-t border-brand-gold/5">
-        <div className="h-[440px] sm:h-[480px] w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[440px] sm:h-[480px]">
           {isLoadingCumulative ? (
-            <div className="flex items-center justify-center h-full bg-[#1c3933] border border-brand-gold/10 rounded-2xl">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold"></div>
-            </div>
+            <>
+              <div className="flex items-center justify-center h-full bg-[#1c3933] border border-brand-gold/10 rounded-2xl">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold"></div>
+              </div>
+              <div className="flex items-center justify-center h-full bg-[#1c3933] border border-brand-gold/10 rounded-2xl">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold"></div>
+              </div>
+            </>
           ) : (
-            <Co2EmissionsTemplateChart
-              data={cumulativeData}
-              benchmark={dailyBenchmark}
-              weeklyTotal={weeklyTotal}
-            />
+            <>
+              <div className="w-full h-full">
+                <FoodWasteTemplateChart
+                  data={foodWasteTemplateData}
+                  benchmark={dailyBenchmark}
+                />
+              </div>
+              <div className="w-full h-full">
+                <Co2EmissionsTemplateChart
+                  data={cumulativeData}
+                  benchmark={dailyBenchmark}
+                  weeklyTotal={weeklyTotal}
+                />
+              </div>
+            </>
           )}
         </div>
       </div>
