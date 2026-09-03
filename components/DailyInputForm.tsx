@@ -1216,12 +1216,6 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
             </p>
           </div>
         </div>
-        {(form.category || form.amount) && (
-          <button type="button" onClick={handleTare}
-            className="flex items-center gap-2 text-[11px] font-bold text-white/40 hover:text-white/60 uppercase tracking-widest transition-colors">
-            <RotateCcw size={12} /> {t('dailyInput.resetForm')}
-          </button>
-        )}
       </div>
 
       {/* Alert Banner */}
@@ -1240,6 +1234,12 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
         <div className="flex items-center gap-3 mb-5">
           <Leaf size={18} className="text-brand-eco" />
           <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('dailyInput.foodWasteEntryTitle')}</h3>
+          {(form.category || form.amount) && (
+            <button type="button" onClick={handleTare}
+              className="ml-auto flex items-center gap-2 text-[11px] font-bold text-white/40 hover:text-white/60 uppercase tracking-widest transition-colors">
+              <RotateCcw size={12} /> {t('dailyInput.resetForm')}
+            </button>
+          )}
         </div>
 
         {/* Progress bar */}
@@ -1541,7 +1541,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
       </div>
 
       {/* ── WATER & ENERGY TRACKING ── */}
-      <fieldset disabled={readOnly}>
+      <fieldset disabled={readOnly} className="min-w-0 space-y-8 border-0 p-0 m-0">
       <div ref={resourceSectionRef} className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Water */}
         <div className="bg-[#1c3933] border border-brand-gold/10 rounded-2xl p-5 sm:p-6">
