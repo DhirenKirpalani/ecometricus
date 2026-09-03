@@ -26,16 +26,6 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
     const fetchChartData = async () => {
       setIsLoading(true);
       try {
-        // Mila Logic: Standardized Proportional Scaling
-        const weeklyMassTarget = targetKg * activeOutletCount;
-        const dailyMassTarget = (targetKg / 7) * activeOutletCount;
-
-        const weeklyCo2Target = weeklyMassTarget * 2.85;
-        const dailyCo2Benchmark = dailyMassTarget * 2.85;
-
-        setTarget(weeklyCo2Target);
-        setDailyBenchmark(dailyCo2Benchmark);
-
         // 0. Fetch outlets dynamically
         let outletsQuery = supabase
           .from('outlets')
@@ -66,12 +56,39 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
           wasteQuery = wasteQuery.eq('outlet_id', scopeOutletId);
         } else if (scopeOutletName) {
           wasteQuery = wasteQuery.eq('outlet_name', scopeOutletName);
+        } else if (scopeUserId && outletsData && outletsData.length > 0) {
+          // Admin/GM: scope waste logs to their own outlets only
+          const outletIds = outletsData.map((o: any) => o.id).filter(Boolean);
+          if (outletIds.length > 0) {
+            wasteQuery = wasteQuery.in('outlet_id', outletIds);
+          }
         }
         const { data: wasteLogs, error: wasteError } = await wasteQuery
           .order('created_at', { ascending: false })
           .limit(200);
 
         if (wasteError) throw wasteError;
+
+        // Count actual active outlets (outlets with waste data this week)
+        // This ensures the benchmark reflects reality, not just registered outlets
+        const activeOutletIds = new Set<string>();
+        if (wasteLogs && wasteLogs.length > 0) {
+          wasteLogs.forEach((log: any) => {
+            if (log.outlet_id) activeOutletIds.add(log.outlet_id);
+          });
+        }
+        const effectiveOutletCount = Math.max(activeOutletIds.size, 1);
+
+        // Mila Logic: Standardized Proportional Scaling
+        // Use actual active outlet count for benchmark (not total registered outlets)
+        const weeklyMassTarget = targetKg * effectiveOutletCount;
+        const dailyMassTarget = (targetKg / 7) * effectiveOutletCount;
+
+        const weeklyCo2Target = weeklyMassTarget * 2.85;
+        const dailyCo2Benchmark = dailyMassTarget * 2.85;
+
+        setTarget(weeklyCo2Target);
+        setDailyBenchmark(dailyCo2Benchmark);
 
         // 2. Initialize Day Maps with dynamic outlet keys
         const dayMap: Record<string, any> = {};

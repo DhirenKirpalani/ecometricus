@@ -59,9 +59,23 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
           .select('*')
           .gte('created_at', weekStartISO);
         if (scopeOutletId) {
-          resourceQuery = resourceQuery.eq('outlet_id', scopeOutletId);
+          // resource_logs has no outlet_id column — resolve to outlet_name
+          const scopedOutlet = outletsData?.find((o: any) => o.id === scopeOutletId);
+          if (scopedOutlet?.outlet_name) {
+            resourceQuery = resourceQuery.eq('outlet_name', scopedOutlet.outlet_name);
+          } else {
+            // Fallback: no match, return nothing
+            resourceQuery = resourceQuery.eq('outlet_name', '__none__');
+          }
         } else if (scopeOutletName) {
           resourceQuery = resourceQuery.eq('outlet_name', scopeOutletName);
+        } else if (scopeUserId && outletsData && outletsData.length > 0) {
+          // Admin/GM: scope resource logs to their own outlets only
+          // resource_logs has no outlet_id column — use outlet_name instead
+          const outletNames = outletsData.map((o: any) => o.outlet_name).filter(Boolean);
+          if (outletNames.length > 0) {
+            resourceQuery = resourceQuery.in('outlet_name', outletNames);
+          }
         }
         const { data: resourceLogs, error } = await resourceQuery
           .order('created_at', { ascending: false })
