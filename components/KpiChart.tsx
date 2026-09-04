@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { AlertTriangle, TrendingUp, TrendingDown, Minus, ShieldCheck } from 'lucide-react';
 import { Outlet } from '../types';
-import { useI18n } from '../lib/useI18n';
+import { useI18n, translate } from '../lib/useI18n';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface KpiChartProps {
@@ -48,15 +48,25 @@ const COLORS = {
 const SERIES_COLORS = ['#C8A413', '#77B139', '#3B82F6', '#FF914D', '#A855F7', '#FF3131'];
 
 // ── Custom tooltip ─────────────────────────────────────────────────────────
+const TOOLTIP_DAY_MAP: Record<string, string> = {
+  'Sun': 'charts.daySun', 'Mon': 'charts.dayMon', 'Tue': 'charts.dayTue', 'Wed': 'charts.dayWed',
+  'Thu': 'charts.dayThu', 'Fri': 'charts.dayFri', 'Sat': 'charts.daySat',
+};
+const TOOLTIP_SEG_MAP: Record<string, string> = {
+  'Food': 'charts.segFood', 'Beverage': 'charts.segBeverage',
+  'Restaurant': 'charts.segRestaurant', 'Bar': 'charts.segBar', 'Banquets': 'charts.segBanquets',
+  'Rolling Avg': 'charts.rollingAverage',
+};
 const CustomTooltip = ({ active, payload, label, unit, unitPrefix }: any) => {
   if (!active || !payload?.length) return null;
+  const tLabel = TOOLTIP_DAY_MAP[label] ? translate(TOOLTIP_DAY_MAP[label]) : label;
   return (
     <div className="bg-brand-dark border border-brand-gold/30 rounded-lg px-3 py-2 shadow-2xl">
-      <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider mb-1.5 text-center">{label}</p>
+      <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider mb-1.5 text-center">{tLabel}</p>
       {payload.map((p: any, i: number) => (
         <div key={i} className="flex items-center gap-2 text-[10px] py-0.5">
           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-          <span className="text-white/50">{p.name}:</span>
+          <span className="text-white/50">{TOOLTIP_SEG_MAP[p.name] ? translate(TOOLTIP_SEG_MAP[p.name]) : p.name}:</span>
           <span className="text-white font-bold ml-auto">
             {unitPrefix || ''}{typeof p.value === 'number' ? p.value.toFixed(1) : p.value}{unit || ''}
           </span>
@@ -90,6 +100,11 @@ const KpiChart: React.FC<KpiChartProps> = ({
   rollingAverageKey,
 }) => {
   const { t } = useI18n();
+  const SEG_KEY_MAP: Record<string, string> = {
+    'Food': 'segFood', 'Beverage': 'segBeverage',
+    'Restaurant': 'segRestaurant', 'Bar': 'segBar', 'Banquets': 'segBanquets',
+  };
+  const tSeg = (name: string) => SEG_KEY_MAP[name] ? t(`charts.${SEG_KEY_MAP[name]}`) : name;
   const hasAlert = useMemo(() => {
     if (!benchmark || !alertIfAbove) return false;
     return data.some(d => Number(d[dataKey]) > benchmark);
@@ -139,12 +154,19 @@ const KpiChart: React.FC<KpiChartProps> = ({
   const trendDown = trendDelta !== undefined && trendDelta < 0;
   const trendFlat = trendDelta === 0;
 
+  const DAY_KEY_MAP: Record<string, string> = {
+    'Sun': 'daySun', 'Mon': 'dayMon', 'Tue': 'dayTue', 'Wed': 'dayWed',
+    'Thu': 'dayThu', 'Fri': 'dayFri', 'Sat': 'daySat',
+  };
+  const tDay = (day: string) => DAY_KEY_MAP[day] ? t(`charts.${DAY_KEY_MAP[day]}`) : day;
+
   const axisProps = {
     stroke: COLORS.axis,
     tick: { fontSize: 9, fill: COLORS.text },
     axisLine: false,
     tickLine: false,
   };
+  const xAxisProps = { ...axisProps, tickFormatter: (v: string) => tDay(v) };
 
   const gridProps = {
     strokeDasharray: '3 3',
@@ -162,13 +184,13 @@ const KpiChart: React.FC<KpiChartProps> = ({
       return (
         <ComposedChart data={data} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
           <CartesianGrid {...gridProps} />
-          <XAxis dataKey="day" {...axisProps} />
+          <XAxis dataKey="day" {...xAxisProps} />
           <YAxis {...axisProps} domain={yDomain || ['auto', 'auto']} ticks={yTicks} />
           <Tooltip content={<CustomTooltip unit={unit} unitPrefix={unitPrefix} />} cursor={{ stroke: 'rgba(255,255,255,0.1)' }} />
           {stackKeys.map((s, i) => (
             <Bar key={s.key} dataKey={s.key} name={s.name} stackId="a" fill={s.color} radius={i === stackKeys.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]} maxBarSize={40} />
           ))}
-          <Line type="monotone" dataKey={rollingAverageKey} name="Rolling Avg" stroke={COLORS.gold} strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey={rollingAverageKey} name={t('charts.rollingAverage')} stroke={COLORS.gold} strokeWidth={2} dot={false} />
           {renderBenchmark()}
         </ComposedChart>
       );
@@ -178,7 +200,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
       return (
         <BarChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
           <CartesianGrid {...gridProps} />
-          <XAxis dataKey="day" {...axisProps} />
+          <XAxis dataKey="day" {...xAxisProps} />
           <YAxis {...axisProps} domain={yDomain || ['auto', 'auto']} ticks={yTicks} />
           <Tooltip content={<CustomTooltip unit={unit} unitPrefix={unitPrefix} />} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
           {stacked && stackKeys.length > 0 ? (
@@ -207,7 +229,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
             </linearGradient>
           </defs>
           <CartesianGrid {...gridProps} />
-          <XAxis dataKey="day" {...axisProps} />
+          <XAxis dataKey="day" {...xAxisProps} />
           <YAxis {...axisProps} domain={yDomain || ['auto', 'auto']} ticks={yTicks} />
           <Tooltip content={<CustomTooltip unit={unit} unitPrefix={unitPrefix} />} />
           {multiSeries ? (
@@ -226,7 +248,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
     return (
       <LineChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
         <CartesianGrid {...gridProps} />
-        <XAxis dataKey="day" {...axisProps} />
+        <XAxis dataKey="day" {...xAxisProps} />
         <YAxis {...axisProps} domain={yDomain || ['auto', 'auto']} ticks={yTicks} />
         <Tooltip content={<CustomTooltip unit={unit} unitPrefix={unitPrefix} />} />
         {multiSeries ? (
@@ -281,12 +303,12 @@ const KpiChart: React.FC<KpiChartProps> = ({
         {hasAlert ? (
           <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg shrink-0">
             <AlertTriangle size={11} className="text-brand-alert" />
-            <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Alert</span>
+            <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">{t('charts.statusAlert')}</span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg shrink-0">
             <ShieldCheck size={11} className="text-brand-eco" />
-            <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">On Target</span>
+            <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">{t('charts.statusOnTarget')}</span>
           </div>
         )}
       </div>
@@ -301,7 +323,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
         )}
         {displayValue !== null && displayValue !== undefined && (
           <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Current</p>
+            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statCurrent')}</p>
             <p className="text-sm font-geometric font-black text-white leading-none mt-1">
               {unitPrefix}{displayValue.toFixed(1)}{unit}
             </p>
@@ -309,7 +331,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
         )}
         {trendDelta !== undefined && !stacked && (
           <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Trend</p>
+            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statTrend')}</p>
             <div className="flex items-center gap-1 mt-1">
               {trendUp ? (
                 <TrendingUp size={12} className="text-brand-alert" />
@@ -326,7 +348,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
         )}
         {stacked && stackKeys.length > 0 && (
           <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Segments</p>
+            <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statSegments')}</p>
             <p className="text-sm font-geometric font-black text-white leading-none mt-1">{stackKeys.length}</p>
           </div>
         )}
@@ -355,13 +377,13 @@ const KpiChart: React.FC<KpiChartProps> = ({
             {stackKeys.map((s) => (
               <div key={s.key} className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">{s.name}</span>
+                <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">{tSeg(s.name)}</span>
               </div>
             ))}
             {rollingAverageKey && (
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-[2px] rounded-full bg-brand-gold" />
-                <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">Rolling Avg</span>
+                <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">{t('charts.rollingAverage')}</span>
               </div>
             )}
           </div>

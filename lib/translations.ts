@@ -1024,6 +1024,22 @@ export const translations: Record<string, TranslationSection> = {
     co2Subtitle:        { en: 'Daily Carbon Footprint', es: 'Huella de Carbono Diaria' },
     energyTitle:        { en: 'Energy Usage', es: 'Consumo de Energía' },
     energySubtitle:     { en: 'Daily Energy Consumption', es: 'Consumo Diario de Energía' },
+    waterTitle:         { en: 'Water Usage', es: 'Consumo de Agua' },
+    waterSubtitle:      { en: 'Daily Consumption Volume', es: 'Volumen de Consumo Diario' },
+    // Day labels
+    daySun:             { en: 'Sun', es: 'Dom' },
+    dayMon:             { en: 'Mon', es: 'Lun' },
+    dayTue:             { en: 'Tue', es: 'Mar' },
+    dayWed:             { en: 'Wed', es: 'Mié' },
+    dayThu:             { en: 'Thu', es: 'Jue' },
+    dayFri:             { en: 'Fri', es: 'Vie' },
+    daySat:             { en: 'Sat', es: 'Sáb' },
+    // KPI stack segment names
+    segFood:            { en: 'Food', es: 'Comida' },
+    segBeverage:        { en: 'Beverage', es: 'Bebidas' },
+    segRestaurant:      { en: 'Restaurant', es: 'Restaurante' },
+    segBar:             { en: 'Bar', es: 'Bar' },
+    segBanquets:        { en: 'Banquets', es: 'Banquetes' },
   },
 
   // ─── Mila Components ───────────────────────────────────────────────────────

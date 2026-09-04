@@ -2,6 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { Info, Zap, TrendingDown, X as XIcon } from 'lucide-react';
 import { useI18n } from '../lib/useI18n';
 
+const DAY_KEY_MAP: Record<string, string> = {
+  'Sun': 'daySun', 'Mon': 'dayMon', 'Tue': 'dayTue', 'Wed': 'dayWed',
+  'Thu': 'dayThu', 'Fri': 'dayFri', 'Sat': 'daySat',
+};
+
 interface EnergyUsageData {
     day: string;
     usage: number;
@@ -14,6 +19,7 @@ interface EnergyUsageTemplateChartProps {
 
 const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ data, benchmark }) => {
     const { t } = useI18n();
+    const tDay = (day: string) => DAY_KEY_MAP[day] ? t(`charts.${DAY_KEY_MAP[day]}`) : day;
     const [selectedDay, setSelectedDay] = useState<EnergyUsageData | null>(null);
     const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
@@ -147,7 +153,7 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
                                 />
                                 {isHovered && (
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-brand-dark border border-brand-gold/30 rounded-lg px-2 py-1 shadow-xl whitespace-nowrap z-30 pointer-events-none animate-in fade-in zoom-in duration-150">
-                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{t.day}</p>
+                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{tDay(t.day)}</p>
                                         <p className={`text-[10px] font-black ${isGood ? 'text-brand-gold' : 'text-brand-alert'}`}>{t.usage.toLocaleString()}kWh</p>
                                     </div>
                                 )}
@@ -169,10 +175,10 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-brand-dark border border-brand-gold/30 rounded-full flex items-center justify-center hover:border-brand-gold/60 transition-colors z-10">
                                         <XIcon size={10} className="text-white/50 hover:text-white" />
                                     </button>
-                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1">{selectedDay.day}</p>
+                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1">{tDay(selectedDay.day)}</p>
                                     <p className={`text-base font-geometric font-black text-center ${selectedDay.usage <= benchmark ? 'text-brand-gold' : 'text-brand-alert'}`}>{selectedDay.usage.toLocaleString()}kWh</p>
                                     <p className={`text-[7px] font-black uppercase text-center mt-0.5 ${selectedDay.usage <= benchmark ? 'text-brand-gold/70' : 'text-brand-alert/70'}`}>
-                                        {selectedDay.usage <= benchmark ? 'Efficient' : 'High Usage'}
+                                        {selectedDay.usage <= benchmark ? t('charts.statusEfficient') : t('charts.tooltipHighUsage')}
                                     </p>
                                 </div>
                             </>
@@ -184,7 +190,7 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
                 <div className="absolute left-14 right-0 bottom-0 h-6">
                     {data.map((t, i) => (
                         <div key={t.day} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
-                            {t.day}
+                            {tDay(t.day)}
                         </div>
                     ))}
                 </div>

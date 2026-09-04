@@ -55,7 +55,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
   outlets,
   effectiveParams,
 }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [openAlerts, setOpenAlerts] = useState<Set<string>>(new Set());
   const [alertPage, setAlertPage] = useState(0);
   const [suggestionPage, setSuggestionPage] = useState(0);
@@ -67,7 +67,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
       return next;
     });
 
-  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const today = new Date().toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const wasteTarget = effectiveParams.wasteTarget || 100;
   const waterTarget = effectiveParams.waterTarget || 25000;
   const energyTarget = effectiveParams.energyTarget || 1000;
@@ -156,7 +156,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
     }
 
     return { structuredAlerts: alerts, suggestions };
-  }, [rawWasteLogs, rawResourceLogs, outlets, impacts, wasteTarget, waterTarget, energyTarget]);
+  }, [rawWasteLogs, rawResourceLogs, outlets, impacts, wasteTarget, waterTarget, energyTarget, t]);
 
   // Pagination slices
   const totalAlertPages = Math.ceil(structuredAlerts.length / ALERTS_PER_PAGE);

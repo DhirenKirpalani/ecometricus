@@ -3,6 +3,11 @@ import { Info, Cloud, ShieldCheck, X as XIcon } from 'lucide-react';
 import { DailyWaste } from '../hooks/useFoodWasteChartData';
 import { useI18n } from '../lib/useI18n';
 
+const DAY_KEY_MAP: Record<string, string> = {
+  'Sun': 'daySun', 'Mon': 'dayMon', 'Tue': 'dayTue', 'Wed': 'dayWed',
+  'Thu': 'dayThu', 'Fri': 'dayFri', 'Sat': 'daySat',
+};
+
 const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
 
 interface OutletMeta {
@@ -32,6 +37,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
     outletLabels = {},
 }) => {
     const { t } = useI18n();
+    const tDay = (day: string) => DAY_KEY_MAP[day] ? t(`charts.${DAY_KEY_MAP[day]}`) : day;
     const [selectedDay, setSelectedDay] = useState<DailyWaste | null>(null);
     const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
@@ -207,7 +213,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                                 />
                                 {isHovered && (
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-brand-dark border border-brand-gold/30 rounded-lg px-2 py-1 shadow-xl whitespace-nowrap z-30 pointer-events-none animate-in fade-in zoom-in duration-150">
-                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{t.date}</p>
+                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{tDay(t.date)}</p>
                                         <p className={`text-[10px] font-black ${isGood ? 'text-brand-gold' : 'text-brand-alert'}`}>{Math.round(total)}kg</p>
                                     </div>
                                 )}
@@ -230,7 +236,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-brand-dark border border-brand-gold/30 rounded-full flex items-center justify-center hover:border-brand-gold/60 transition-colors z-10">
                                         <XIcon size={10} className="text-white/50 hover:text-white" />
                                     </button>
-                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1.5">{selectedDay.date}</p>
+                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1.5">{tDay(selectedDay.date)}</p>
                                     <p className="text-base font-geometric font-black text-white text-center mb-1.5">{Math.round(total)}kg</p>
                                     <div className="space-y-0.5">
                                         {outletMeta.map(o => {
@@ -257,7 +263,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                 <div className="absolute left-12 right-0 bottom-0 h-6">
                     {normalizedData.map((t, i) => (
                         <div key={t.date} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, normalizedData.length)}%` }}>
-                            {t.date}
+                            {tDay(t.date)}
                         </div>
                     ))}
                 </div>
