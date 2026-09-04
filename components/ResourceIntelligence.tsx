@@ -7,11 +7,15 @@ import { useI18n } from '../lib/useI18n';
 
 interface ResourceIntelligenceProps {
   allOutlets: Outlet[];
+  dailyMode?: boolean;
+  scopeOutletName?: string;
+  scopeOutletId?: string;
+  scopeUserId?: string;
 }
 
 const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
 
-const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets }) => {
+const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets, dailyMode = false, scopeOutletName, scopeOutletId, scopeUserId }) => {
   const { t } = useI18n();
   const {
     waterData,
@@ -24,10 +28,23 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
     waterWeeklyTotal,
     energyWeeklyTotal,
     isLoading
-  } = useResourceChartData();
+  } = useResourceChartData(undefined, undefined, scopeOutletName, scopeUserId, scopeOutletId, dailyMode);
 
-  const showAlertWater = waterWeeklyTotal > waterTarget;
-  const showAlertEnergy = energyWeeklyTotal > energyTarget;
+  // For daily mode (supervisor/basic): KPI cards show today only, not the full 7-day chart total
+  const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  const todayWater = dailyMode
+    ? waterData.filter(d => d.day === todayLabel).reduce((acc, d) => acc + outletKeys.reduce((s, k) => s + (Number(d[k]) || 0), 0), 0)
+    : waterWeeklyTotal;
+  const todayEnergy = dailyMode
+    ? energyData.filter(d => d.day === todayLabel).reduce((acc, d) => acc + outletKeys.reduce((s, k) => s + (Number(d[k]) || 0), 0), 0)
+    : energyWeeklyTotal;
+
+  // Scale targets to daily for non-admin
+  const waterTargetScaled = dailyMode ? waterTarget / 7 : waterTarget;
+  const energyTargetScaled = dailyMode ? energyTarget / 7 : energyTarget;
+
+  const showAlertWater = todayWater > waterTargetScaled;
+  const showAlertEnergy = todayEnergy > energyTargetScaled;
 
   // Build outlet breakdown dynamically — only include outlets with actual data
   const outletBreakdown = useMemo(() => {
@@ -98,7 +115,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
             )}
           </div>
           <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
-            {waterWeeklyTotal.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">{t('intelligence.resource.waterUnit')}</span>
+            {todayWater.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">{t('intelligence.resource.waterUnit')}</span>
           </p>
           <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
             {showAlertWater ? 'Benchmark overload detected' : 'Standard consumption pattern'}
@@ -130,7 +147,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets 
             )}
           </div>
           <p className="text-3xl font-geometric font-black text-white leading-none mb-2">
-            {energyWeeklyTotal.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">kWh</span>
+            {todayEnergy.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">kWh</span>
           </p>
           <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
             {showAlertEnergy ? 'Critical energy spike logged' : 'Load within tolerance range'}

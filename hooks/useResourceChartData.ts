@@ -7,7 +7,7 @@ export interface ResourceData {
   [outletKey: string]: number | string;
 }
 
-export const useResourceChartData = (waterTargetParam?: number, energyTargetParam?: number, scopeOutletName?: string, scopeUserId?: string, scopeOutletId?: string) => {
+export const useResourceChartData = (waterTargetParam?: number, energyTargetParam?: number, scopeOutletName?: string, scopeUserId?: string, scopeOutletId?: string, dailyMode: boolean = false) => {
   const [waterData, setWaterData] = useState<ResourceData[]>([]);
   const [energyData, setEnergyData] = useState<ResourceData[]>([]);
   const [outletKeys, setOutletKeys] = useState<string[]>([]);
@@ -38,7 +38,10 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
           .from('outlets')
           .select('id, outlet_name, outlet_id, color_hex')
           .order('outlet_name', { ascending: true });
-        if (scopeOutletName) {
+        if (scopeOutletId) {
+          // Fetch the specific outlet by UUID
+          outletsQuery = outletsQuery.eq('id', scopeOutletId);
+        } else if (scopeOutletName) {
           outletsQuery = outletsQuery.eq('outlet_name', scopeOutletName);
         } else if (scopeUserId) {
           outletsQuery = outletsQuery.eq('user_id', scopeUserId);
@@ -50,14 +53,21 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
           outletsData.forEach((o: any) => keys.push((o.outlet_name || o.name || '').toUpperCase()));
         }
 
-        // 1. Fetch all resource logs (current chart week only)
-        const settings = await getPlatformSettings();
-        const weekStartISO = getWeekStartISO(settings.weekly_reset_day);
+        // 1. Fetch resource logs — daily mode: today only (resets at midnight); weekly mode: chart week (Sat-Sat)
+        let startDateISO: string;
+        if (dailyMode) {
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          startDateISO = todayStart.toISOString();
+        } else {
+          const settings = await getPlatformSettings();
+          startDateISO = getWeekStartISO(settings.weekly_reset_day);
+        }
 
         let resourceQuery = supabase
           .from('resource_logs')
           .select('*')
-          .gte('created_at', weekStartISO);
+          .gte('created_at', startDateISO);
         if (scopeOutletId) {
           // resource_logs has no outlet_id column — resolve to outlet_name
           const scopedOutlet = outletsData?.find((o: any) => o.id === scopeOutletId);
@@ -76,6 +86,15 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
           if (outletNames.length > 0) {
             resourceQuery = resourceQuery.in('outlet_name', outletNames);
           }
+        } else if (scopeUserId || scopeOutletName || scopeOutletId) {
+          // Non-admin user whose outlet hasn't been resolved yet — don't fetch all data
+          setWaterData(DAYS.map(day => ({ day })));
+          setEnergyData(DAYS.map(day => ({ day })));
+          setOutletKeys([]);
+          setWaterWeeklyTotal(0);
+          setEnergyWeeklyTotal(0);
+          setIsLoading(false);
+          return;
         }
         const { data: resourceLogs, error } = await resourceQuery
           .order('created_at', { ascending: false })
@@ -183,7 +202,7 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
       window.removeEventListener('ecometricus_resource_updated', handleStorageChange);
       supabase.removeChannel(channel);
     };
-  }, [waterTarget, energyTarget, scopeOutletName, scopeUserId, scopeOutletId]);
+  }, [waterTarget, energyTarget, scopeOutletName, scopeUserId, scopeOutletId, dailyMode]);
 
   return {
     waterData,

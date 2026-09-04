@@ -15,24 +15,37 @@ interface FoodWasteIntelligenceProps {
     food_waste_target_kg: number;
     financial_cap: number;
   };
+  dailyMode?: boolean;
+  scopeOutletName?: string;
+  scopeOutletId?: string;
+  scopeUserId?: string;
 }
 
 const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
   outletId,
   unitType,
   allOutlets,
-  benchmarks
+  benchmarks,
+  dailyMode = false,
+  scopeOutletName,
+  scopeOutletId,
+  scopeUserId
 }) => {
   const { t } = useI18n();
   const { totalMass, carbonImpact, financialLoss, outletDetails, isLoading } = useFoodWasteData(
     outletId,
     unitType,
-    allOutlets
+    allOutlets,
+    dailyMode
   );
   const activeOutletsCount = outletId ? 1 : allOutlets.length;
   const { chartData: cumulativeData, outletKeys: wasteOutletKeys, dailyBenchmark, weeklyTotal, isLoading: isLoadingCumulative } = useFoodWasteChartData(
     benchmarks.food_waste_target_kg,
-    activeOutletsCount
+    activeOutletsCount,
+    scopeOutletName,
+    scopeUserId,
+    scopeOutletId,
+    dailyMode
   );
 
   // Transform hook data for FoodWasteTemplateChart (aggregate all outlets per day)
@@ -44,10 +57,11 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
     };
   });
 
-  // Targets
-  const massTarget = benchmarks.food_waste_target_kg || 100;
-  const carbonTarget = 180;
-  const financialTarget = benchmarks.financial_cap || 650;
+  // Targets — scale to daily for non-admin (today-only view)
+  const divisor = dailyMode ? 7 : 1;
+  const massTarget = (benchmarks.food_waste_target_kg || 100) / divisor;
+  const carbonTarget = 180 / divisor;
+  const financialTarget = (benchmarks.financial_cap || 650) / divisor;
 
   const showAlertMass = totalMass > massTarget;
   const showAlertCarbon = carbonImpact > carbonTarget;

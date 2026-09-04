@@ -20,7 +20,8 @@ const LBS_CONVERSION = 2.20462;
 export const useFoodWasteData = (
   outletId: string | null, // UUID from public.outlets
   unitType: 'kg' | 'Lbs',
-  allOutlets: Outlet[]
+  allOutlets: Outlet[],
+  dailyMode: boolean = false
 ) => {
   const [data, setData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,13 +30,21 @@ export const useFoodWasteData = (
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        let startDate: Date;
+        if (dailyMode) {
+          // Today only — resets at midnight
+          startDate = new Date();
+          startDate.setHours(0, 0, 0, 0);
+        } else {
+          // Rolling 7 days (admin/GM cumulative view)
+          startDate = new Date();
+          startDate.setDate(startDate.getDate() - 7);
+        }
 
         let query = supabase
           .from('food_waste_logs')
           .select('*')
-          .gte('created_at', sevenDaysAgo.toISOString());
+          .gte('created_at', startDate.toISOString());
         
         if (outletId) {
           query = query.eq('outlet_id', outletId);
@@ -54,7 +63,7 @@ export const useFoodWasteData = (
     };
 
     fetchData();
-  }, [outletId]);
+  }, [outletId, dailyMode]);
 
   const foodWasteStats = useMemo((): FoodWasteData => {
     const hasData = Array.isArray(data) && data.length > 0;
