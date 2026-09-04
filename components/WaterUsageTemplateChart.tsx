@@ -1,5 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Info, Droplets, TrendingDown, X as XIcon } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
+
+const DAY_KEY_MAP: Record<string, string> = {
+  'Sun': 'daySun', 'Mon': 'dayMon', 'Tue': 'dayTue', 'Wed': 'dayWed',
+  'Thu': 'dayThu', 'Fri': 'dayFri', 'Sat': 'daySat',
+};
 
 interface WaterUsageData {
     day: string;
@@ -12,6 +18,8 @@ interface WaterUsageTemplateChartProps {
 }
 
 const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data, benchmark }) => {
+    const { t } = useI18n();
+    const tDay = (day: string) => DAY_KEY_MAP[day] ? t(`charts.${DAY_KEY_MAP[day]}`) : day;
     const [selectedDay, setSelectedDay] = useState<WaterUsageData | null>(null);
     const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
@@ -36,19 +44,19 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
                         <Droplets size={18} className="text-blue-400" />
                     </div>
                     <div>
-                        <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">Water Usage</h3>
-                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">Daily Consumption Volume</p>
+                        <h3 className="text-base font-geometric font-bold text-white uppercase tracking-tight leading-none">{t('charts.waterTitle')}</h3>
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mt-1">{t('charts.waterSubtitle')}</p>
                     </div>
                 </div>
                 {hasAlert ? (
                     <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2.5 py-1 rounded-lg">
                         <Info size={11} className="text-brand-alert" />
-                        <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">Attention</span>
+                        <span className="text-[9px] font-black text-brand-alert uppercase tracking-widest">{t('charts.statusAttention')}</span>
                     </div>
                 ) : (
                     <div className="flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 px-2.5 py-1 rounded-lg">
                         <TrendingDown size={11} className="text-brand-eco" />
-                        <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">Efficient</span>
+                        <span className="text-[9px] font-black text-brand-eco uppercase tracking-widest">{t('charts.statusEfficient')}</span>
                     </div>
                 )}
             </div>
@@ -56,15 +64,15 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
             {/* Stats Row */}
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Benchmark</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statBenchmark')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{benchmark.toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">L</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Weekly</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statWeekly')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{weeklyUsage}<span className="text-[10px] text-white/40 ml-0.5">L</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">Avg/Day</p>
+                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statAvgDay')}</p>
                     <p className="text-sm font-geometric font-black text-white leading-none mt-1">{avgUsage}<span className="text-[10px] text-white/40 ml-0.5">L</span></p>
                 </div>
             </div>
@@ -145,7 +153,7 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
                                 />
                                 {isHovered && (
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-brand-dark border border-brand-gold/30 rounded-lg px-2 py-1 shadow-xl whitespace-nowrap z-30 pointer-events-none animate-in fade-in zoom-in duration-150">
-                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{t.day}</p>
+                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{tDay(t.day)}</p>
                                         <p className={`text-[10px] font-black ${isGood ? 'text-[#60A5FA]' : 'text-brand-alert'}`}>{t.usage.toLocaleString()}L</p>
                                     </div>
                                 )}
@@ -167,10 +175,10 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-brand-dark border border-brand-gold/30 rounded-full flex items-center justify-center hover:border-brand-gold/60 transition-colors z-10">
                                         <XIcon size={10} className="text-white/50 hover:text-white" />
                                     </button>
-                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1">{selectedDay.day}</p>
+                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1">{tDay(selectedDay.day)}</p>
                                     <p className={`text-base font-geometric font-black text-center ${selectedDay.usage <= benchmark ? 'text-blue-400' : 'text-brand-alert'}`}>{selectedDay.usage.toLocaleString()}L</p>
                                     <p className={`text-[7px] font-black uppercase text-center mt-0.5 ${selectedDay.usage <= benchmark ? 'text-blue-400/70' : 'text-brand-alert/70'}`}>
-                                        {selectedDay.usage <= benchmark ? 'Efficient' : 'High Usage'}
+                                        {selectedDay.usage <= benchmark ? t('charts.statusEfficient') : t('charts.tooltipHighUsage')}
                                     </p>
                                 </div>
                             </>
@@ -182,7 +190,7 @@ const WaterUsageTemplateChart: React.FC<WaterUsageTemplateChartProps> = ({ data,
                 <div className="absolute left-14 right-0 bottom-0 h-6">
                     {data.map((t, i) => (
                         <div key={t.day} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
-                            {t.day}
+                            {tDay(t.day)}
                         </div>
                     ))}
                 </div>

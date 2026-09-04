@@ -2,6 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { Info, Leaf, X as XIcon, TrendingDown } from 'lucide-react';
 import { useI18n } from '../lib/useI18n';
 
+const DAY_KEY_MAP: Record<string, string> = {
+  'Sun': 'daySun', 'Mon': 'dayMon', 'Tue': 'dayTue', 'Wed': 'dayWed',
+  'Thu': 'dayThu', 'Fri': 'dayFri', 'Sat': 'daySat',
+};
+
 interface FoodWasteData {
     day: string;
     waste: number;
@@ -14,6 +19,7 @@ interface FoodWasteTemplateChartProps {
 
 const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, benchmark }) => {
     const { t } = useI18n();
+    const tDay = (day: string) => DAY_KEY_MAP[day] ? t(`charts.${DAY_KEY_MAP[day]}`) : day;
     const [selectedDay, setSelectedDay] = useState<FoodWasteData | null>(null);
     const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
@@ -147,7 +153,7 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
                                 />
                                 {isHovered && (
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-brand-dark border border-brand-gold/30 rounded-lg px-2 py-1 shadow-xl whitespace-nowrap z-30 pointer-events-none animate-in fade-in zoom-in duration-150">
-                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{t.day}</p>
+                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{tDay(t.day)}</p>
                                         <p className={`text-[10px] font-black ${isGood ? 'text-brand-eco' : 'text-brand-alert'}`}>{t.waste}kg</p>
                                     </div>
                                 )}
@@ -169,10 +175,10 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
                                 <button onClick={(e) => { e.stopPropagation(); setSelectedDay(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-brand-dark border border-brand-gold/30 rounded-full flex items-center justify-center hover:border-brand-gold/60 transition-colors z-10">
                                         <XIcon size={10} className="text-white/50 hover:text-white" />
                                     </button>
-                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1">{selectedDay.day}</p>
+                                    <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1">{tDay(selectedDay.day)}</p>
                                     <p className={`text-base font-geometric font-black text-center ${selectedDay.waste <= benchmark ? 'text-brand-eco' : 'text-brand-alert'}`}>{selectedDay.waste}kg</p>
                                     <p className={`text-[7px] font-black uppercase text-center mt-0.5 ${selectedDay.waste <= benchmark ? 'text-brand-eco/70' : 'text-brand-alert/70'}`}>
-                                        {selectedDay.waste <= benchmark ? 'Within Limit' : 'Over Limit'}
+                                        {selectedDay.waste <= benchmark ? t('charts.tooltipWithinLimit') : t('charts.tooltipOverLimit')}
                                     </p>
                                 </div>
                             </>
@@ -184,7 +190,7 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({ data, b
                 <div className="absolute left-12 right-0 bottom-0 h-6">
                     {data.map((t, i) => (
                         <div key={t.day} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
-                            {t.day}
+                            {tDay(t.day)}
                         </div>
                     ))}
                 </div>
