@@ -62,12 +62,13 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
     // Initialize Greeting on Mount
     useEffect(() => {
         const greeting = getGreeting();
-        const initialText = `${greeting}, ${userFirstName}. I'm Mila, your ESG strategist at ${greetingLocation}. I can see you're viewing ${outletName}${region ? ` in ${region}` : ''}.\n\nI can now **take actions** for you — log waste entries, query your data, generate reports, search the knowledge base, and more. What would you like to do?`;
+        const regionText = region ? t('mila.regionIn', { region }) : '';
+        const initialText = t('mila.initialGreeting', { greeting, name: userFirstName, location: greetingLocation, outlet: outletName, region: regionText });
 
         setMessages([
             { id: '1', sender: 'mila', text: initialText, timestamp: new Date() }
         ]);
-    }, [userFirstName, greetingLocation, outletName, region]);
+    }, [userFirstName, greetingLocation, outletName, region, t]);
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -363,7 +364,7 @@ INSTRUCTIONS:
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-8 right-8 z-[100] group"
+                className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-[100] group"
                 aria-label={t('mila.openButtonAria')}
             >
                 {/* Outer pulsing ring */}
@@ -393,7 +394,7 @@ INSTRUCTIONS:
     }
 
     return (
-        <div className={`fixed z-[100] transition-all duration-300 ease-in-out ${isMinimized ? 'bottom-8 right-8 w-72 h-auto' : 'bottom-8 right-8 w-[400px] h-[600px]'} bg-[#0f2420]/95 backdrop-blur-xl border border-brand-gold/50 rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden`}>
+        <div className={`fixed z-[100] transition-all duration-300 ease-in-out ${isMinimized ? 'bottom-4 right-4 sm:bottom-8 sm:right-8 w-64 sm:w-72 h-auto' : 'bottom-4 right-4 sm:bottom-8 sm:right-8 w-[calc(100vw-2rem)] h-[calc(100vh-7rem)] sm:w-[400px] sm:h-[600px]'} bg-[#0f2420]/95 backdrop-blur-xl border border-brand-gold/50 rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden`}>
 
             {/* Header */}
             <div className="p-4 bg-gradient-to-r from-brand-gold/10 to-transparent border-b border-brand-gold/20 flex items-center justify-between shrink-0">

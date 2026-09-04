@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
 import {
     Trophy, Crown, Medal, Sparkles, CheckCircle2, Clock, Zap,
     RefreshCw, Flame, Target, TrendingUp, Award, Users, Building2,
-    Calendar, Star, Camera, Leaf, Droplets, ChevronUp, ChevronDown
+    Calendar, Star, Camera, Leaf, Droplets, ChevronUp, ChevronDown, Check
 } from 'lucide-react';
 
 // --- Interfaces ---
@@ -54,7 +54,7 @@ interface GamificationHubProps {
 }
 
 const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletIds = [], allOutlets = [], isAdmin = false }) => {
-    const { t } = useI18n();
+    const { t, lang } = useI18n();
     const [outlets, setOutlets] = useState<OutletData[]>([]);
     const [leaderboard, setLeaderboard] = useState<LeaderboardData[]>([]);
     const [logs, setLogs] = useState<ActionLogEntry[]>([]);
@@ -328,10 +328,10 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
     }
 
     const tabButtons = [
-        { id: 'outlets' as const, label: 'Outlet Status', icon: Building2 },
-        { id: 'leaderboard' as const, label: 'Leaderboard', icon: Trophy },
-        { id: 'streaks' as const, label: 'Streaks', icon: Flame },
-        { id: 'activity' as const, label: 'Live Activity', icon: Zap },
+        { id: 'outlets' as const, label: t('gamification.tabOutletStatus'), icon: Building2 },
+        { id: 'leaderboard' as const, label: t('gamification.tabLeaderboard'), icon: Trophy },
+        { id: 'streaks' as const, label: t('gamification.tabStreaks'), icon: Flame },
+        { id: 'activity' as const, label: t('gamification.tabLiveActivity'), icon: Zap },
     ];
 
     const maxStreak = Math.max(...checkins.map(c => c.streak_days), 1);
@@ -348,41 +348,33 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col gap-6 sm:gap-8 pb-20">
 
             {/* ── Header ── */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
-                        <Sparkles className="text-brand-eco" size={24} />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                        <Sparkles className="text-brand-eco" size={20} />
                     </div>
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                            Earth Keeper
+                        <h1 className="text-lg sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                            {t('gamification.title')}
                         </h1>
-                        <div className="flex items-center gap-3 mt-1">
-                            <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em]">{t('gamification.subtitle')}</p>
+                        <div className="flex items-center gap-2 sm:gap-3 mt-1 flex-wrap">
+                            <p className="text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-[0.2em] sm:tracking-[0.3em]">{t('gamification.subtitle')}</p>
                             <div className="h-1 w-1 rounded-full bg-brand-gold/30"></div>
-                            <p className="text-[10px] font-black text-brand-gold uppercase tracking-[0.3em]">
+                            <p className="text-[9px] sm:text-[10px] font-black text-brand-gold uppercase tracking-[0.2em] sm:tracking-[0.3em]">
                                 {t('gamification.engagement', { value: outlets.length > 0 ? Math.round(outlets.reduce((sum, o) => sum + o.engagement_pct, 0) / outlets.length) : 0 })}
                             </p>
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto">
                     {/* Outlet filter — admin/GM only */}
                     {isAdmin && allOutlets.length > 1 && (
-                        <div className="relative">
-                            <select
-                                value={selectedOutletId}
-                                onChange={(e) => setSelectedOutletId(e.target.value)}
-                                className="appearance-none bg-brand-dark/60 border border-brand-gold/20 rounded-xl pl-9 pr-8 py-2.5 text-[11px] font-black uppercase tracking-widest text-white/70 hover:border-brand-gold/40 transition-all cursor-pointer outline-none focus:border-brand-gold/50"
-                            >
-                                <option value="all">All Outlets</option>
-                                {allOutlets.filter(o => o.id).map(o => (
-                                    <option key={o.id} value={o.id}>{o.name}</option>
-                                ))}
-                            </select>
-                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-gold/50 pointer-events-none" />
-                            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
-                        </div>
+                        <OutletFilterDropdown
+                            value={selectedOutletId}
+                            options={allOutlets.filter(o => o.id)}
+                            onChange={setSelectedOutletId}
+                            allLabel={t('gamification.allOutlets')}
+                        />
                     )}
                     <button onClick={fetchData} className="p-3 bg-brand-dark/60 border border-brand-gold/20 rounded-xl hover:border-brand-gold/40 transition-all text-white/50 hover:text-brand-gold">
                         <RefreshCw size={16} />
@@ -395,38 +387,38 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
             </div>
 
             {/* ── KPI Summary Cards ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Building2 size={16} className="text-brand-gold" />
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.topOutlet')}</h4>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-3 sm:p-5">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                        <Building2 size={14} className="text-brand-gold" />
+                        <h4 className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.topOutlet')}</h4>
                     </div>
-                    <p className="text-2xl font-geometric font-black text-white leading-none">{outlets[0]?.name || '—'}</p>
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{outlets[0]?.total_points.toLocaleString() || 0} pts</p>
+                    <p className="text-base sm:text-2xl font-geometric font-black text-white leading-none truncate">{outlets[0]?.name || '—'}</p>
+                    <p className="text-[9px] sm:text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{outlets[0]?.total_points.toLocaleString() || 0} {t('gamification.pts')}</p>
                 </div>
-                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Users size={16} className="text-brand-gold" />
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.topStaff')}</h4>
+                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-3 sm:p-5">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                        <Users size={14} className="text-brand-gold" />
+                        <h4 className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.topStaff')}</h4>
                     </div>
-                    <p className="text-2xl font-geometric font-black text-white leading-none">{leaderboard[0]?.name || '—'}</p>
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{leaderboard[0]?.total_points || 0} pts</p>
+                    <p className="text-base sm:text-2xl font-geometric font-black text-white leading-none truncate">{leaderboard[0]?.name || '—'}</p>
+                    <p className="text-[9px] sm:text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{leaderboard[0]?.total_points || 0} {t('gamification.pts')}</p>
                 </div>
-                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Flame size={16} className="text-brand-alert" />
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.bestStreak')}</h4>
+                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-3 sm:p-5">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                        <Flame size={14} className="text-brand-alert" />
+                        <h4 className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.bestStreak')}</h4>
                     </div>
-                    <p className="text-2xl font-geometric font-black text-white leading-none">{maxStreak} days</p>
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{t('gamification.consecutiveCheckins')}</p>
+                    <p className="text-base sm:text-2xl font-geometric font-black text-white leading-none">{maxStreak} {t('gamification.days')}</p>
+                    <p className="text-[9px] sm:text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{t('gamification.consecutiveCheckins')}</p>
                 </div>
-                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Calendar size={16} className="text-brand-eco" />
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.todaysCheckins')}</h4>
+                <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-3 sm:p-5">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                        <Calendar size={14} className="text-brand-eco" />
+                        <h4 className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.todaysCheckins')}</h4>
                     </div>
-                    <p className="text-2xl font-geometric font-black text-white leading-none">{displayCheckins}</p>
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{t('gamification.activeUsersToday')}</p>
+                    <p className="text-base sm:text-2xl font-geometric font-black text-white leading-none">{displayCheckins}</p>
+                    <p className="text-[9px] sm:text-[10px] font-bold text-white/50 uppercase tracking-wider mt-1">{t('gamification.activeUsersToday')}</p>
                 </div>
             </div>
 
@@ -454,10 +446,10 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                     {outlets.map((o) => {
                         const themeColor = getThemeColor(o.name, (o as any).color_hex);
                         return (
-                            <div key={o.id} className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6 hover:border-brand-gold/30 transition-all">
+                            <div key={o.id} className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 hover:border-brand-gold/30 transition-all">
                                 {/* Circular Progress */}
                                 <div className="shrink-0 flex flex-col items-center">
-                                    <div className="relative w-28 h-28 flex items-center justify-center mb-3">
+                                    <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center mb-3">
                                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
                                             <circle cx="60" cy="60" r="50" stroke="#050d0c" strokeWidth="10" fill="transparent" />
                                             <circle
@@ -472,7 +464,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                                             />
                                         </svg>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-                                            <span className="text-2xl font-black text-white leading-none">{Math.round(o.engagement_pct)}%</span>
+                                            <span className="text-xl sm:text-2xl font-black text-white leading-none">{Math.round(o.engagement_pct)}%</span>
                                             <span className="text-[7px] font-black text-brand-gold uppercase tracking-[0.2em] leading-none mt-1">{t('gamification.engaged')}</span>
                                         </div>
                                     </div>
@@ -487,7 +479,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <p className="text-[10px] font-black text-brand-gold uppercase tracking-widest mb-1">{t('gamification.weeklyPoints')}</p>
-                                            <h4 className="text-3xl sm:text-4xl font-geometric font-black tracking-tighter text-white">{o.total_points.toLocaleString()}</h4>
+                                            <h4 className="text-2xl sm:text-4xl font-geometric font-black tracking-tighter text-white">{o.total_points.toLocaleString()}</h4>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{t('gamification.goal')}</p>
@@ -520,12 +512,12 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                 <div className="animate-in fade-in duration-500 space-y-4">
 
                     {/* Gamified header card */}
-                    <div className="relative rounded-2xl overflow-hidden border border-brand-gold/30 bg-gradient-to-r from-[#0f1e1a] via-[#1a2e1c] to-[#0f1e1a] px-6 py-4">
+                    <div className="relative rounded-2xl overflow-hidden border border-brand-gold/30 bg-gradient-to-r from-[#0f1e1a] via-[#1a2e1c] to-[#0f1e1a] px-4 sm:px-6 py-3 sm:py-4">
                         {/* Subtle decorative glow blobs */}
                         <div className="absolute left-1/4 top-0 w-32 h-10 bg-brand-gold/10 blur-2xl rounded-full pointer-events-none" />
                         <div className="absolute right-1/4 bottom-0 w-24 h-8 bg-brand-gold/8 blur-2xl rounded-full pointer-events-none" />
 
-                        <div className="relative flex items-center justify-between gap-4">
+                        <div className="relative flex items-center justify-between gap-3 flex-wrap">
                             {/* Trophy + title */}
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center shadow-[0_0_16px_rgba(200,164,19,0.2)] shrink-0">
@@ -534,16 +526,16 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <Star size={9} className="text-brand-gold/60 fill-brand-gold/40" />
-                                        <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-[0.3em]">Earth Keeper</span>
+                                        <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-[0.3em]">{t('gamification.title')}</span>
                                         <Star size={9} className="text-brand-gold/60 fill-brand-gold/40" />
                                     </div>
-                                    <p className="text-[11px] font-black text-brand-gold uppercase tracking-[0.2em] mt-0.5">Top Performers</p>
+                                    <p className="text-[11px] font-black text-brand-gold uppercase tracking-[0.2em] mt-0.5">{t('gamification.topPerformers')}</p>
                                 </div>
                             </div>
 
                             {/* Period filter pills */}
                             <div className="flex items-center gap-1.5">
-                                {([['all', 'All Time'], ['month', 'This Month'], ['week', 'This Week']] as const).map(([id, label]) => (
+                                {([['all', t('gamification.periodAllTime')], ['month', t('gamification.periodThisMonth')], ['week', t('gamification.periodThisWeek')]] as const).map(([id, label]) => (
                                     <button
                                         key={id}
                                         onClick={() => setLeaderboardPeriod(id)}
@@ -600,8 +592,8 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                     {filteredLeaderboard.length > 3 && (
                         <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
                             <div className="px-4 sm:px-6 py-2 border-b border-brand-gold/10 bg-brand-gold/5 flex items-center justify-between">
-                                <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">Also Running</span>
-                                <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest">{filteredLeaderboard.length - 3} more</span>
+                                <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">{t('gamification.alsoRunning')}</span>
+                                <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest">{t('gamification.moreCount', { count: filteredLeaderboard.length - 3 })}</span>
                             </div>
                             <div className="divide-y divide-brand-gold/5 max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-brand-gold/20 scrollbar-track-transparent">
                                 {filteredLeaderboard.slice(3).map((s, idx) => {
@@ -644,7 +636,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
 
             {/* ── Streaks Tab ── */}
             {activeView === 'streaks' && (
-                <div className="animate-in fade-in duration-500 space-y-6">
+                <div className="animate-in fade-in duration-500 space-y-4 sm:space-y-6">
                     {checkins.length === 0 ? (
                         <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] p-12 text-center">
                             <Flame size={32} className="text-white/20 mx-auto mb-3" />
@@ -665,7 +657,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="flex items-center gap-2">
                                                     <Flame size={18} className={i === 0 ? 'text-brand-alert' : 'text-brand-gold/60'} />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">#{i + 1} Streak</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.streakRank', { value: i + 1 })}</span>
                                                 </div>
                                                 {i === 0 && <Crown size={16} className="text-brand-alert" />}
                                             </div>
@@ -675,12 +667,12 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-lg font-geometric font-black text-white truncate">{c.user_name}</p>
-                                                    <p className="text-[10px] text-white/40 uppercase tracking-wider truncate">{outlet?.name || 'Outlet'}</p>
+                                                    <p className="text-[10px] text-white/40 uppercase tracking-wider truncate">{outlet?.name || t('gamification.outletFallback')}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-baseline gap-1">
                                                 <span className="text-3xl font-black text-white">{c.streak_days}</span>
-                                                <span className="text-[10px] font-bold text-white/40 uppercase">days</span>
+                                                <span className="text-[10px] font-bold text-white/40 uppercase">{t('gamification.days')}</span>
                                             </div>
                                         </div>
                                         );
@@ -699,7 +691,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                                     <thead>
                                         <tr className="border-b border-brand-gold/15">
                                             <th className="px-5 py-3 text-left text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.userHeader')}</th>
-                                            <th className="px-5 py-3 text-center text-[10px] font-black text-brand-gold uppercase tracking-widest">W / WA / E</th>
+                                            <th className="px-5 py-3 text-center text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.entriesHeader')}</th>
                                             <th className="px-5 py-3 text-center text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.streakHeader')}</th>
                                             <th className="px-5 py-3 text-right text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.dateHeader')}</th>
                                         </tr>
@@ -707,7 +699,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                                     <tbody className="divide-y divide-brand-gold/5">
                                         {checkins.map((c, i) => {
                                             const outlet = outlets.find((o: any) => o.id === c.outlet_code);
-                                            const formattedDate = new Date(c.checkin_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                            const formattedDate = new Date(c.checkin_date).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' });
                                             return (
                                             <tr key={i} className="hover:bg-brand-gold/5 transition-all">
                                                 <td className="px-5 py-3">
@@ -717,7 +709,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                                                         </div>
                                                         <div className="min-w-0">
                                                             <p className="text-sm font-bold text-white truncate">{c.user_name}</p>
-                                                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate">{outlet?.name || 'Outlet'}</p>
+                                                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate">{outlet?.name || t('gamification.outletFallback')}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -750,41 +742,44 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
 
             {/* ── Live Activity Tab ── */}
             {activeView === 'activity' && (
-                <LiveActivityTab logs={logs} t={t} />
+                <LiveActivityTab logs={logs} t={t} lang={lang} />
             )}
         </div>
     );
 };
 
 // ── Live Activity Tab — grouped by date, collapsible ──
-const ACTION_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-    'on-time_entry':      { icon: <Clock size={13} />,        color: '#22c55e', label: 'On-Time Entry' },
-    'on_time_entry':      { icon: <Clock size={13} />,        color: '#22c55e', label: 'On-Time Entry' },
-    'entry_with_image':   { icon: <Camera size={13} />,       color: '#60a5fa', label: 'Entry with Photo' },
-    'energy_reading':     { icon: <Zap size={13} />,          color: '#fbbf24', label: 'Energy Reading' },
-    '5-day_streak_bonus': { icon: <Flame size={13} />,        color: '#f97316', label: '5-Day Streak Bonus' },
-    '5_day_streak_bonus': { icon: <Flame size={13} />,        color: '#f97316', label: '5-Day Streak Bonus' },
-    'mila_comment':       { icon: <Star size={13} />,         color: '#a78bfa', label: 'Mila AI Comment' },
-    'mila_suggestion':    { icon: <Star size={13} />,         color: '#a78bfa', label: 'Mila AI Suggestion' },
-    'accuracy_bonus':     { icon: <CheckCircle2 size={13} />, color: '#34d399', label: 'Accuracy Bonus' },
-    'daily_checkin':      { icon: <CheckCircle2 size={13} />, color: '#22c55e', label: 'Daily Check-in' },
-    'waste_log':          { icon: <Leaf size={13} />,         color: '#4ade80', label: 'Waste Log' },
-    'water_log':          { icon: <Droplets size={13} />,     color: '#38bdf8', label: 'Water Log' },
-    'points_earned':      { icon: <Trophy size={13} />,       color: '#C8A413', label: 'Points Earned' },
+const ACTION_META: Record<string, { icon: React.ReactNode; color: string; labelKey: string }> = {
+    'on-time_entry':      { icon: <Clock size={13} />,        color: '#22c55e', labelKey: 'gamification.actOnTimeEntry' },
+    'on_time_entry':      { icon: <Clock size={13} />,        color: '#22c55e', labelKey: 'gamification.actOnTimeEntry' },
+    'entry_with_image':   { icon: <Camera size={13} />,       color: '#60a5fa', labelKey: 'gamification.actEntryWithImage' },
+    'energy_reading':     { icon: <Zap size={13} />,          color: '#fbbf24', labelKey: 'gamification.actEnergyReading' },
+    '5-day_streak_bonus': { icon: <Flame size={13} />,        color: '#f97316', labelKey: 'gamification.act5DayStreakBonus' },
+    '5_day_streak_bonus': { icon: <Flame size={13} />,        color: '#f97316', labelKey: 'gamification.act5DayStreakBonus' },
+    'mila_comment':       { icon: <Star size={13} />,         color: '#a78bfa', labelKey: 'gamification.actMilaComment' },
+    'mila_suggestion':    { icon: <Star size={13} />,         color: '#a78bfa', labelKey: 'gamification.actMilaSuggestion' },
+    'accuracy_bonus':     { icon: <CheckCircle2 size={13} />, color: '#34d399', labelKey: 'gamification.actAccuracyBonus' },
+    'daily_checkin':      { icon: <CheckCircle2 size={13} />, color: '#22c55e', labelKey: 'gamification.actDailyCheckin' },
+    'waste_log':          { icon: <Leaf size={13} />,         color: '#4ade80', labelKey: 'gamification.actWasteLog' },
+    'water_log':          { icon: <Droplets size={13} />,     color: '#38bdf8', labelKey: 'gamification.actWaterLog' },
+    'points_earned':      { icon: <Trophy size={13} />,       color: '#C8A413', labelKey: 'gamification.actPointsEarned' },
 };
 
 const LiveActivityTab: React.FC<{
     logs: ActionLogEntry[];
     t: (key: string, opts?: any) => string;
-}> = ({ logs, t }) => {
+    lang: string;
+}> = ({ logs, t, lang }) => {
     const [expanded, setExpanded] = useState(false);
     const VISIBLE_COUNT = 6;
+    const dateLocale = lang === 'es' ? 'es-ES' : 'en-US';
+    const timeLocale = lang === 'es' ? 'es-ES' : 'en-US';
 
     // Group logs by date
     const grouped = useMemo(() => {
         const groups: Record<string, ActionLogEntry[]> = {};
         logs.forEach(log => {
-            const dateKey = new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const dateKey = new Date(log.created_at).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' });
             if (!groups[dateKey]) groups[dateKey] = [];
             groups[dateKey].push(log);
         });
@@ -793,7 +788,7 @@ const LiveActivityTab: React.FC<{
             const db = new Date(b[1][0].created_at).getTime();
             return db - da;
         });
-    }, [logs]);
+    }, [logs, dateLocale]);
 
     if (logs.length === 0) {
         return (
@@ -814,7 +809,7 @@ const LiveActivityTab: React.FC<{
     const visibleGrouped = useMemo(() => {
         const groups: Record<string, ActionLogEntry[]> = {};
         visibleLogs.forEach(log => {
-            const dateKey = new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const dateKey = new Date(log.created_at).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' });
             if (!groups[dateKey]) groups[dateKey] = [];
             groups[dateKey].push(log);
         });
@@ -823,7 +818,7 @@ const LiveActivityTab: React.FC<{
             const db = new Date(b[1][0].created_at).getTime();
             return db - da;
         });
-    }, [visibleLogs]);
+    }, [visibleLogs, dateLocale]);
 
     return (
         <div className="animate-in fade-in duration-500">
@@ -834,7 +829,7 @@ const LiveActivityTab: React.FC<{
                         <div className="w-2 h-2 bg-brand-eco rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
                         <h3 className="text-[11px] font-black uppercase tracking-widest text-white">{t('gamification.tabLiveActivity')}</h3>
                     </div>
-                    <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest">{logs.length} events</span>
+                    <span className="text-[9px] font-black text-brand-gold/60 uppercase tracking-widest">{t('gamification.eventsCount', { count: logs.length })}</span>
                 </div>
 
                 {/* Timeline */}
@@ -857,8 +852,8 @@ const LiveActivityTab: React.FC<{
                                 <div className="space-y-1.5 ml-1">
                                     {dateLogs.map(log => {
                                         const lookupKey = log.action_key || log.action_name.replace(/\s+/g, '_');
-                                        const meta = ACTION_META[lookupKey] || { icon: <Trophy size={13} />, color: '#C8A413', label: 'Points Earned' };
-                                        const timeStr = new Date(log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                                        const meta = ACTION_META[lookupKey] || { icon: <Trophy size={13} />, color: '#C8A413', labelKey: 'gamification.actPointsEarned' };
+                                        const timeStr = new Date(log.created_at).toLocaleTimeString(timeLocale, { hour: 'numeric', minute: '2-digit' });
                                         return (
                                             <div key={log.id} className="flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-brand-gold/5 transition-all group">
                                                 <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
@@ -866,7 +861,7 @@ const LiveActivityTab: React.FC<{
                                                     {meta.icon}
                                                 </div>
                                                 <div className="flex-1 min-w-0 flex items-center gap-2">
-                                                    <span className="text-[11px] font-bold text-white truncate">{meta.label}</span>
+                                                    <span className="text-[11px] font-bold text-white truncate">{t(meta.labelKey)}</span>
                                                     <span className="text-white/15 text-[10px]">·</span>
                                                     <span className="text-[9px] font-black text-white/40 uppercase tracking-wider truncate">{log.staff_name}</span>
                                                 </div>
@@ -888,9 +883,9 @@ const LiveActivityTab: React.FC<{
                         className="w-full flex items-center justify-center gap-2 py-3 border-t border-brand-gold/10 hover:bg-brand-gold/5 transition-all text-[10px] font-black uppercase tracking-widest text-brand-gold/60 hover:text-brand-gold"
                     >
                         {expanded ? (
-                            <><ChevronUp size={14} /> Show Less</>
+                            <><ChevronUp size={14} /> {t('gamification.showLess')}</>
                         ) : (
-                            <><ChevronDown size={14} /> Show {logs.length - VISIBLE_COUNT} More</>
+                            <><ChevronDown size={14} /> {t('gamification.showMore', { count: logs.length - VISIBLE_COUNT })}</>
                         )}
                     </button>
                 )}
@@ -910,6 +905,7 @@ const PodiumCard: React.FC<{
     accent: string;
     height: string;
 }> = ({ rank, name, points, outlet, color, icon, accent, height }) => {
+    const { t } = useI18n();
     const isFirst = rank === 1;
     return (
         <div className="flex flex-col items-center w-full">
@@ -975,8 +971,74 @@ const PodiumCard: React.FC<{
                 >
                     {points.toLocaleString()}
                 </p>
-                <p className="text-[7px] font-black uppercase tracking-widest text-white/25 mt-1">pts</p>
+                <p className="text-[7px] font-black uppercase tracking-widest text-white/25 mt-1">{t('gamification.pts')}</p>
             </div>
+        </div>
+    );
+};
+
+// ── Outlet Filter Dropdown — matches Ecometricus CustomSelect design ──
+const OutletFilterDropdown: React.FC<{
+    value: string;
+    options: { id?: string; name: string; code: string }[];
+    onChange: (v: string) => void;
+    allLabel: string;
+}> = ({ value, options, onChange, allLabel }) => {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    const selectedName = value === 'all' ? allLabel : (options.find(o => o.id === value)?.name || allLabel);
+
+    return (
+        <div ref={ref} className="relative min-w-[160px]">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center justify-between gap-2 bg-brand-dark/60 border border-brand-gold/20 rounded-xl pl-9 pr-8 py-2.5 text-[11px] font-black uppercase tracking-widest text-white/70 hover:border-brand-gold/40 transition-all cursor-pointer outline-none"
+            >
+                <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-gold/50 pointer-events-none" />
+                <span className="truncate">{selectedName}</span>
+                <ChevronDown size={12} className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+            </button>
+            {open && (
+                <div className="absolute z-[9999] mt-1 w-full rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
+                    <ul className="max-h-56 overflow-y-auto scrollbar-gold py-1">
+                        <li>
+                            <button
+                                type="button"
+                                onClick={() => { onChange('all'); setOpen(false); }}
+                                className={`w-full text-left px-4 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors flex items-center gap-2 ${value === 'all' ? 'text-brand-gold bg-brand-gold/10' : 'text-white/70 hover:text-white hover:bg-brand-dark/60'}`}
+                            >
+                                {value === 'all' && <Check size={12} className="text-brand-gold shrink-0" />}
+                                {value !== 'all' && <span className="w-3 shrink-0" />}
+                                {allLabel}
+                            </button>
+                        </li>
+                        {options.map(o => (
+                            <li key={o.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => { onChange(o.id!); setOpen(false); }}
+                                    className={`w-full text-left px-4 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors flex items-center gap-2 ${value === o.id ? 'text-brand-gold bg-brand-gold/10' : 'text-white/70 hover:text-white hover:bg-brand-dark/60'}`}
+                                >
+                                    {value === o.id && <Check size={12} className="text-brand-gold shrink-0" />}
+                                    {value !== o.id && <span className="w-3 shrink-0" />}
+                                    {o.name}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </div>
     );
 };
