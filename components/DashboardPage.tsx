@@ -3051,10 +3051,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               <div>
                                 <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-                                  Alerts &amp; Suggestions
+                                  {t('dashboard.alertsTitle')}
                                 </h2>
                                 <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                                  Grouped by issue · expand outlets · suggestions below
+                                  {t('dashboard.alertsSubtitle')}
                                 </p>
                               </div>
                             </div>

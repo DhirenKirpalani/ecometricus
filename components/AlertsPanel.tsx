@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { AlertTriangle, AlertCircle, Info, ShieldCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useI18n } from '../lib/useI18n';
 
 interface StructuredAlert {
   id: string;
@@ -54,6 +55,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
   outlets,
   effectiveParams,
 }) => {
+  const { t } = useI18n();
   const [openAlerts, setOpenAlerts] = useState<Set<string>>(new Set());
   const [alertPage, setAlertPage] = useState(0);
   const [suggestionPage, setSuggestionPage] = useState(0);
@@ -106,24 +108,25 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
       .filter(o => o.kg > wasteTarget)
       .map(o => {
         const pct = Math.round(((o.kg - wasteTarget) / wasteTarget) * 100);
-        return { name: o.name, detail: `${Math.round(o.kg)}kg — ${pct}% over ${wasteTarget}kg target`, pct };
+        return { name: o.name, detail: t('dashboard.alertWasteDetail', { kg: Math.round(o.kg), pct, target: wasteTarget }), pct };
       });
     if (overWasteOutlets.length > 0) {
       const maxPct = Math.max(...overWasteOutlets.map(o => o.pct));
-      alerts.push({ id: 'waste', severity: maxPct > 20 ? 'critical' : 'warning', category: 'Food Waste', date: today, title: 'Waste volume over target', outletsAffected: overWasteOutlets, recommendation: 'Review prep processes and portion sizes. Focus on overproduction and spoilage categories.' });
-      suggestions.push({ category: 'Food Waste', severity: maxPct > 20 ? 'critical' : 'warning', date: today, text: 'Review prep processes and portion sizes. Focus on overproduction and spoilage categories.' });
+      alerts.push({ id: 'waste', severity: maxPct > 20 ? 'critical' : 'warning', category: t('dashboard.catFoodWaste'), date: today, title: t('dashboard.alertWasteTitle'), outletsAffected: overWasteOutlets, recommendation: t('dashboard.sugWaste') });
+      suggestions.push({ category: t('dashboard.catFoodWaste'), severity: maxPct > 20 ? 'critical' : 'warning', date: today, text: t('dashboard.sugWaste') });
     }
 
     // Carbon — aggregate
     if (impacts.isDeviating) {
-      alerts.push({ id: 'carbon', severity: 'critical', category: 'Carbon', date: today, title: 'Carbon lifecycle deviation', outletsAffected: [{ name: 'All outlets', detail: `${impacts.carbonImpact.toFixed(1)}kg CO₂e total impact` }], recommendation: 'Prioritize waste reduction — every 1kg waste reduced saves 2.85kg CO₂e. Check energy usage patterns.' });
-      suggestions.push({ category: 'Carbon', severity: 'critical', date: today, text: 'Prioritize waste reduction — every 1kg waste reduced saves 2.85kg CO₂e. Check energy usage patterns.' });
+      alerts.push({ id: 'carbon', severity: 'critical', category: t('dashboard.catCarbon'), date: today, title: t('dashboard.alertCarbonTitle'), outletsAffected: [{ name: t('dashboard.alertsAllOutlets'), detail: t('dashboard.alertCarbonDetail', { co2: impacts.carbonImpact.toFixed(1) }) }], recommendation: t('dashboard.sugCarbon') });
+      suggestions.push({ category: t('dashboard.catCarbon'), severity: 'critical', date: today, text: t('dashboard.sugCarbon') });
     }
 
     // Financial — aggregate
     if (impacts.totalFinancialLoss > 500) {
-      alerts.push({ id: 'financial', severity: 'warning', category: 'Financial', date: today, title: `Loss at $${impacts.totalFinancialLoss.toFixed(2)}`, outletsAffected: [{ name: 'All outlets', detail: `$7.50/kg item cost + $1.25/kg logistics` }], recommendation: `Target high-waste categories first. A 10% waste reduction saves ~$${Math.round(impacts.totalFinancialLoss * 0.10)}/week.` });
-      suggestions.push({ category: 'Financial', severity: 'warning', date: today, text: `Target high-waste categories first. A 10% waste reduction saves ~$${Math.round(impacts.totalFinancialLoss * 0.10)}/week.` });
+      const savings = Math.round(impacts.totalFinancialLoss * 0.10);
+      alerts.push({ id: 'financial', severity: 'warning', category: t('dashboard.catFinancial'), date: today, title: t('dashboard.alertFinancialTitle', { amount: impacts.totalFinancialLoss.toFixed(2) }), outletsAffected: [{ name: t('dashboard.alertsAllOutlets'), detail: t('dashboard.alertFinancialDetail') }], recommendation: t('dashboard.sugFinancial', { savings }) });
+      suggestions.push({ category: t('dashboard.catFinancial'), severity: 'warning', date: today, text: t('dashboard.sugFinancial', { savings }) });
     }
 
     // Water — per outlet
@@ -131,12 +134,12 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
       .filter(o => o.liters > waterTarget)
       .map(o => {
         const pct = Math.round(((o.liters - waterTarget) / waterTarget) * 100);
-        return { name: o.name, detail: `${Math.round(o.liters).toLocaleString()}L — ${pct}% over ${waterTarget.toLocaleString()}L target` };
+        return { name: o.name, detail: t('dashboard.alertWaterDetail', { liters: Math.round(o.liters).toLocaleString(), pct, target: waterTarget.toLocaleString() }) };
       });
     if (overWaterOutlets.length > 0) {
       const maxPct = Math.max(...Object.values(outletWaterMap).filter(o => o.liters > waterTarget).map(o => Math.round(((o.liters - waterTarget) / waterTarget) * 100)));
-      alerts.push({ id: 'water', severity: maxPct > 30 ? 'critical' : 'warning', category: 'Water', date: today, title: 'Water usage over target', outletsAffected: overWaterOutlets, recommendation: 'Check for leaks, optimize dishwashing schedules, and review irrigation if applicable.' });
-      suggestions.push({ category: 'Water', severity: Math.max(...Object.values(outletWaterMap).filter(o => o.liters > waterTarget).map(o => Math.round(((o.liters - waterTarget) / waterTarget) * 100))) > 30 ? 'critical' : 'warning', date: today, text: 'Check for leaks, optimize dishwashing schedules, and review irrigation if applicable.' });
+      alerts.push({ id: 'water', severity: maxPct > 30 ? 'critical' : 'warning', category: t('dashboard.catWater'), date: today, title: t('dashboard.alertWaterTitle'), outletsAffected: overWaterOutlets, recommendation: t('dashboard.sugWater') });
+      suggestions.push({ category: t('dashboard.catWater'), severity: maxPct > 30 ? 'critical' : 'warning', date: today, text: t('dashboard.sugWater') });
     }
 
     // Energy — per outlet
@@ -144,12 +147,12 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
       .filter(o => o.kwh > energyTarget)
       .map(o => {
         const pct = Math.round(((o.kwh - energyTarget) / energyTarget) * 100);
-        return { name: o.name, detail: `${Math.round(o.kwh).toLocaleString()}kWh — ${pct}% over ${energyTarget.toLocaleString()}kWh target` };
+        return { name: o.name, detail: t('dashboard.alertEnergyDetail', { kwh: Math.round(o.kwh).toLocaleString(), pct, target: energyTarget.toLocaleString() }) };
       });
     if (overEnergyOutlets.length > 0) {
       const maxPct = Math.max(...Object.values(outletEnergyMap).filter(o => o.kwh > energyTarget).map(o => Math.round(((o.kwh - energyTarget) / energyTarget) * 100)));
-      alerts.push({ id: 'energy', severity: maxPct > 30 ? 'critical' : 'warning', category: 'Energy', date: today, title: 'Energy usage over target', outletsAffected: overEnergyOutlets, recommendation: 'Audit HVAC scheduling, switch to LED lighting, and review equipment idle times.' });
-      suggestions.push({ category: 'Energy', severity: Math.max(...Object.values(outletEnergyMap).filter(o => o.kwh > energyTarget).map(o => Math.round(((o.kwh - energyTarget) / energyTarget) * 100))) > 30 ? 'critical' : 'warning', date: today, text: 'Audit HVAC scheduling, switch to LED lighting, and review equipment idle times.' });
+      alerts.push({ id: 'energy', severity: maxPct > 30 ? 'critical' : 'warning', category: t('dashboard.catEnergy'), date: today, title: t('dashboard.alertEnergyTitle'), outletsAffected: overEnergyOutlets, recommendation: t('dashboard.sugEnergy') });
+      suggestions.push({ category: t('dashboard.catEnergy'), severity: maxPct > 30 ? 'critical' : 'warning', date: today, text: t('dashboard.sugEnergy') });
     }
 
     return { structuredAlerts: alerts, suggestions };
@@ -167,8 +170,8 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
         <div className="w-14 h-14 rounded-2xl bg-brand-eco/10 border border-brand-eco/30 flex items-center justify-center mb-4">
           <ShieldCheck size={26} className="text-brand-eco" />
         </div>
-        <p className="text-sm text-white/60 font-medium">All metrics within target range</p>
-        <p className="text-[11px] text-white/30 mt-1">No deviation alerts at this time</p>
+        <p className="text-sm text-white/60 font-medium">{t('dashboard.alertsAllClear')}</p>
+        <p className="text-[11px] text-white/30 mt-1">{t('dashboard.alertsNone')}</p>
       </div>
     );
   }
@@ -180,8 +183,8 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
       <div>
         <div className="flex items-center gap-2 mb-3">
           <div className="w-1 h-5 bg-brand-alert rounded-full" />
-          <span className="text-[11px] font-black text-brand-alert uppercase tracking-widest">Alerts</span>
-          <span className="ml-auto text-[10px] text-white/30 uppercase tracking-widest">{structuredAlerts.length} active</span>
+          <span className="text-[11px] font-black text-brand-alert uppercase tracking-widest">{t('dashboard.alertsLabel')}</span>
+          <span className="ml-auto text-[10px] text-white/30 uppercase tracking-widest">{t('dashboard.alertsActive', { count: structuredAlerts.length })}</span>
         </div>
 
         <div className="space-y-2">
@@ -213,7 +216,9 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-${col}/20 text-${col}`}>
-                      {alert.outletsAffected.length} outlet{alert.outletsAffected.length !== 1 ? 's' : ''}
+                      {alert.outletsAffected.length === 1
+                        ? t('dashboard.alertsOutlets', { count: alert.outletsAffected.length })
+                        : t('dashboard.alertsOutletsPlural', { count: alert.outletsAffected.length })}
                     </span>
                     {isOpen
                       ? <ChevronUp size={13} className="text-white/40" />
@@ -257,7 +262,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
               disabled={alertPage === 0}
               className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/30 disabled:opacity-30 hover:text-white/60 transition-colors"
             >
-              <ChevronLeft size={12} /> Prev
+              <ChevronLeft size={12} /> {t('dashboard.alertsPrev')}
             </button>
             <span className="text-[10px] font-black uppercase tracking-widest text-white/20">
               {alertPage + 1} / {totalAlertPages}
@@ -267,7 +272,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
               disabled={alertPage === totalAlertPages - 1}
               className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/30 disabled:opacity-30 hover:text-white/60 transition-colors"
             >
-              Next <ChevronRight size={12} />
+              {t('dashboard.alertsNext')} <ChevronRight size={12} />
             </button>
           </div>
         )}
@@ -278,7 +283,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-3">
             <div className="w-1 h-5 bg-brand-eco rounded-full" />
-            <span className="text-[11px] font-black text-brand-eco uppercase tracking-widest">Suggestions</span>
+            <span className="text-[11px] font-black text-brand-eco uppercase tracking-widest">{t('dashboard.alertsSuggestions')}</span>
           </div>
 
           <div className="space-y-2">
@@ -319,7 +324,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                 disabled={suggestionPage === 0}
                 className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/30 disabled:opacity-30 hover:text-white/60 transition-colors"
               >
-                <ChevronLeft size={12} /> Prev
+                <ChevronLeft size={12} /> {t('dashboard.alertsPrev')}
               </button>
               <span className="text-[10px] font-black uppercase tracking-widest text-white/20">
                 {suggestionPage + 1} / {totalSuggestionPages}
@@ -329,7 +334,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                 disabled={suggestionPage === totalSuggestionPages - 1}
                 className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/30 disabled:opacity-30 hover:text-white/60 transition-colors"
               >
-                Next <ChevronRight size={12} />
+                {t('dashboard.alertsNext')} <ChevronRight size={12} />
               </button>
             </div>
           )}

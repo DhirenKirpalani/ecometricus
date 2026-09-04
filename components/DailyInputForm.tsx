@@ -11,6 +11,134 @@ import { awardPoints } from '../lib/gamification';
 import GamificationCard from './GamificationCard';
 import { useI18n } from '../lib/useI18n';
 
+// Reverse lookup: English dropdown value → translation key under wasteOptions.*
+const WASTE_OPT_KEY_MAP: Record<string, string> = {
+  // Categories
+  'Receiving Waste': 'catReceivingWaste',
+  'Storage / Spoilage': 'catStorageSpoilage',
+  'Preparation Waste': 'catPreparationWaste',
+  'Cooking / Production Waste': 'catCookingProductionWaste',
+  'Overproduction': 'catOverproduction',
+  'Buffet / Display Waste': 'catBuffetDisplayWaste',
+  'Plate / Post-Consumer Waste': 'catPlatePostConsumerWaste',
+  'Beverage Waste': 'catBeverageWaste',
+  'Returned Food': 'catReturnedFood',
+  'Expired / Out-of-Spec': 'catExpiredOutOfSpec',
+  'Event / Banquet Waste': 'catEventBanquetWaste',
+  // Subcategories
+  'Vegetables': 'subVegetables',
+  'Fruit': 'subFruit',
+  'Meat': 'subMeat',
+  'Poultry': 'subPoultry',
+  'Seafood': 'subSeafood',
+  'Dairy': 'subDairy',
+  'Eggs': 'subEggs',
+  'Grains & Cereals': 'subGrainsCereals',
+  'Rice & Pasta': 'subRicePasta',
+  'Bakery': 'subBakery',
+  'Legumes': 'subLegumes',
+  'Prepared Foods': 'subPreparedFoods',
+  'Sauces & Condiments': 'subSaucesCondiments',
+  'Desserts & Pastry': 'subDessertsPastry',
+  'Beverages': 'subBeverages',
+  'Other': 'subOther',
+  // Products
+  'Onions': 'prodOnions',
+  'Carrots': 'prodCarrots',
+  'Potatoes': 'prodPotatoes',
+  'Lettuce': 'prodLettuce',
+  'Tomatoes': 'prodTomatoes',
+  'Bananas': 'prodBananas',
+  'Apples': 'prodApples',
+  'Pineapple': 'prodPineapple',
+  'Berries': 'prodBerries',
+  'Beef': 'prodBeef',
+  'Pork': 'prodPork',
+  'Lamb': 'prodLamb',
+  'Steak': 'prodSteak',
+  'Beef Trim': 'prodBeefTrim',
+  'Chicken': 'prodChicken',
+  'Turkey': 'prodTurkey',
+  'Chicken Breast': 'prodChickenBreast',
+  'Chicken Scraps': 'prodChickenScraps',
+  'Fish': 'prodFish',
+  'Shrimp': 'prodShrimp',
+  'Salmon': 'prodSalmon',
+  'Shellfish': 'prodShellfish',
+  'Milk': 'prodMilk',
+  'Cream': 'prodCream',
+  'Cheese': 'prodCheese',
+  'Yogurt': 'prodYogurt',
+  'Butter': 'prodButter',
+  'Whole Egg': 'prodWholeEgg',
+  'Egg Whites': 'prodEggWhites',
+  'Eggshells': 'prodEggshells',
+  'Oats': 'prodOats',
+  'Quinoa': 'prodQuinoa',
+  'Corn': 'prodCorn',
+  'Rice': 'prodRice',
+  'Pasta': 'prodPasta',
+  'Noodles': 'prodNoodles',
+  'Bread': 'prodBread',
+  'Croissant': 'prodCroissant',
+  'Pastry': 'prodPastry',
+  'Beans': 'prodBeans',
+  'Lentils': 'prodLentils',
+  'Chickpeas': 'prodChickpeas',
+  'Soup': 'prodSoup',
+  'Salad': 'prodSalad',
+  'Cooked Vegetables': 'prodCookedVegetables',
+  'Cooked Protein': 'prodCookedProtein',
+  'Sauce': 'prodSauce',
+  'Dressing': 'prodDressing',
+  'Gravy': 'prodGravy',
+  'Marinade': 'prodMarinade',
+  'Cake': 'prodCake',
+  'Cake Trim': 'prodCakeTrim',
+  'Dessert': 'prodDessert',
+  'Ice Cream': 'prodIceCream',
+  'Coffee': 'prodCoffee',
+  'Tea': 'prodTea',
+  'Juice': 'prodJuice',
+  'Smoothie': 'prodSmoothie',
+  'Wine': 'prodWine',
+  // Reasons
+  'Spoilage': 'reasonSpoilage',
+  'Expired': 'reasonExpired',
+  'Excessive Trim': 'reasonExcessiveTrim',
+  'Preparation Error': 'reasonPreparationError',
+  'Cooking Error': 'reasonCookingError',
+  'Portion Size': 'reasonPortionSize',
+  'Guest Leftover': 'reasonGuestLeftover',
+  'Returned Order': 'reasonReturnedOrder',
+  'Wrong Order': 'reasonWrongOrder',
+  'Quality Issue': 'reasonQualityIssue',
+  'Food Safety': 'reasonFoodSafety',
+  'Damaged Product': 'reasonDamagedProduct',
+  'Temperature / Storage Issue': 'reasonTemperatureStorage',
+  'Demand Forecast Error': 'reasonDemandForecastError',
+  // Destinations
+  'Reused': 'destReused',
+  'Repurposed / Upcycled': 'destRepurposedUpcycled',
+  'Donated': 'destDonated',
+  'Animal Feed': 'destAnimalFeed',
+  'Compost': 'destCompost',
+  'Anaerobic Digestion': 'destAnaerobicDigestion',
+  'Recycling': 'destRecycling',
+  'Landfill': 'destLandfill',
+  'Drain / Sewer': 'destDrainSewer',
+};
+
+// Helper: translate a dropdown option value (English → localized display)
+// Falls back to the original value if no translation key exists.
+function makeOptionTranslator(t: (key: string, vars?: Record<string, string | number>) => string) {
+  return (value: string): string => {
+    const key = WASTE_OPT_KEY_MAP[value];
+    if (!key) return value;
+    return t(`wasteOptions.${key}`);
+  };
+}
+
 interface DailyInputFormProps {
   user: UserProfile;
   companyName?: string;
@@ -25,7 +153,8 @@ const FormDropdown: React.FC<{
   options: string[];
   onChange: (v: string) => void;
   placeholder?: string;
-}> = ({ value, options, onChange, placeholder }) => {
+  translateOption?: (v: string) => string;
+}> = ({ value, options, onChange, placeholder, translateOption }) => {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -39,6 +168,8 @@ const FormDropdown: React.FC<{
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  const display = (v: string) => (translateOption ? translateOption(v) : v);
+
   return (
     <div ref={ref} className="relative w-full">
       <button
@@ -47,7 +178,7 @@ const FormDropdown: React.FC<{
         className={`w-full flex items-center justify-between bg-brand-dark/80 border rounded-xl py-3 px-4 text-sm text-left transition-colors
           ${open ? 'border-brand-gold' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
       >
-        <span className={value ? 'text-white' : 'text-white/40'}>{value || placeholder || t('dailyInput.selectDefault')}</span>
+        <span className={value ? 'text-white' : 'text-white/40'}>{value ? display(value) : (placeholder || t('dailyInput.selectDefault'))}</span>
         <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -62,7 +193,7 @@ const FormDropdown: React.FC<{
                   className={`w-full text-left px-4 py-2.5 text-sm transition-colors
                     ${opt === value ? 'text-brand-gold bg-brand-gold/10 font-semibold' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
                 >
-                  {opt}
+                  {display(opt)}
                 </button>
               </li>
             ))}
@@ -307,6 +438,7 @@ const WASTE_DESTINATIONS: string[] = [
 
 const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outletName, readOnly = false, onAuditLog }) => {
   const { t } = useI18n();
+  const tOpt = makeOptionTranslator(t);
   const [unit, setUnit] = useState<'kg' | 'lbs' | 'L'>('kg');
   const [showAlert, setShowAlert] = useState<{ msg: string; color: string } | null>(null);
   const [resolvedCompanyName, setResolvedCompanyName] = useState(companyName || '');
@@ -1291,6 +1423,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
               options={Object.keys(INVENTORY_LOGIC)}
               onChange={v => setForm({ ...form, category: v, subCategory: '', product: '', products: [], productSearch: '' })}
               placeholder={t('dailyInput.categoryPlaceholder')}
+              translateOption={tOpt}
             />
           </div>
 
@@ -1306,6 +1439,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                 options={Object.keys(INVENTORY_LOGIC[form.category])}
                 onChange={v => setForm({ ...form, subCategory: v, product: '', products: [], productSearch: '' })}
                 placeholder={t('dailyInput.subCategoryPlaceholder')}
+                translateOption={tOpt}
               />
             </div>
           )}
@@ -1327,7 +1461,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                   <div className="w-full bg-brand-dark/80 border border-brand-gold/15 rounded-xl pl-10 pr-4 py-2.5 flex flex-wrap items-center gap-1.5 focus-within:border-brand-gold transition-all min-h-[48px]">
                     {form.products.map(prod => (
                       <span key={prod} className="inline-flex items-center gap-1.5 bg-brand-eco/15 border border-brand-eco/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-brand-eco">
-                        {prod}
+                        {tOpt(prod)}
                         <button type="button" onClick={() => setForm({ ...form, products: form.products.filter(p => p !== prod) })} className="hover:text-white transition-colors">
                           <X size={11} />
                         </button>
@@ -1375,7 +1509,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                             }}
                             className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between
                               ${isSelected ? 'text-brand-gold bg-brand-gold/10 font-semibold' : 'text-white/70 hover:bg-brand-gold/10 hover:text-brand-gold'}`}>
-                              <span>{prod}</span>
+                              <span>{tOpt(prod)}</span>
                               {isSelected && <CheckCircle2 size={14} className="text-brand-gold shrink-0" />}
                             </button>
                         );
@@ -1398,6 +1532,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                 options={PRIMARY_REASONS}
                 onChange={v => setForm({ ...form, reason: v })}
                 placeholder={t('dailyInput.reasonPlaceholder')}
+                translateOption={tOpt}
               />
               {form.reason === 'Other' && (
                 <input type="text" value={form.customReason} onChange={e => setForm({ ...form, customReason: e.target.value })}
@@ -1444,6 +1579,7 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                 options={WASTE_DESTINATIONS}
                 onChange={v => setForm({ ...form, destination: v })}
                 placeholder={t('dailyInput.destinationPlaceholder')}
+                translateOption={tOpt}
               />
             </div>
           )}
@@ -1637,15 +1773,15 @@ const DailyInputForm: React.FC<DailyInputFormProps> = ({ user, companyName, outl
                 {/* Col 1: Logged Item */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wider truncate">{entry.product}</span>
-                    <span className="text-[9px] font-bold text-brand-eco uppercase tracking-widest px-2 py-0.5 rounded-full bg-brand-eco/10 border border-brand-eco/20 shrink-0">{entry.destination}</span>
+                    <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wider truncate">{tOpt(entry.product)}</span>
+                    <span className="text-[9px] font-bold text-brand-eco uppercase tracking-widest px-2 py-0.5 rounded-full bg-brand-eco/10 border border-brand-eco/20 shrink-0">{tOpt(entry.destination)}</span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{entry.category}</span>
+                    <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{tOpt(entry.category)}</span>
                     <span className="text-white/15">·</span>
-                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">{entry.subCategory}</span>
+                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">{tOpt(entry.subCategory)}</span>
                     <span className="text-white/15">·</span>
-                    <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">{entry.reason}</span>
+                    <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">{tOpt(entry.reason)}</span>
                   </div>
                 </div>
 
