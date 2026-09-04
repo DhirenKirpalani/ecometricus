@@ -157,6 +157,7 @@ enum PortalView {
   TEAM = 'team',
   PARAMETERS = 'parameters',
   AUDIT_LOG = 'audit_log',
+  AUDIT_REPORT = 'audit_report',
   CONTACT = 'contact',
   SUPER_ADMIN = 'super_admin',
   SYSTEM = 'system'
@@ -170,6 +171,7 @@ const PORTAL_VIEW_PATHS: Record<PortalView, string> = {
   [PortalView.TEAM]: '/dashboard/team',
   [PortalView.PARAMETERS]: '/dashboard/benchmarks',
   [PortalView.AUDIT_LOG]: '/dashboard/audit-log',
+  [PortalView.AUDIT_REPORT]: '/dashboard/audit-report',
   [PortalView.CONTACT]: '/dashboard/contact',
   [PortalView.SUPER_ADMIN]: '/dashboard/super-admin',
   [PortalView.SYSTEM]: '/dashboard/system',
@@ -773,6 +775,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         personnelRow = byEmail;
       }
       outletId = personnelRow?.outlet_id || null;
+      // Persist outlet ID so chart hooks and KPI memos can filter by outlet
+      if (outletId) setPersonnelOutletId(outletId);
+
+      // Also resolve and persist outlet name for resource_logs filtering
+      let outletName: string | null = null;
+      if (outletId) {
+        const { data: outletRow } = await supabase
+          .from('outlets')
+          .select('outlet_name')
+          .eq('id', outletId)
+          .maybeSingle();
+        outletName = outletRow?.outlet_name || null;
+        if (outletName) setUserOutletName(outletName);
+      }
 
       // Fetch waste logs — prefer outlet_id, fall back to user_id
       let wasteQuery = supabase
@@ -793,16 +809,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       }
 
       // Fetch resource logs — resource_logs has no outlet_id column, use outlet_name
-      // Resolve outlet_name from outlet_id
-      let outletName: string | null = null;
-      if (outletId) {
-        const { data: outletRow } = await supabase
-          .from('outlets')
-          .select('outlet_name')
-          .eq('id', outletId)
-          .maybeSingle();
-        outletName = outletRow?.outlet_name || null;
-      }
+      // outletName already resolved above
       let resourceQuery = supabase
         .from('resource_logs')
         .select('*');
@@ -1354,7 +1361,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       if (!isAdmin && !resolvedOutletName && resolvedOutletId) {
         const fromOutlets = outlets.find((o: any) => o.id === resolvedOutletId);
         if (fromOutlets) {
-          resolvedOutletName = fromOutlets.name;
+          resolvedOutletName = fromOutlets.outlet_name || fromOutlets.name || '';
+          setUserOutletName(resolvedOutletName);
         } else {
           const { data: outletRow } = await supabase
             .from('outlets')
@@ -1597,14 +1605,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // For admin, use their own user.id; for GM, use the resolved data owner's user_id
   const hookScopeUserId = isCompanyWide ? (isHookAdmin ? user.id : (dataOwnerUserId || user.id)) : undefined;
   const hookScopeOutletId = !isCompanyWide ? (personnelOutletId || undefined) : undefined;
+  // SUMMARIZED tab hooks (admin/GM = cumulative weekly, not daily)
   const { chartData: wasteChartData, outletKeys: wasteOutletKeys, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData(
     params.wasteTarget,
     outlets.length || 1,
     hookScopeOutlet,
     hookScopeUserId,
-    hookScopeOutletId
+    hookScopeOutletId,
+    false // admin/GM = weekly cumulative
   );
-  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet, hookScopeUserId, hookScopeOutletId);
+  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet, hookScopeUserId, hookScopeOutletId, false);
 
   // Transform hook data for template charts (aggregate all outlets per day dynamically)
   const sumOutletKeys = (row: Record<string, any>, keys: string[]) => keys.reduce((s, k) => s + (Number(row[k]) || 0), 0);
@@ -2484,15 +2494,70 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const isFnBEditable = isEditingFnB;
 
   // Session entries come from Supabase (rawWasteLogs/rawResourceLogs) — no localStorage
-  // Weekly-filtered logs (cumulative from week start — resets at Saturday midnight by default)
+  // Admin/GM: weekly cumulative, all outlets (resets at Saturday midnight)
+  // Supervisor/Basic: today's data only (resets at midnight daily), own outlet only
+  const [todayStartISO, setTodayStartISO] = useState(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today.toISOString();
+  });
+  // Recompute at midnight so the daily view resets if the page stays open past midnight
+  useEffect(() => {
+    const now = new Date();
+    const nextMidnight = new Date();
+    nextMidnight.setHours(24, 0, 0, 0); // next midnight
+    const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+    const timer = setTimeout(() => {
+      const t = new Date();
+      t.setHours(0, 0, 0, 0);
+      setTodayStartISO(t.toISOString());
+      // Re-check every hour in case device was asleep
+      const hourly = setInterval(() => {
+        const t2 = new Date();
+        t2.setHours(0, 0, 0, 0);
+        setTodayStartISO(t2.toISOString());
+      }, 60 * 60 * 1000);
+      return () => clearInterval(hourly);
+    }, msUntilMidnight);
+    return () => clearTimeout(timer);
+  }, []);
+  const sessionStartDate = isCompanyWide ? weekStartISO : todayStartISO;
+
+  // For non-admin: filter raw logs to only their outlet (rawWasteLogs may contain
+  // all outlets' data due to race conditions between DirectFetch and fetchOperationalData)
   const sessionWasteEntries = useMemo(() => {
-    if (!weekStartISO) return rawWasteLogs;
-    return rawWasteLogs.filter(e => e.created_at && new Date(e.created_at).toISOString() >= weekStartISO);
-  }, [rawWasteLogs, weekStartISO]);
+    let entries = rawWasteLogs;
+    if (!isCompanyWide) {
+      // Filter to user's outlet only
+      if (personnelOutletId) {
+        entries = entries.filter(e => e.outlet_id === personnelOutletId);
+      } else if (userOutletName) {
+        entries = entries.filter(e => e.outlet_name === userOutletName);
+      }
+    }
+    if (sessionStartDate) {
+      entries = entries.filter(e => e.created_at && new Date(e.created_at).toISOString() >= sessionStartDate);
+    }
+    return entries;
+  }, [rawWasteLogs, sessionStartDate, isCompanyWide, personnelOutletId, userOutletName]);
+
   const sessionResourceEntries = useMemo(() => {
-    if (!weekStartISO) return rawResourceLogs;
-    return rawResourceLogs.filter(e => e.created_at && new Date(e.created_at).toISOString() >= weekStartISO);
-  }, [rawResourceLogs, weekStartISO]);
+    let entries = rawResourceLogs;
+    if (!isCompanyWide) {
+      if (userOutletName) {
+        entries = entries.filter(e => e.outlet_name === userOutletName);
+      } else if (personnelOutletId) {
+        // resource_logs has no outlet_id — match by resolved outlet name
+        const outlet = outlets.find((o: any) => o.id === personnelOutletId);
+        const name = outlet?.outlet_name || outlet?.name;
+        if (name) entries = entries.filter(e => e.outlet_name === name);
+      }
+    }
+    if (sessionStartDate) {
+      entries = entries.filter(e => e.created_at && new Date(e.created_at).toISOString() >= sessionStartDate);
+    }
+    return entries;
+  }, [rawResourceLogs, sessionStartDate, isCompanyWide, personnelOutletId, userOutletName, outlets]);
 
   const sessionData = useMemo(() => {
     // Weekly cumulative data (resets at Saturday midnight by default)
@@ -2515,7 +2580,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     const financialLossDisposal = totalWasteKg * costPerDisposalUnit;
     const totalFinancialLoss = financialLossItems + financialLossDisposal;
 
-    const wasteBenchmark = effectiveParams.wasteTarget;
+    const wasteBenchmark = isCompanyWide
+      ? effectiveParams.wasteTarget
+      : effectiveParams.wasteTarget / 7; // daily target for non-admin (today-only view)
 
     // Total carbon impact = food waste CO2 + water CO2 + energy CO2
     const wasteCo2 = totalWasteKg * wasteCo2Coeff;
@@ -2538,7 +2605,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         isDeviating: totalWasteKg > wasteBenchmark
       }
     };
-  }, [sessionWasteEntries, sessionResourceEntries, effectiveParams.wasteTarget]);
+  }, [sessionWasteEntries, sessionResourceEntries, effectiveParams.wasteTarget, isCompanyWide]);
 
   const impacts = sessionData.impacts;
 
@@ -2751,6 +2818,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                   {(isHookAdmin || isGM) && <SidebarItem view={PortalView.IDENTITY} icon={Building2} label={t('dashboard.navCompany')} active={activeView === PortalView.IDENTITY} onClick={setActiveView} />}
                   {(isHookAdmin || isGM) && <SidebarItem view={PortalView.TEAM} icon={Users} label={t('dashboard.navTeam')} active={activeView === PortalView.TEAM} onClick={setActiveView} />}
                   {(isHookAdmin || isGM) && <SidebarItem view={PortalView.PARAMETERS} icon={Settings2} label={t('dashboard.navBenchmarks')} active={activeView === PortalView.PARAMETERS} onClick={setActiveView} />}
+                  <SidebarItem view={PortalView.AUDIT_REPORT} icon={FileText} label={t('dashboard.auditReport')} active={activeView === PortalView.AUDIT_REPORT} onClick={setActiveView} />
                   <SidebarItem view={PortalView.AUDIT_LOG} icon={ScrollText} label={t('dashboard.navAuditLog')} active={activeView === PortalView.AUDIT_LOG} onClick={setActiveView} />
                 </>
               )}
@@ -3322,20 +3390,30 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       {dashboardTab === DashboardTab.FOOD_WASTE && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                           <FoodWasteIntelligence 
-                            outletId={user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'super_admin' ? null : (outlets.find(o => o.code === user.outletCode) as any)?.id || null}
+                            outletId={isCompanyWide ? null : (outlets.find(o => o.code === user.outletCode) as any)?.id || null}
                             unitType={params.wasteUnit as 'kg' | 'Lbs'}
                             allOutlets={outlets}
                             benchmarks={{
                               food_waste_target_kg: effectiveParams.wasteTarget,
                               financial_cap: (effectiveParams as any).financial_cap || 1000
                             }}
+                            dailyMode={!isCompanyWide}
+                            scopeOutletName={!isCompanyWide ? (userOutletName || undefined) : undefined}
+                            scopeOutletId={!isCompanyWide ? (personnelOutletId || undefined) : undefined}
+                            scopeUserId={!isCompanyWide ? user.id : undefined}
                           />
                         </div>
                       )}
 
                       {dashboardTab === DashboardTab.ENERGY_WATER && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                          <ResourceIntelligence allOutlets={outlets} />
+                          <ResourceIntelligence
+                            allOutlets={outlets}
+                            dailyMode={!isCompanyWide}
+                            scopeOutletName={!isCompanyWide ? (userOutletName || undefined) : undefined}
+                            scopeOutletId={!isCompanyWide ? (personnelOutletId || undefined) : undefined}
+                            scopeUserId={!isCompanyWide ? user.id : undefined}
+                          />
                         </div>
                       )}
 
@@ -3557,120 +3635,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         </div>
                       </div>
                     </div>
-
-                    {/* ── Audit Report Card ── */}
-                    <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_40px_rgba(119,177,57,0.04)]">
-                      <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-8 py-4 sm:py-5 border-b border-brand-eco/15">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-brand-eco/15 border border-brand-eco/30 flex items-center justify-center shrink-0">
-                            <FileText size={18} className="text-brand-eco" />
-                          </div>
-                          <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand-eco/60">{t('dashboard.compliance')}</p>
-                            <h4 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-none mt-0.5">{t('dashboard.auditReport')}</h4>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-6 sm:p-8 space-y-6 bg-brand-dark/40">
-                        {/* Action buttons */}
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setIsEditingAudit(!isEditingAudit)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-dark/60 border border-brand-gold/10 text-white/60 hover:border-brand-gold/25 hover:text-white'}`}
-                          >
-                            {isEditingAudit ? <Unlock size={12} /> : <Edit2 size={12} />}
-                            {isEditingAudit ? t('dashboard.lock') : t('dashboard.edit')}
-                          </button>
-                          <button
-                            onClick={handleGetReport}
-                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-eco text-brand-dark text-[11px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-[0_4px_15px_rgba(119,177,57,0.25)]"
-                          >
-                            <Zap size={12} />
-                            Get Report
-                          </button>
-                        </div>
-                        {/* Cycle + Outlet */}
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.cycle ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
-                              {auditReport.cycle ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
-                            </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">{t('dashboard.reportConfiguration')}</p>
-                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
-                            <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.reportCycle')}</label>
-                              <CustomSelect
-                                value={auditReport.cycle}
-                                options={['Daily', 'Weekly', 'Monthly', 'Quarterly']}
-                                onChange={v => setAuditReport({ ...auditReport, cycle: v })}
-                                disabled={!isEditingAudit}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.outletSelection')}</label>
-                              <CustomSelect
-                                value={auditReport.outletSelection}
-                                options={['All outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
-                                onChange={v => setAuditReport({ ...auditReport, outletSelection: v })}
-                                disabled={!isEditingAudit}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Date range */}
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.fromDate && auditReport.toDate ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
-                              {auditReport.fromDate && auditReport.toDate ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
-                            </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/70">{t('dashboard.dateRange')}</p>
-                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
-                            <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.fromDate')}</label>
-                              <CustomDatePicker
-                                value={auditReport.fromDate}
-                                onChange={v => setAuditReport({ ...auditReport, fromDate: v })}
-                                disabled={!isEditingAudit}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[11px] font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.toDate')}</label>
-                              <CustomDatePicker
-                                value={auditReport.toDate}
-                                onChange={v => setAuditReport({ ...auditReport, toDate: v })}
-                                disabled={!isEditingAudit}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Comments */}
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${auditReport.comments ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
-                              {auditReport.comments ? <CheckCircle2 size={14} /> : <FileText size={13} />}
-                            </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/80">{t('dashboard.auditComments')}</p>
-                            <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
-                          </div>
-                          <div className="space-y-1.5 pl-2 sm:pl-10">
-                            <textarea
-                              placeholder={t('dashboard.auditCommentsPlaceholder')}
-                              value={auditReport.comments}
-                              onChange={e => setAuditReport({ ...auditReport, comments: e.target.value })}
-                              disabled={!isEditingAudit}
-                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-xs min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-40 border-brand-gold/15' : 'border-brand-gold/15 hover:border-brand-gold/40'}`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
                 )}
@@ -3834,7 +3798,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
                             {t('dashboard.auditLogTitle')}
                           </h2>
-                          <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
+                          <p className="text-sm sm:text-base text-brand-gold font-bold mt-1">
                             {t('dashboard.auditLogSubtitle')}
                           </p>
                         </div>
@@ -3846,25 +3810,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <select
                               value={auditOutletFilter}
                               onChange={(e) => setAuditOutletFilter(e.target.value)}
-                              className="appearance-none bg-brand-dark/60 border border-brand-gold/20 rounded-xl pl-9 pr-8 py-2 text-[11px] font-black uppercase tracking-widest text-white/70 hover:border-brand-gold/40 transition-all cursor-pointer outline-none focus:border-brand-gold/50"
+                              className="appearance-none bg-brand-dark/60 border border-brand-gold/30 rounded-xl pl-9 pr-8 py-2 text-xs font-black uppercase tracking-widest text-white hover:border-brand-gold/60 transition-all cursor-pointer outline-none focus:border-brand-gold/70"
                             >
                               <option value="all">All Outlets</option>
                               {outlets.filter(o => o.id).map(o => (
                                 <option key={o.id} value={o.id}>{o.name}</option>
                               ))}
                             </select>
-                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-gold/50 pointer-events-none" />
-                            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-gold pointer-events-none" />
+                            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none" />
                           </div>
                         )}
                         {auditLogs.length > 0 && (
-                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 py-1 rounded-full bg-brand-dark/60 border border-brand-gold/15">
+                          <span className="text-xs font-bold text-brand-gold uppercase tracking-widest px-3 py-1 rounded-full bg-brand-dark/60 border border-brand-gold/30">
                             {auditLogs.length} {auditLogs.length === 1 ? 'Entry' : 'Entries'}
                           </span>
                         )}
                         <button
                           onClick={fetchAuditLogs}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors text-[10px] font-bold uppercase tracking-widest"
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-white/10 text-white hover:text-brand-gold transition-colors text-xs font-bold uppercase tracking-widest"
                           title="Refresh"
                         >
                           <RefreshCcw size={13} />
@@ -3900,11 +3864,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                         };
                         const categories = [...new Set(actionTypes.map((a: string) => labelMap[a as string] || t('dashboard.other')))];
                         return (
-                          <div className="px-4 sm:px-8 py-3 border-b border-brand-gold/15 flex items-center gap-2 flex-wrap bg-brand-dark/20">
-                            <span className="text-[11px] font-black uppercase tracking-widest text-white/50 mr-1">{t('dashboard.filter')}</span>
+                          <div className="px-4 sm:px-8 py-3 border-b border-brand-gold/20 flex items-center gap-2 flex-wrap bg-brand-dark/20">
+                            <span className="text-xs font-black uppercase tracking-widest text-brand-gold mr-1">{t('dashboard.filter')}</span>
                             <button
                               onClick={() => setAuditFilter(null)}
-                              className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-[#1c3933] border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
+                              className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest transition-all ${!auditFilter ? 'bg-brand-gold/20 border border-brand-gold/50 text-brand-gold' : 'bg-[#1c3933] border border-brand-gold/25 text-white/70 hover:text-white'}`}
                             >
                               {t('dashboard.all')}
                             </button>
@@ -3912,7 +3876,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <button
                                 key={cat}
                                 onClick={() => setAuditFilter(cat)}
-                                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/40 text-brand-gold' : 'bg-[#1c3933] border border-brand-gold/20 text-white/40 hover:text-white/70'}`}
+                                className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest transition-all ${auditFilter === cat ? 'bg-brand-gold/20 border border-brand-gold/50 text-brand-gold' : 'bg-[#1c3933] border border-brand-gold/25 text-white/70 hover:text-white'}`}
                               >
                                 {cat}
                               </button>
@@ -3925,11 +3889,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       <div className="p-4 sm:p-6 bg-brand-dark/40 max-h-[600px] overflow-y-auto scrollbar-gold">
                         {auditLogs.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="w-16 h-16 rounded-2xl bg-[#1c3933] border border-brand-gold/20 flex items-center justify-center mb-5">
-                              <ScrollText size={28} className="text-white/15" />
+                            <div className="w-16 h-16 rounded-2xl bg-[#1c3933] border border-brand-gold/30 flex items-center justify-center mb-5">
+                              <ScrollText size={28} className="text-brand-gold/60" />
                             </div>
-                            <p className="text-sm text-white/40 font-medium">{t('dashboard.noActivity')}</p>
-                            <p className="text-[11px] text-white/25 mt-2 max-w-[280px]">{t('dashboard.noActivityDescription')}</p>
+                            <p className="text-sm text-white font-medium">{t('dashboard.noActivity')}</p>
+                            <p className="text-xs text-brand-gold mt-2 max-w-[280px]">{t('dashboard.noActivityDescription')}</p>
                           </div>
                         ) : (() => {
                           const labelMap: Record<string, string> = {
@@ -3970,8 +3934,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           if (filtered.length === 0) {
                             return (
                               <div className="flex flex-col items-center justify-center py-16 text-center">
-                                <p className="text-sm text-white/30 font-medium">{t('dashboard.noFilterActivity', { filter: auditFilter?.toLowerCase() ?? '' })}</p>
-                                <p className="text-[11px] text-white/20 mt-1">{t('dashboard.tryDifferentFilter')}</p>
+                                <p className="text-sm text-white font-medium">{t('dashboard.noFilterActivity', { filter: auditFilter?.toLowerCase() ?? '' })}</p>
+                                <p className="text-xs text-brand-gold mt-1">{t('dashboard.tryDifferentFilter')}</p>
                               </div>
                             );
                           }
@@ -4029,11 +3993,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   {/* Date header */}
                                   <div className="flex items-center gap-3 mb-3">
                                     <div className="flex items-center gap-2 shrink-0">
-                                      <Calendar size={11} className="text-brand-gold/50" />
-                                      <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">{dateKey}</span>
+                                      <Calendar size={12} className="text-brand-gold" />
+                                      <span className="text-sm font-black uppercase tracking-[0.2em] text-white">{dateKey}</span>
                                     </div>
-                                    <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
-                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{logs.length} {logs.length === 1 ? 'event' : 'events'}</span>
+                                    <div className="flex-1 h-px bg-gradient-to-r from-brand-gold/30 to-transparent" />
+                                    <span className="text-xs font-bold text-brand-gold uppercase tracking-widest">{logs.length} {logs.length === 1 ? 'event' : 'events'}</span>
                                   </div>
 
                                   {/* Category sub-groups */}
@@ -4044,15 +4008,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                       <div key={cat} className="mb-4">
                                         {/* Category header */}
                                         <div className="flex items-center gap-2 mb-2 ml-1">
-                                          <CatIcon size={10} className="text-brand-gold/40" />
-                                          <span className="text-[9px] font-black uppercase tracking-widest text-brand-gold/50">{cat}</span>
-                                          <span className="text-[8px] font-bold text-white/20">({catLogs.length})</span>
-                                          <div className="flex-1 h-px bg-white/5" />
+                                          <CatIcon size={12} className="text-brand-gold" />
+                                          <span className="text-xs font-black uppercase tracking-widest text-brand-gold">{cat}</span>
+                                          <span className="text-xs font-bold text-white">({catLogs.length})</span>
+                                          <div className="flex-1 h-px bg-brand-gold/15" />
                                         </div>
 
                                         {/* Timeline entries for this category */}
                                         <div className="relative">
-                                          <div className="absolute left-[15px] top-3 bottom-3 w-px bg-gradient-to-b from-white/10 via-white/5 to-transparent" />
+                                          <div className="absolute left-[15px] top-3 bottom-3 w-px bg-gradient-to-b from-brand-gold/30 via-brand-gold/10 to-transparent" />
                                           <div className="space-y-2">
                                             {catLogs.map((log: any) => {
                                         const iconMap: Record<string, any> = {
@@ -4086,7 +4050,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                           benchmarks_updated: t('dashboard.labelBenchmarksUpdated'),
                                         };
                                         const Icon = iconMap[log.action] || Activity;
-                                        const color = colorMap[log.action] || 'text-white/40 bg-brand-dark/60 border-brand-gold/15';
+                                        const color = colorMap[log.action] || 'text-brand-gold bg-brand-dark/60 border-brand-gold/30';
                                         const label = labelMap[log.action] || log.action.replace(/_/g, ' ');
                                         const time = new Date(log.created_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
                                         const initials = (log.actor_name || '?').split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
@@ -4098,25 +4062,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                             </div>
 
                                             {/* Content */}
-                                            <div className="flex-1 min-w-0 rounded-xl bg-[#1c3933] border border-brand-gold/15 group-hover:border-brand-gold/25 group-hover:bg-brand-gold/5 transition-colors px-4 py-3">
+                                            <div className="flex-1 min-w-0 rounded-xl bg-[#1c3933] border border-brand-gold/20 group-hover:border-brand-gold/40 group-hover:bg-brand-gold/5 transition-colors px-4 py-3">
                                               <div className="flex items-center justify-between gap-3 mb-1.5">
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                  <span className={`text-[11px] font-black uppercase tracking-widest ${color.split(' ')[0]} shrink-0`}>{label}</span>
+                                                  <span className={`text-sm font-black uppercase tracking-widest ${color.split(' ')[0]} shrink-0`}>{label}</span>
                                                   {log.entity_name && (
-                                                    <span className="text-[8px] font-bold uppercase tracking-widest text-brand-gold/50 bg-brand-gold/8 px-2 py-0.5 rounded border border-brand-gold/10 truncate">
+                                                    <span className="text-xs font-bold uppercase tracking-widest text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded border border-brand-gold/25 truncate">
                                                       {log.entity_type} · {log.entity_name}
                                                     </span>
                                                   )}
                                                 </div>
-                                                <span className="text-[9px] text-white/30 font-medium shrink-0 tabular-nums">{time}</span>
+                                                <span className="text-xs text-white font-bold shrink-0 tabular-nums">{time}</span>
                                               </div>
-                                              <p className="text-xs text-white/70 leading-relaxed mb-2">{log.description}</p>
+                                              <p className="text-sm text-white font-medium leading-relaxed mb-2">{log.description}</p>
                                               <div className="flex items-center gap-2">
-                                                <span className="w-5 h-5 rounded-md bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
-                                                  <span className="text-brand-gold text-[7px] font-black leading-none">{initials}</span>
+                                                <span className="w-5 h-5 rounded-md bg-gradient-to-br from-brand-gold/30 to-brand-gold/10 border border-brand-gold/30 flex items-center justify-center shrink-0">
+                                                  <span className="text-brand-gold text-[8px] font-black leading-none">{initials}</span>
                                                 </span>
-                                                <span className="text-[10px] font-bold text-white/50">{log.actor_name}</span>
-                                                <span className="text-[8px] font-bold text-white/25 uppercase tracking-widest px-1.5 py-0.5 rounded bg-brand-dark/60">{log.actor_role}</span>
+                                                <span className="text-sm font-bold text-white">{log.actor_name}</span>
+                                                <span className="text-xs font-bold text-brand-gold uppercase tracking-widest px-1.5 py-0.5 rounded bg-brand-dark/60 border border-brand-gold/20">{log.actor_role}</span>
                                               </div>
                                             </div>
                                           </div>
@@ -4132,6 +4096,130 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             </div>
                           );
                         })()}
+                      </div>
+                    </div>
+                  </div>
+
+                )}
+
+                {activeView === PortalView.AUDIT_REPORT && (
+                  <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto pr-1 scrollbar-hide pb-20">
+
+                    {/* Heading */}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+                          <FileText className="text-brand-eco" size={24} />
+                        </div>
+                        <div>
+                          <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+                            {t('dashboard.auditReport')}
+                          </h2>
+                          <p className="text-sm sm:text-base text-brand-gold font-bold mt-1">
+                            {t('dashboard.compliance')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setIsEditingAudit(!isEditingAudit)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${isEditingAudit ? 'bg-brand-eco/15 border border-brand-eco/40 text-brand-eco' : 'bg-brand-dark/60 border border-brand-gold/30 text-white hover:border-brand-gold/50 hover:text-brand-gold'}`}
+                        >
+                          {isEditingAudit ? <Unlock size={12} /> : <Edit2 size={12} />}
+                          {isEditingAudit ? t('dashboard.lock') : t('dashboard.edit')}
+                        </button>
+                        <button
+                          onClick={handleGetReport}
+                          className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-eco text-brand-dark text-xs font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-[0_4px_15px_rgba(119,177,57,0.25)]"
+                        >
+                          <Zap size={12} />
+                          Get Report
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Audit Report Card */}
+                    <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_40px_rgba(119,177,57,0.04)]">
+                      <div className="p-6 sm:p-8 space-y-6 bg-brand-dark/40">
+                        {/* Cycle + Outlet */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 transition-all ${auditReport.cycle ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
+                              {auditReport.cycle ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
+                            </div>
+                            <p className="text-sm font-black uppercase tracking-[0.2em] text-white">{t('dashboard.reportConfiguration')}</p>
+                            <div className="flex-1 h-px bg-gradient-to-r from-brand-gold/30 to-transparent" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.reportCycle')}</label>
+                              <CustomSelect
+                                value={auditReport.cycle}
+                                options={['Daily', 'Weekly', 'Monthly', 'Quarterly']}
+                                onChange={v => setAuditReport({ ...auditReport, cycle: v })}
+                                disabled={!isEditingAudit}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.outletSelection')}</label>
+                              <CustomSelect
+                                value={auditReport.outletSelection}
+                                options={['All outlets', ...outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)]}
+                                onChange={v => setAuditReport({ ...auditReport, outletSelection: v })}
+                                disabled={!isEditingAudit}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Date range */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 transition-all ${auditReport.fromDate && auditReport.toDate ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
+                              {auditReport.fromDate && auditReport.toDate ? <CheckCircle2 size={14} /> : <Calendar size={13} />}
+                            </div>
+                            <p className="text-sm font-black uppercase tracking-[0.2em] text-white">{t('dashboard.dateRange')}</p>
+                            <div className="flex-1 h-px bg-gradient-to-r from-brand-gold/30 to-transparent" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 sm:pl-10">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.fromDate')}</label>
+                              <CustomDatePicker
+                                value={auditReport.fromDate}
+                                onChange={v => setAuditReport({ ...auditReport, fromDate: v })}
+                                disabled={!isEditingAudit}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-black uppercase tracking-widest text-brand-gold ml-1">{t('dashboard.toDate')}</label>
+                              <CustomDatePicker
+                                value={auditReport.toDate}
+                                onChange={v => setAuditReport({ ...auditReport, toDate: v })}
+                                disabled={!isEditingAudit}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Comments */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 transition-all ${auditReport.comments ? 'bg-brand-eco/20 text-brand-eco border border-brand-eco/30' : 'bg-brand-eco/15 text-brand-eco border border-brand-eco/30'}`}>
+                              {auditReport.comments ? <CheckCircle2 size={14} /> : <FileText size={13} />}
+                            </div>
+                            <p className="text-sm font-black uppercase tracking-[0.2em] text-white">{t('dashboard.auditComments')}</p>
+                            <div className="flex-1 h-px bg-gradient-to-r from-brand-gold/30 to-transparent" />
+                          </div>
+                          <div className="space-y-1.5 pl-2 sm:pl-10">
+                            <textarea
+                              placeholder={t('dashboard.auditCommentsPlaceholder')}
+                              value={auditReport.comments}
+                              onChange={e => setAuditReport({ ...auditReport, comments: e.target.value })}
+                              disabled={!isEditingAudit}
+                              className={`w-full bg-brand-dark/80 border rounded-xl py-3 px-4 text-white outline-none focus:border-brand-gold transition-all text-sm min-h-[90px] resize-none ${!isEditingAudit ? 'opacity-50 border-brand-gold/20' : 'border-brand-gold/30 hover:border-brand-gold/50'}`}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -7,7 +7,7 @@ export interface DailyWaste {
   [outletKey: string]: number | string;
 }
 
-export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: number = 4, scopeOutletName?: string, scopeUserId?: string, scopeOutletId?: string) => {
+export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: number = 4, scopeOutletName?: string, scopeUserId?: string, scopeOutletId?: string, dailyMode: boolean = false) => {
   const [chartData, setChartData] = useState<DailyWaste[]>([]);
   const [outletKeys, setOutletKeys] = useState<string[]>([]);
   const [target, setTarget] = useState(1800);
@@ -31,7 +31,10 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
           .from('outlets')
           .select('id, outlet_name, outlet_id, color_hex')
           .order('outlet_name', { ascending: true });
-        if (scopeOutletName) {
+        if (scopeOutletId) {
+          // Fetch the specific outlet by UUID
+          outletsQuery = outletsQuery.eq('id', scopeOutletId);
+        } else if (scopeOutletName) {
           outletsQuery = outletsQuery.eq('outlet_name', scopeOutletName);
         } else if (scopeUserId) {
           outletsQuery = outletsQuery.eq('user_id', scopeUserId);
@@ -44,14 +47,21 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
         }
         setOutletKeys(keys);
 
-        // 1. Fetch Live Data from all outlets (current chart week only)
-        const settings = await getPlatformSettings();
-        const weekStartISO = getWeekStartISO(settings.weekly_reset_day);
+        // 1. Fetch Live Data — daily mode: today only (resets at midnight); weekly mode: chart week (Sat-Sat)
+        let startDateISO: string;
+        if (dailyMode) {
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          startDateISO = todayStart.toISOString();
+        } else {
+          const settings = await getPlatformSettings();
+          startDateISO = getWeekStartISO(settings.weekly_reset_day);
+        }
 
         let wasteQuery = supabase
           .from('food_waste_logs')
           .select('*')
-          .gte('created_at', weekStartISO);
+          .gte('created_at', startDateISO);
         if (scopeOutletId) {
           wasteQuery = wasteQuery.eq('outlet_id', scopeOutletId);
         } else if (scopeOutletName) {
@@ -62,6 +72,13 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
           if (outletIds.length > 0) {
             wasteQuery = wasteQuery.in('outlet_id', outletIds);
           }
+        } else if (scopeUserId || scopeOutletName || scopeOutletId) {
+          // Non-admin user whose outlet hasn't been resolved yet — don't fetch all data
+          setChartData(DAYS.map(day => ({ date: day })));
+          setOutletKeys([]);
+          setWeeklyTotal(0);
+          setIsLoading(false);
+          return;
         }
         const { data: wasteLogs, error: wasteError } = await wasteQuery
           .order('created_at', { ascending: false })
@@ -156,7 +173,7 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
       window.removeEventListener('ecometricus_waste_updated', handleStorageChange);
       supabase.removeChannel(channel);
     };
-  }, [targetKg, activeOutletCount, scopeOutletName, scopeUserId, scopeOutletId]);
+  }, [targetKg, activeOutletCount, scopeOutletName, scopeUserId, scopeOutletId, dailyMode]);
 
   return { chartData, outletKeys, target, dailyBenchmark, weeklyTotal, isLoading };
 };

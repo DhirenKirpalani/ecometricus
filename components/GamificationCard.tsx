@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Trophy, Flame, Star, Zap, Camera, MessageSquare, Award, Sparkles, Target, Crown, Medal, CheckCircle2, ChevronDown, Clock, Image, Gauge, CalendarCheck, Lightbulb, ClipboardList } from 'lucide-react';
-import { fetchUserStats, fetchTodayCompletedActions, recalculateStreak, backfillPoints } from '../lib/gamification';
+import { fetchUserStats, fetchTodayCompletedActions, recalculateStreak, backfillPoints, awardPoints } from '../lib/gamification';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
 import type { UserProfile } from '../types';
@@ -93,6 +93,30 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ user }) => {
     if (fixedStreak > 0 && fixedStreak !== s.streakDays) {
       console.log(`[GamificationCard] Synced streak: ${s.streakDays} → ${fixedStreak}`);
       s = { ...s, streakDays: fixedStreak };
+    }
+
+    // ── Award 5-Day Streak Bonus if streak >= 5 and not already awarded today ──
+    // This catches cases where the check-in RPC didn't return the correct streak
+    // or the bonus was never awarded on the day the milestone was hit.
+    if (s.streakDays >= 5 && user.outletCode) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.outletCode);
+      let outletId = isUuid ? user.outletCode : '';
+      if (!outletId) {
+        const { data: outletRow } = await supabase
+          .from('outlets')
+          .select('id')
+          .eq('outlet_id', user.outletCode)
+          .maybeSingle();
+        outletId = outletRow?.id || '';
+      }
+      if (outletId) {
+        const streakPts = await awardPoints(user.id, '5-Day Streak Bonus', outletId);
+        if (streakPts > 0) {
+          console.log(`[GamificationCard] Awarded 5-Day Streak Bonus: +${streakPts} pts`);
+          s = await fetchUserStats(user.id);
+          done = await fetchTodayCompletedActions(user.id);
+        }
+      }
     }
 
     // Backfill missing points from log history (fixes days where awardPoints failed)
