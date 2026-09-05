@@ -1050,11 +1050,48 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const [rawWasteLogs, setRawWasteLogs] = useState<any[]>([]);
   const [rawResourceLogs, setRawResourceLogs] = useState<any[]>([]);
   const [weekStartISO, setWeekStartISO] = useState<string>('');
+  const [weeklyResetDay, setWeeklyResetDay] = useState<number>(6);
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = last week, etc.
 
-  // Fetch the weekly reset day from platform settings
+  // Compute the effective week start based on offset
+  const effectiveWeekStartISO = useMemo(() => {
+    if (weekOffset === 0) return weekStartISO;
+    if (!weekStartISO) return '';
+    const d = new Date(weekStartISO);
+    d.setDate(d.getDate() + (7 * weekOffset));
+    return d.toISOString();
+  }, [weekStartISO, weekOffset]);
+
+  // Fetch the weekly reset day from platform settings + auto-refresh at week boundary
   useEffect(() => {
-    getPlatformSettings().then(settings => {
-      setWeekStartISO(getWeekStartISO(settings.weekly_reset_day));
+    let settings: any = null;
+    const refreshWeekStart = () => {
+      const rd = settings?.weekly_reset_day ?? 6;
+      setWeeklyResetDay(rd);
+      setWeekStartISO(getWeekStartISO(rd));
+    };
+    getPlatformSettings().then(s => {
+      settings = s;
+      refreshWeekStart();
+      // Compute ms until next week boundary (day after reset day, at midnight)
+      const now = new Date();
+      const weekStartDay = (s.weekly_reset_day + 1) % 7;
+      const next = new Date(now);
+      next.setHours(0, 0, 0, 0);
+      let daysUntil = (weekStartDay - now.getDay() + 7) % 7;
+      if (daysUntil === 0 && now.getHours() === 0 && now.getMinutes() === 0) {
+        // Just hit midnight on week start — schedule for next week
+        daysUntil = 7;
+      }
+      next.setDate(next.getDate() + daysUntil + 1);
+      const msUntil = next.getTime() - now.getTime();
+      const timer = setTimeout(() => {
+        refreshWeekStart();
+        // Re-check hourly in case device was asleep
+        const hourly = setInterval(refreshWeekStart, 60 * 60 * 1000);
+        return () => clearInterval(hourly);
+      }, msUntil);
+      return () => clearTimeout(timer);
     });
   }, []);
 
@@ -1605,11 +1642,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     window.addEventListener('ecometricus_resource_updated', handleDataUpdate);
     window.addEventListener('ecometricus_kpi_updated', handleDataUpdate);
 
-    // Supabase Realtime subscriptions — auto-refresh when ANY user adds/updates/deletes entries
+    // Supabase Realtime subscriptions — single channel per table, dispatches window events
+    // so hooks (useFoodWasteChartData, useResourceChartData) can refresh without their own subscriptions
     const wasteChannel = supabase
       .channel('dashboard_waste_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'food_waste_logs' }, () => {
         fetchOperationalData();
+        window.dispatchEvent(new Event('ecometricus_waste_updated'));
       })
       .subscribe();
 
@@ -1617,6 +1656,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       .channel('dashboard_resource_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resource_logs' }, () => {
         fetchOperationalData();
+        window.dispatchEvent(new Event('ecometricus_resource_updated'));
       })
       .subscribe();
 
@@ -1683,9 +1723,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     hookScopeOutlet,
     hookScopeUserId,
     hookScopeOutletId,
-    false // admin/GM = weekly cumulative
+    false, // admin/GM = weekly cumulative
+    outlets,
+    isCompanyWide ? weekOffset : 0
   );
-  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet, hookScopeUserId, hookScopeOutletId, false);
+  const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet, hookScopeUserId, hookScopeOutletId, false, outlets, isCompanyWide ? weekOffset : 0);
 
   // Transform hook data for template charts (aggregate all outlets per day dynamically)
   const sumOutletKeys = (row: Record<string, any>, keys: string[]) => keys.reduce((s, k) => s + (Number(row[k]) || 0), 0);
@@ -2785,7 +2827,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     }, msUntilMidnight);
     return () => clearTimeout(timer);
   }, []);
-  const sessionStartDate = isCompanyWide ? weekStartISO : todayStartISO;
+  const sessionStartDate = isCompanyWide ? effectiveWeekStartISO : todayStartISO;
+  // For weekly view with offset, also compute the end date to avoid bleeding into next week
+  const sessionEndDate = useMemo(() => {
+    if (!isCompanyWide || !effectiveWeekStartISO) return '';
+    const end = new Date(effectiveWeekStartISO);
+    end.setDate(end.getDate() + 7);
+    return end.toISOString();
+  }, [isCompanyWide, effectiveWeekStartISO]);
 
   // For non-admin: filter raw logs to only their outlet (rawWasteLogs may contain
   // all outlets' data due to race conditions between DirectFetch and fetchOperationalData)
@@ -2802,8 +2851,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     if (sessionStartDate) {
       entries = entries.filter(e => e.created_at && new Date(e.created_at).toISOString() >= sessionStartDate);
     }
+    if (sessionEndDate) {
+      entries = entries.filter(e => e.created_at && new Date(e.created_at).toISOString() < sessionEndDate);
+    }
     return entries;
-  }, [rawWasteLogs, sessionStartDate, isCompanyWide, personnelOutletId, userOutletName]);
+  }, [rawWasteLogs, sessionStartDate, sessionEndDate, isCompanyWide, personnelOutletId, userOutletName]);
 
   const sessionResourceEntries = useMemo(() => {
     let entries = rawResourceLogs;
@@ -2820,8 +2872,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     if (sessionStartDate) {
       entries = entries.filter(e => e.created_at && new Date(e.created_at).toISOString() >= sessionStartDate);
     }
+    if (sessionEndDate) {
+      entries = entries.filter(e => e.created_at && new Date(e.created_at).toISOString() < sessionEndDate);
+    }
     return entries;
-  }, [rawResourceLogs, sessionStartDate, isCompanyWide, personnelOutletId, userOutletName, outlets]);
+  }, [rawResourceLogs, sessionStartDate, sessionEndDate, isCompanyWide, personnelOutletId, userOutletName, outlets]);
 
   const sessionData = useMemo(() => {
     // Weekly cumulative data (resets at Saturday midnight by default)
@@ -3264,29 +3319,62 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
               <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
                 {activeView === PortalView.DASHBOARD && (
                   <div className="space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col flex-grow overflow-y-auto scrollbar-hide pr-2">
-                    <div className="flex overflow-x-auto gap-2 w-full sm:w-fit shrink-0 scrollbar-hide pb-1">
-                      {[
-                        { id: DashboardTab.SUMMARIZED, label: t('dashboard.tabOverview'), icon: TrendingUp, color: 'brand-gold' },
-                        { id: DashboardTab.FOOD_WASTE, label: t('dashboard.tabFoodWaste'), icon: Leaf, color: 'brand-eco' },
-                        { id: DashboardTab.ENERGY_WATER, label: t('dashboard.tabEnergyWater'), icon: Zap, color: 'brand-energy' },
-                        { id: DashboardTab.GAMIFICATION, label: t('dashboard.tabGamification'), icon: Award, color: 'brand-gold' },
-                      ].filter((tab) => user.role.toLowerCase() !== 'basic' || tab.id !== DashboardTab.SUMMARIZED).map((tab) => {
-                        const active = dashboardTab === tab.id;
-                        return (
+                    <div className="flex items-center justify-between gap-2 w-full shrink-0 pb-1">
+                      <div className="flex overflow-x-auto gap-2 w-full sm:w-fit scrollbar-hide">
+                        {[
+                          { id: DashboardTab.SUMMARIZED, label: t('dashboard.tabOverview'), icon: TrendingUp, color: 'brand-gold' },
+                          { id: DashboardTab.FOOD_WASTE, label: t('dashboard.tabFoodWaste'), icon: Leaf, color: 'brand-eco' },
+                          { id: DashboardTab.ENERGY_WATER, label: t('dashboard.tabEnergyWater'), icon: Zap, color: 'brand-energy' },
+                          { id: DashboardTab.GAMIFICATION, label: t('dashboard.tabGamification'), icon: Award, color: 'brand-gold' },
+                        ].filter((tab) => user.role.toLowerCase() !== 'basic' || tab.id !== DashboardTab.SUMMARIZED).map((tab) => {
+                          const active = dashboardTab === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              onClick={() => setDashboardTab(tab.id)}
+                              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 whitespace-nowrap border ${
+                                active
+                                  ? 'bg-brand-gold/15 border-brand-gold/40 text-white shadow-[0_2px_12px_rgba(200,164,19,0.15)]'
+                                  : 'bg-[#1c3933] border-transparent text-white/50 hover:text-white/80 hover:bg-brand-dark/60 hover:border-brand-gold/15'
+                              }`}
+                            >
+                              <tab.icon size={15} className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/30 group-hover:text-white/60'}`} />
+                              <span className="text-[12px] font-bold tracking-tight">{tab.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Week Navigation — admin/GM only, next to tabs */}
+                      {isCompanyWide && (dashboardTab === DashboardTab.SUMMARIZED || dashboardTab === DashboardTab.FOOD_WASTE || dashboardTab === DashboardTab.ENERGY_WATER) && (
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <button
-                            key={tab.id}
-                            onClick={() => setDashboardTab(tab.id)}
-                            className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 whitespace-nowrap border ${
-                              active
-                                ? 'bg-brand-gold/15 border-brand-gold/40 text-white shadow-[0_2px_12px_rgba(200,164,19,0.15)]'
-                                : 'bg-[#1c3933] border-transparent text-white/50 hover:text-white/80 hover:bg-brand-dark/60 hover:border-brand-gold/15'
-                            }`}
+                            onClick={() => setWeekOffset(prev => Math.min(prev + 1, 0))}
+                            disabled={weekOffset >= 0}
+                            className="px-2 py-1.5 rounded-lg text-xs font-semibold border border-brand-gold/30 bg-brand-dark text-brand-gold hover:bg-brand-gold/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                           >
-                            <tab.icon size={15} className={`shrink-0 transition-colors ${active ? 'text-brand-gold' : 'text-white/30 group-hover:text-white/60'}`} />
-                            <span className="text-[12px] font-bold tracking-tight">{tab.label}</span>
+                            <ChevronLeft size={14} />
                           </button>
-                        );
-                      })}
+                          <span className="text-xs font-semibold text-white/70 min-w-[70px] text-center hidden sm:inline">
+                            {weekOffset === 0 ? t('dashboard.thisWeek') : weekOffset === -1 ? t('dashboard.lastWeek') : `${Math.abs(weekOffset)} ${t('dashboard.weeksAgo')}`}
+                          </span>
+                          <button
+                            onClick={() => setWeekOffset(prev => prev - 1)}
+                            disabled={weekOffset <= -4}
+                            className="px-2 py-1.5 rounded-lg text-xs font-semibold border border-brand-gold/30 bg-brand-dark text-brand-gold hover:bg-brand-gold/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                          {weekOffset !== 0 && (
+                            <button
+                              onClick={() => setWeekOffset(0)}
+                              className="ml-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-brand-gold/60 hover:text-brand-gold transition-all hidden sm:inline"
+                            >
+                              {t('dashboard.today')}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* ADMIN CONTEXT FOR MILA WIDGET */}
@@ -3744,7 +3832,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
                       {dashboardTab === DashboardTab.FOOD_WASTE && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                          <FoodWasteIntelligence 
+                          <FoodWasteIntelligence
                             outletId={isCompanyWide ? null : (outlets.find(o => o.code === user.outletCode) as any)?.id || null}
                             unitType={params.wasteUnit as 'kg' | 'Lbs'}
                             allOutlets={outlets}
@@ -3756,6 +3844,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             scopeOutletName={!isCompanyWide ? (userOutletName || undefined) : undefined}
                             scopeOutletId={!isCompanyWide ? (personnelOutletId || undefined) : undefined}
                             scopeUserId={!isCompanyWide ? user.id : undefined}
+                            weekOffset={isCompanyWide ? weekOffset : 0}
                           />
                         </div>
                       )}
@@ -3768,6 +3857,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             scopeOutletName={!isCompanyWide ? (userOutletName || undefined) : undefined}
                             scopeOutletId={!isCompanyWide ? (personnelOutletId || undefined) : undefined}
                             scopeUserId={!isCompanyWide ? user.id : undefined}
+                            weekOffset={isCompanyWide ? weekOffset : 0}
                           />
                         </div>
                       )}
@@ -4178,14 +4268,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             {auditLogs.length} {auditLogs.length === 1 ? t('dashboard.auditEntrySingular') : t('dashboard.auditEntryPlural')}
                           </span>
                         )}
-                        <button
-                          onClick={fetchAuditLogs}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-white/10 text-white hover:text-brand-gold transition-colors text-xs font-bold uppercase tracking-widest"
-                          title="Refresh"
-                        >
-                          <RefreshCcw size={13} />
-                          <span className="hidden sm:inline">{t('dashboard.refresh')}</span>
-                        </button>
                       </div>
                     </div>
 

@@ -1,25 +1,26 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Page, UserProfile } from './types';
 import { useSeo } from './lib/useSeo';
-import { loadTranslationsFromSupabase } from './lib/useI18n';
+import { loadTranslationsFromSupabase, useI18n } from './lib/useI18n';
 import Navbar from './components/Navbar';
-import LandingPage from './components/LandingPage';
-import UnderConstruction from './components/UnderConstruction';
-import AboutPage from './components/AboutPage';
-import FAQPage from './components/FAQPage';
-import AuthPage from './components/AuthPage';
-import DashboardPage from './components/DashboardPage';
 import { supabase } from './lib/supabase';
-import SuperAdminDashboard from './components/SuperAdminDashboard';
-import AssessmentForm from './components/AssessmentForm';
-import PrivacyPage from './components/PrivacyPage';
-import TermsPage from './components/TermsPage';
-import ContactPage from './components/ContactPage';
-import TranslationManager from './components/TranslationManager';
 import Footer from './components/Footer';
+
+// Lazy-load page components for code splitting
+const LandingPage = lazy(() => import('./components/LandingPage'));
+const UnderConstruction = lazy(() => import('./components/UnderConstruction'));
+const AboutPage = lazy(() => import('./components/AboutPage'));
+const FAQPage = lazy(() => import('./components/FAQPage'));
+const AuthPage = lazy(() => import('./components/AuthPage'));
+const DashboardPage = lazy(() => import('./components/DashboardPage'));
+const AssessmentForm = lazy(() => import('./components/AssessmentForm'));
+const PrivacyPage = lazy(() => import('./components/PrivacyPage'));
+const TermsPage = lazy(() => import('./components/TermsPage'));
+const ContactPage = lazy(() => import('./components/ContactPage'));
+const TranslationManager = lazy(() => import('./components/TranslationManager'));
 
 // ── URL ↔ Page mappings ───────────────────────────────────────────────────────
 const PAGE_TO_PATH: Partial<Record<Page, string>> = {
@@ -54,6 +55,7 @@ const pathToPage = (pathname: string): Page => {
 const App: React.FC = () => {
   const navigate   = useNavigate();
   const location   = useLocation();
+  const { t }      = useI18n();
 
   const [currentPage, setCurrentPageState] = useState<Page>(() =>
     pathToPage(location.pathname)
@@ -218,6 +220,9 @@ const App: React.FC = () => {
           if (!authUser.email_confirmed_at) {
             log('  → UNCONFIRMED USER: signing out and returning');
             await supabase.auth.signOut();
+            navigate('/login?unconfirmed=true');
+            setCurrentPageState(Page.SIGN_IN);
+            window.history.replaceState(null, '', '/login?unconfirmed=true');
             return;
           }
 
@@ -422,14 +427,16 @@ const App: React.FC = () => {
         <div className="flex-grow flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-brand-gold/30 border-t-brand-gold rounded-full animate-spin" />
-            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Loading…</p>
+            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{t('session.loading')}</p>
           </div>
         </div>
       ) : (
         <>
       {!hideNavigation && <Navbar currentPage={currentPage} onNavigate={handleNavigate} isLoggedIn={!!currentUser} userInitial={currentUser?.fullName?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('') ?? 'A'} onLogout={handleLogout} userRole={currentUser?.role} userPosition={currentUser?.position} userId={currentUser?.id} />}
       <main className="flex-grow">
-        {renderPage()}
+        <Suspense fallback={<div className="flex-grow flex items-center justify-center min-h-[60vh]"><div className="w-8 h-8 border-2 border-brand-gold/30 border-t-brand-gold rounded-full animate-spin" /></div>}>
+          {renderPage()}
+        </Suspense>
       </main>
       {!hideNavigation && <Footer onNavigate={handleNavigate} currentPage={currentPage} />}
         </>
@@ -437,30 +444,30 @@ const App: React.FC = () => {
 
       {/* Inactivity timeout modal */}
       {showTimeoutModal && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} role="alertdialog" aria-modal="true" aria-labelledby="timeout-title" aria-describedby="timeout-desc">
           <div className="bg-[#1c3933] border border-brand-gold/30 rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl">
             <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-brand-alert/15 border border-brand-alert/30 flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3131" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3131" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">Session Expiring</h3>
-            <p className="text-sm text-white/60 mb-1">You've been inactive for 15 minutes.</p>
-            <p className="text-sm text-white/60 mb-5">You'll be automatically signed out in:</p>
-            <div className="text-4xl font-black text-brand-alert tabular-nums mb-6">{countdown}s</div>
+            <h3 id="timeout-title" className="text-lg font-black text-white uppercase tracking-wider mb-2">{t('session.expiring')}</h3>
+            <p id="timeout-desc" className="text-sm text-white/60 mb-1">{t('session.inactive')}</p>
+            <p className="text-sm text-white/60 mb-5">{t('session.autoSignOut')}</p>
+            <div className="text-4xl font-black text-brand-alert tabular-nums mb-6" aria-live="assertive">{countdown}{t('session.seconds')}</div>
             <div className="flex gap-3">
               <button
                 onClick={renewSession}
                 className="flex-1 py-3 rounded-xl bg-brand-eco text-brand-dark font-black text-xs uppercase tracking-widest hover:brightness-110 transition-all"
               >
-                Stay Signed In
+                {t('session.staySignedIn')}
               </button>
               <button
                 onClick={handleLogout}
                 className="flex-1 py-3 rounded-xl border border-white/15 text-white/50 font-black text-xs uppercase tracking-widest hover:border-brand-alert/50 hover:text-brand-alert transition-all"
               >
-                Sign Out
+                {t('session.signOut')}
               </button>
             </div>
           </div>

@@ -26,7 +26,7 @@ const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: number) => void }> = (
   return (
     <div className={`relative w-[calc(100vw-2rem)] max-w-sm rounded-2xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.5)] pointer-events-auto animate-in slide-in-from-bottom-4 fade-in duration-300 ${
       isSuccess ? 'bg-[#0d2620]' : 'bg-[#200d0d]'
-    }`}>
+    }`} role="status" aria-live="polite" aria-atomic="true">
       {/* Left accent bar */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${isSuccess ? 'bg-brand-eco' : 'bg-brand-alert'}`} />
 
@@ -53,6 +53,7 @@ const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: number) => void }> = (
         {/* Dismiss */}
         <button
           onClick={() => onDismiss(toast.id)}
+          aria-label={t('contact.dismiss') || 'Dismiss'}
           className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-white/25 hover:text-white/60 hover:bg-white/8 transition-all mt-0.5"
         >
           <X size={12} />
@@ -96,6 +97,7 @@ interface CustomSelectProps {
 
 const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error, placeholder, options }) => {
   const [open, setOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find(s => s.value === value);
 
@@ -107,11 +109,48 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error, pla
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      setOpen(true);
+      setHighlightedIndex(options.findIndex(o => o.value === value));
+      return;
+    }
+    if (!open) return;
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        setOpen(false);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(i => Math.min(i + 1, options.length - 1));
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(i => Math.max(i - 1, 0));
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (highlightedIndex >= 0) {
+          onChange(options[highlightedIndex].value);
+          setOpen(false);
+        }
+        break;
+    }
+  };
+
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
+        role="combobox"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={placeholder}
         onClick={() => setOpen(o => !o)}
+        onKeyDown={handleKeyDown}
         className={`w-full flex items-center justify-between bg-brand-dark border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
           open ? 'border-brand-gold' : error ? 'border-brand-alert/60' : 'border-brand-gold/25 hover:border-brand-gold/40'
         }`}
@@ -126,16 +165,21 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ value, onChange, error, pla
       </button>
 
       {open && (
-        <div className="absolute z-50 top-full mt-1.5 w-full bg-[#1c3933] border border-brand-gold/25 rounded-xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-top-2 duration-150">
-          {options.map(s => (
+        <div role="listbox" className="absolute z-50 top-full mt-1.5 w-full bg-[#1c3933] border border-brand-gold/25 rounded-xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-top-2 duration-150">
+          {options.map((s, i) => (
             <button
               key={s.value}
               type="button"
+              role="option"
+              aria-selected={value === s.value}
+              onMouseEnter={() => setHighlightedIndex(i)}
               onClick={() => { onChange(s.value); setOpen(false); }}
               className={`w-full text-left px-4 py-3 text-sm transition-all flex items-center gap-3 ${
-                value === s.value
+                highlightedIndex === i
                   ? 'bg-brand-gold/10 text-brand-gold font-bold'
-                  : 'text-white/70 hover:bg-white/5 hover:text-white'
+                  : value === s.value
+                    ? 'text-brand-gold font-bold'
+                    : 'text-white/70 hover:bg-white/5 hover:text-white'
               }`}
             >
               {value === s.value && <span className="w-1 h-1 rounded-full bg-brand-gold shrink-0" />}
@@ -155,6 +199,7 @@ const ContactPage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastCounter = useRef(0);
 
@@ -167,6 +212,26 @@ const ContactPage: React.FC = () => {
   };
 
   const dismissToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
+
+  // ── Field-level validation for inline feedback ──
+  const fieldError = (field: string): string | null => {
+    if (!touched[field] && !attempted) return null;
+    switch (field) {
+      case 'name':
+        if (!form.name.trim()) return t('contact.errNameRequired');
+        return null;
+      case 'email':
+        if (!form.email.trim()) return t('contact.errEmailRequired');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return t('contact.errEmailInvalid');
+        return null;
+      case 'message':
+        if (!form.message.trim()) return t('contact.errMessageEmpty');
+        if (form.message.trim().length < 10) return t('contact.errMessageShort');
+        return null;
+      default:
+        return null;
+    }
+  };
 
   // ── Client-side validation ──
   const validate = (): string | null => {
@@ -217,12 +282,12 @@ const ContactPage: React.FC = () => {
     }
   };
 
-  const inputClass = (field: string) =>
-    `w-full bg-brand-dark border rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-brand-gold ${
-      attempted && !(form as Record<string, string>)[field]?.trim()
-        ? 'border-brand-alert/60'
-        : 'border-brand-gold/25'
+  const inputClass = (field: string) => {
+    const err = fieldError(field);
+    return `w-full bg-brand-dark border rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-brand-gold ${
+      err ? 'border-brand-alert/60' : 'border-brand-gold/25'
     }`;
+  };
 
   const channels = [
     {
@@ -351,22 +416,24 @@ const ContactPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.fullName')}</label>
-                  <input type="text" placeholder={t('contact.fullNamePlaceholder')} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputClass('name')} />
+                  <label htmlFor="contact-name" className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.fullName')}</label>
+                  <input id="contact-name" type="text" placeholder={t('contact.fullNamePlaceholder')} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} onBlur={() => setTouched(p => ({ ...p, name: true }))} className={inputClass('name')} aria-invalid={!!fieldError('name')} aria-describedby={fieldError('name') ? 'err-name' : undefined} />
+                  {fieldError('name') && <p id="err-name" className="text-[10px] text-brand-alert mt-1.5 font-semibold">{fieldError('name')}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.email')}</label>
-                  <input type="email" placeholder={t('contact.emailPlaceholder')} value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={inputClass('email')} />
+                  <label htmlFor="contact-email" className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.email')}</label>
+                  <input id="contact-email" type="email" placeholder={t('contact.emailPlaceholder')} value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} onBlur={() => setTouched(p => ({ ...p, email: true }))} className={inputClass('email')} aria-invalid={!!fieldError('email')} aria-describedby={fieldError('email') ? 'err-email' : undefined} />
+                  {fieldError('email') && <p id="err-email" className="text-[10px] text-brand-alert mt-1.5 font-semibold">{fieldError('email')}</p>}
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.property')}</label>
-                <input type="text" placeholder={t('contact.propertyPlaceholder')} value={form.property} onChange={e => setForm(p => ({ ...p, property: e.target.value }))} className="w-full bg-brand-dark border border-brand-gold/25 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-brand-gold" />
+                <label htmlFor="contact-property" className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.property')}</label>
+                <input id="contact-property" type="text" placeholder={t('contact.propertyPlaceholder')} value={form.property} onChange={e => setForm(p => ({ ...p, property: e.target.value }))} className="w-full bg-brand-dark border border-brand-gold/25 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-brand-gold" />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.subject')}</label>
+                <label htmlFor="contact-subject" className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.subject')}</label>
                 <CustomSelect
                   value={form.subject}
                   onChange={v => setForm(p => ({ ...p, subject: v }))}
@@ -376,19 +443,25 @@ const ContactPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.message')}</label>
+                <label htmlFor="contact-message" className="block text-xs font-bold uppercase tracking-widest text-white/60 mb-2">{t('contact.message')}</label>
                 <textarea
+                  id="contact-message"
                   rows={5}
                   placeholder={t('contact.messagePlaceholder')}
                   value={form.message}
                   onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
+                  onBlur={() => setTouched(p => ({ ...p, message: true }))}
                   className={`${inputClass('message')} resize-none`}
+                  aria-invalid={!!fieldError('message')}
+                  aria-describedby={fieldError('message') ? 'err-message' : undefined}
                 />
+                {fieldError('message') && <p id="err-message" className="text-[10px] text-brand-alert mt-1.5 font-semibold">{fieldError('message')}</p>}
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
+                aria-busy={loading}
                 className="w-full flex items-center justify-center gap-3 bg-brand-eco text-brand-dark hover:brightness-110 py-4 rounded-xl font-bold uppercase tracking-widest text-xs transition-all transform hover:scale-[1.02] shadow-[0_10px_25px_rgba(119,177,57,0.3)] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {loading ? (

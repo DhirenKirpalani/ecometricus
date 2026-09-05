@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, PieChart, Database, Zap, Users } from 'lucide-react';
 import { useI18n } from '../lib/useI18n';
 
@@ -11,6 +11,9 @@ interface FAQEntry {
 const FAQPage: React.FC = () => {
   const { t } = useI18n();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const faqs: FAQEntry[] = [
     {
@@ -103,6 +106,42 @@ const FAQPage: React.FC = () => {
 
   const activeFaq = activeIndex !== null ? faqs[activeIndex] : null;
 
+  // Esc to close, focus trap, body scroll lock
+  useEffect(() => {
+    if (activeFaq) {
+      document.body.style.overflow = 'hidden';
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setActiveIndex(null);
+          triggerRef.current?.focus();
+        }
+      };
+      const handleTab = (e: KeyboardEvent) => {
+        if (e.key !== 'Tab' || !modalRef.current) return;
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>('button, a, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      };
+      document.addEventListener('keydown', handleEsc);
+      document.addEventListener('keydown', handleTab);
+      setTimeout(() => closeBtnRef.current?.focus(), 100);
+      return () => {
+        document.body.style.overflow = '';
+        document.removeEventListener('keydown', handleEsc);
+        document.removeEventListener('keydown', handleTab);
+      };
+    }
+    document.body.style.overflow = '';
+  }, [activeFaq]);
+
   return (
     <div className="min-h-screen bg-brand-dark">
       <div className="max-w-4xl mx-auto px-5 sm:px-6 py-14 sm:py-28">
@@ -118,15 +157,17 @@ const FAQPage: React.FC = () => {
           {faqs.map((faq, i) => (
             <button
               key={i}
-              onClick={() => setActiveIndex(i)}
+              ref={i === activeIndex ? triggerRef : undefined}
+              onClick={() => setActiveIndex(i === activeIndex ? null : i)}
+              aria-expanded={activeIndex === i}
               className="w-full text-left flex items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 rounded-xl border border-brand-gold/12 bg-white/2 hover:bg-white/4 hover:border-brand-gold/35 transition-all duration-200 group"
             >
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 <span className="text-[10px] font-black text-brand-gold/40 font-mono tabular-nums shrink-0">{String(i + 1).padStart(2, '0')}</span>
                 <span className="text-xs sm:text-sm font-geometric font-bold text-white/80 group-hover:text-white tracking-wide">{faq.question}</span>
               </div>
-              <span className="shrink-0 w-5 h-5 rounded-full border border-brand-gold/30 flex items-center justify-center group-hover:border-brand-gold group-hover:bg-brand-gold/10 transition-all">
-                <span className="text-brand-gold text-xs leading-none">+</span>
+              <span className={`shrink-0 w-6 h-6 rounded-full border border-brand-gold/30 flex items-center justify-center group-hover:border-brand-gold group-hover:bg-brand-gold/10 transition-all ${activeIndex === i ? 'rotate-45' : ''}`}>
+                <span className="text-brand-gold text-sm leading-none">+</span>
               </span>
             </button>
           ))}
@@ -137,13 +178,17 @@ const FAQPage: React.FC = () => {
       {activeFaq && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6"
-          onClick={() => setActiveIndex(null)}
+          onClick={() => { setActiveIndex(null); triggerRef.current?.focus(); }}
         >
           {/* Backdrop */}
           <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-sm" />
 
           {/* Modal */}
           <div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="faq-modal-title"
             className="relative w-full max-w-xl max-h-[85vh] overflow-y-auto scrollbar-gold bg-[#1c3933] border border-brand-gold/30 rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.6)] p-5 sm:p-9 animate-in fade-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
@@ -156,13 +201,15 @@ const FAQPage: React.FC = () => {
                 <span className="text-[10px] font-black text-brand-gold/50 font-mono tabular-nums shrink-0 mt-0.5">
                   {String(activeIndex! + 1).padStart(2, '0')} / {String(faqs.length).padStart(2, '0')}
                 </span>
-                <h3 className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-snug">
+                <h3 id="faq-modal-title" className="text-sm sm:text-base font-geometric font-black text-white uppercase tracking-wide leading-snug">
                   {activeFaq.question}
                 </h3>
               </div>
               <button
-                onClick={() => setActiveIndex(null)}
-                className="shrink-0 w-7 h-7 rounded-lg bg-white/5 border border-brand-gold/10 flex items-center justify-center text-white/40 hover:text-white hover:border-brand-gold/25 transition-all"
+                ref={closeBtnRef}
+                onClick={() => { setActiveIndex(null); triggerRef.current?.focus(); }}
+                aria-label={t('faq.close') || 'Close'}
+                className="shrink-0 w-8 h-8 rounded-lg bg-white/5 border border-brand-gold/10 flex items-center justify-center text-white/40 hover:text-white hover:border-brand-gold/25 transition-all"
               >
                 <X size={14} />
               </button>
@@ -190,6 +237,7 @@ const FAQPage: React.FC = () => {
                   <button
                     key={i}
                     onClick={() => setActiveIndex(i)}
+                    aria-label={`${i + 1} / ${faqs.length}`}
                     className={`h-1.5 rounded-full transition-all duration-200 ${i === activeIndex ? 'bg-brand-gold w-4' : 'bg-white/15 w-1.5 hover:bg-white/30'}`}
                   />
                 ))}

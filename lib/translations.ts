@@ -24,6 +24,16 @@ export const translations: Record<string, TranslationSection> = {
     signUp:        { en: 'Sign Up',       es: 'Registrarse' },
     myDashboard:   { en: 'My Dashboard',  es: 'Mi Panel' },
     menu:          { en: 'Menu',          es: 'Menú' },
+    logOut:        { en: 'Log out',       es: 'Cerrar sesión' },
+    toggleMenu:    { en: 'Toggle menu',   es: 'Alternar menú' },
+    roleAdmin:     { en: 'Admin',         es: 'Admin' },
+    roleSuperAdmin:{ en: 'Super Admin',   es: 'Super Admin' },
+    roleBasic:     { en: 'Staff',         es: 'Personal' },
+    roleSupervisor:{ en: 'Supervisor',    es: 'Supervisor' },
+    roleGM:        { en: 'GM',            es: 'GM' },
+    positionChefPrep:  { en: 'Chef Prep',     es: 'Chef Prep' },
+    positionExecChef:  { en: 'Exec Chef',     es: 'Chef Ejecutivo' },
+    positionGM:        { en: 'GM',            es: 'GM' },
   },
 
   // ─── Footer ───────────────────────────────────────────────────────────────
@@ -37,6 +47,18 @@ export const translations: Record<string, TranslationSection> = {
     contactUs:     { en: 'Contact Us',     es: 'Contáctanos' },
     copyright:     { en: '© {year} Ecometricus. All rights reserved.', es: '© {year} Ecometricus. Todos los derechos reservados.' },
     engineActive:  { en: 'ESG Intelligence Engine Active', es: 'Motor de Inteligencia ESG Activo' },
+  },
+
+  // ─── Session / Timeout ─────────────────────────────────────────────────────
+  session: {
+    loading:           { en: 'Loading…', es: 'Cargando…' },
+    expiring:          { en: 'Session Expiring', es: 'Sesión Expirando' },
+    inactive:          { en: "You've been inactive for 15 minutes.", es: 'Has estado inactivo por 15 minutos.' },
+    autoSignOut:       { en: "You'll be automatically signed out in:", es: 'Se cerrará tu sesión automáticamente en:' },
+    seconds:           { en: 's', es: 's' },
+    staySignedIn:      { en: 'Stay Signed In', es: 'Mantener Sesión' },
+    signOut:           { en: 'Sign Out', es: 'Cerrar Sesión' },
+    emailUnconfirmed:  { en: 'Please confirm your email before signing in.', es: 'Por favor confirma tu correo antes de iniciar sesión.' },
   },
 
   // ─── Auth ─────────────────────────────────────────────────────────────────
@@ -250,6 +272,7 @@ export const translations: Record<string, TranslationSection> = {
     q9:                { en: 'Are there different access levels for staff?', es: '¿Hay diferentes niveles de acceso para el personal?' },
     prev:              { en: '← Prev', es: '← Anterior' },
     next:              { en: 'Next →', es: 'Siguiente →' },
+    close:             { en: 'Close', es: 'Cerrar' },
     // Answers
     a3:                { en: 'Ecometricus provides daily manual input for food waste tracking by weight. Chefs log data by categories like preparation, plate waste, storage, and overproduction. The Mila AI then calculates the monetary cost of wasted food, water and energy savings, CO₂ reduction, and aligns data with GHG protocol and GSTC criteria.', es: 'Ecometricus proporciona entrada manual diaria para el rastreo de desperdicio de alimentos por peso. Los chefs registran datos por categorías como preparación, desperdicio de plato, almacenamiento y sobreproducción. La IA Mila luego calcula el costo monetario de los alimentos desperdiciados, ahorros de agua y energía, reducción de CO₂ y alinea los datos con el protocolo GHG y los criterios GSTC.' },
     a4:                { en: "All data is extracted from your hotel's existing systems — PMS, CRM, and POS — alongside historic internal data and public reports (e.g., STR, RevPAR Guru). Gathered through secure APIs, with daily food waste weight as a manual chef input.", es: 'Todos los datos se extraen de los sistemas existentes de tu hotel — PMS, CRM y POS — junto con datos internos históricos y reportes públicos (ej., STR, RevPAR Guru). Recopilados a través de APIs seguras, con el peso diario del desperdicio de alimentos como entrada manual del chef.' },
@@ -314,6 +337,7 @@ export const translations: Record<string, TranslationSection> = {
     messagePlaceholder:{ en: 'Tell us how we can help...', es: 'Cuéntanos cómo podemos ayudarte...' },
     sending:           { en: 'Sending…', es: 'Enviando…' },
     sendBtn:           { en: 'Send Message', es: 'Enviar Mensaje' },
+    dismiss:           { en: 'Dismiss', es: 'Cerrar' },
     selectTopic:       { en: 'Select a topic', es: 'Selecciona un tema' },
     topicDemo:         { en: 'Book a Demo', es: 'Reservar Demo' },
     topicPricing:      { en: 'Pricing & Plans', es: 'Precios y Planes' },
@@ -623,6 +647,9 @@ export const translations: Record<string, TranslationSection> = {
     generatedCode:         { en: 'Generated Code', es: 'Código Generado' },
     allOutlets:            { en: 'All Outlets', es: 'Todos los Outlets' },
     allOutletsLower:       { en: 'All outlets', es: 'Todos los outlets' },
+    thisWeek:              { en: 'This Week', es: 'Esta Semana' },
+    lastWeek:              { en: 'Last Week', es: 'Semana Pasada' },
+    weeksAgo:              { en: 'weeks ago', es: 'semanas atrás' },
     cycleDaily:            { en: 'Daily', es: 'Diario' },
     cycleWeekly:           { en: 'Weekly', es: 'Semanal' },
     cycleMonthly:          { en: 'Monthly', es: 'Mensual' },

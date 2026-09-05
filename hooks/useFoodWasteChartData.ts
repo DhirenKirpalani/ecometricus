@@ -7,7 +7,7 @@ export interface DailyWaste {
   [outletKey: string]: number | string;
 }
 
-export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: number = 4, scopeOutletName?: string, scopeUserId?: string, scopeOutletId?: string, dailyMode: boolean = false) => {
+export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: number = 4, scopeOutletName?: string, scopeUserId?: string, scopeOutletId?: string, dailyMode: boolean = false, preloadedOutlets?: any[], weekOffset: number = 0) => {
   const [chartData, setChartData] = useState<DailyWaste[]>([]);
   const [outletKeys, setOutletKeys] = useState<string[]>([]);
   const [target, setTarget] = useState(1800);
@@ -16,6 +16,7 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
   const [totalKg, setTotalKg] = useState(0);
   const [totalCo2e, setTotalCo2e] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -25,21 +26,33 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
 
     const fetchChartData = async () => {
       setIsLoading(true);
+      setError(null);
       try {
-        // 0. Fetch outlets dynamically
-        let outletsQuery = supabase
-          .from('outlets')
-          .select('id, outlet_name, outlet_id, color_hex')
-          .order('outlet_name', { ascending: true });
-        if (scopeOutletId) {
-          // Fetch the specific outlet by UUID
-          outletsQuery = outletsQuery.eq('id', scopeOutletId);
-        } else if (scopeOutletName) {
-          outletsQuery = outletsQuery.eq('outlet_name', scopeOutletName);
-        } else if (scopeUserId) {
-          outletsQuery = outletsQuery.eq('user_id', scopeUserId);
+        // 0. Use preloaded outlets if available, otherwise fetch from Supabase
+        let outletsData: any[] | null = null;
+        if (preloadedOutlets && preloadedOutlets.length > 0) {
+          // Filter preloaded outlets by scope
+          outletsData = preloadedOutlets;
+          if (scopeOutletId) {
+            outletsData = outletsData.filter(o => o.id === scopeOutletId);
+          } else if (scopeOutletName) {
+            outletsData = outletsData.filter(o => (o.outlet_name || o.name) === scopeOutletName);
+          }
+        } else {
+          let outletsQuery = supabase
+            .from('outlets')
+            .select('id, outlet_name, outlet_id, color_hex')
+            .order('outlet_name', { ascending: true });
+          if (scopeOutletId) {
+            outletsQuery = outletsQuery.eq('id', scopeOutletId);
+          } else if (scopeOutletName) {
+            outletsQuery = outletsQuery.eq('outlet_name', scopeOutletName);
+          } else if (scopeUserId) {
+            outletsQuery = outletsQuery.eq('user_id', scopeUserId);
+          }
+          const { data: fetched } = await outletsQuery;
+          outletsData = fetched;
         }
-        const { data: outletsData } = await outletsQuery;
 
         const keys: string[] = [];
         if (outletsData && outletsData.length > 0) {
@@ -47,8 +60,9 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
         }
         setOutletKeys(keys);
 
-        // 1. Fetch Live Data — daily mode: today only (resets at midnight); weekly mode: chart week (Sat-Sat)
+        // 1. Fetch Live Data — daily mode: today only (resets at midnight); weekly mode: chart week (Sun-Sat)
         let startDateISO: string;
+        let endDateISO: string | null = null;
         if (dailyMode) {
           const todayStart = new Date();
           todayStart.setHours(0, 0, 0, 0);
@@ -56,12 +70,24 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
         } else {
           const settings = await getPlatformSettings();
           startDateISO = getWeekStartISO(settings.weekly_reset_day);
+          if (weekOffset !== 0) {
+            const d = new Date(startDateISO);
+            d.setDate(d.getDate() + (7 * weekOffset));
+            startDateISO = d.toISOString();
+          }
+          // End date = start + 7 days (for previous week filtering)
+          const endD = new Date(startDateISO);
+          endD.setDate(endD.getDate() + 7);
+          endDateISO = endD.toISOString();
         }
 
         let wasteQuery = supabase
           .from('food_waste_logs')
           .select('*')
           .gte('created_at', startDateISO);
+        if (endDateISO) {
+          wasteQuery = wasteQuery.lt('created_at', endDateISO);
+        }
         if (scopeOutletId) {
           wasteQuery = wasteQuery.eq('outlet_id', scopeOutletId);
         } else if (scopeOutletName) {
@@ -154,6 +180,7 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
 
       } catch (err) {
         console.error('Error in useFoodWasteChartData:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load waste data');
       } finally {
         setIsLoading(false);
       }
@@ -161,19 +188,12 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
 
     fetchChartData();
 
-    // Realtime subscription: auto-refresh when any user adds/updates/deletes waste entries
-    const channel = supabase
-      .channel('food_waste_logs_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'food_waste_logs' }, () => {
-        fetchChartData();
-      })
-      .subscribe();
-
+    // Listen to shared realtime events from DashboardPage (single Supabase channel)
+    // instead of creating a duplicate subscription
     return () => {
       window.removeEventListener('ecometricus_waste_updated', handleStorageChange);
-      supabase.removeChannel(channel);
     };
-  }, [targetKg, activeOutletCount, scopeOutletName, scopeUserId, scopeOutletId, dailyMode]);
+  }, [targetKg, activeOutletCount, scopeOutletName, scopeUserId, scopeOutletId, dailyMode, preloadedOutlets, weekOffset]);
 
-  return { chartData, outletKeys, target, dailyBenchmark, weeklyTotal, isLoading };
+  return { chartData, outletKeys, target, dailyBenchmark, weeklyTotal, isLoading, error };
 };
