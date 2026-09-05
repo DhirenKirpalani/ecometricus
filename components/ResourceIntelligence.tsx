@@ -11,11 +11,12 @@ interface ResourceIntelligenceProps {
   scopeOutletName?: string;
   scopeOutletId?: string;
   scopeUserId?: string;
+  weekOffset?: number;
 }
 
 const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
 
-const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets, dailyMode = false, scopeOutletName, scopeOutletId, scopeUserId }) => {
+const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets, dailyMode = false, scopeOutletName, scopeOutletId, scopeUserId, weekOffset = 0 }) => {
   const { t } = useI18n();
   const {
     waterData,
@@ -27,8 +28,9 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
     energyDailyBenchmark,
     waterWeeklyTotal,
     energyWeeklyTotal,
-    isLoading
-  } = useResourceChartData(undefined, undefined, scopeOutletName, scopeUserId, scopeOutletId, dailyMode);
+    isLoading,
+    error: resourceError
+  } = useResourceChartData(undefined, undefined, scopeOutletName, scopeUserId, scopeOutletId, dailyMode, allOutlets, weekOffset);
 
   // For daily mode (supervisor/basic): KPI cards show today only, not the full 7-day chart total
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -62,6 +64,17 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
       .filter(outlet => outlet.water > 0 || outlet.energy > 0);
   }, [outletKeys, waterData, energyData, allOutlets]);
 
+  if (resourceError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle size={32} className="text-brand-alert mx-auto mb-3" />
+          <p className="text-sm text-brand-alert font-semibold">{resourceError}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -80,10 +93,10 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
         </div>
         <div>
           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-            Resource Portfolio Intelligence
+            {t('intelligence.resource.title')}
           </h2>
           <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-            Cumulative Utility Load & Baseline Analysis
+            {t('intelligence.resource.subtitle')}
           </p>
         </div>
       </div>
@@ -118,7 +131,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
             {todayWater.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">{t('intelligence.resource.waterUnit')}</span>
           </p>
           <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
-            {showAlertWater ? 'Benchmark overload detected' : 'Standard consumption pattern'}
+            {showAlertWater ? t('intelligence.resource.waterOverload') : t('intelligence.resource.waterPattern')}
           </p>
         </div>
 
@@ -150,7 +163,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
             {todayEnergy.toLocaleString()}<span className="text-sm font-medium text-white/40 uppercase ml-1.5">kWh</span>
           </p>
           <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
-            {showAlertEnergy ? 'Critical energy spike logged' : 'Load within tolerance range'}
+            {showAlertEnergy ? t('intelligence.resource.energyOverload') : t('intelligence.resource.energyPattern')}
           </p>
         </div>
       </div>
@@ -160,8 +173,8 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
         <ResourceTemplateChart
           data={waterData}
           benchmark={waterDailyBenchmark}
-          title="Water Usage"
-          subtitle="Cumulative Flow Analysis"
+          title={t('intelligence.resource.chartWaterTitle')}
+          subtitle={t('intelligence.resource.chartWaterSubtitle')}
           unit="L"
           maxVal={5000}
           icon={<Droplets size={18} className="text-blue-400" />}
@@ -171,8 +184,8 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
         <ResourceTemplateChart
           data={energyData}
           benchmark={energyDailyBenchmark}
-          title="Energy Load"
-          subtitle="Real-time Power Distribution"
+          title={t('intelligence.resource.chartEnergyTitle')}
+          subtitle={t('intelligence.resource.chartEnergySubtitle')}
           unit="kWh"
           maxVal={250}
           icon={<Zap size={18} className="text-brand-gold" />}
@@ -193,7 +206,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
                 {t('intelligence.resource.outletPerfTitle')}
               </h2>
               <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-                Resource Breakdown Analytics
+                {t('intelligence.resource.outletPerfSubtitle')}
               </p>
             </div>
           </div>

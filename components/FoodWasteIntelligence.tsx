@@ -19,6 +19,7 @@ interface FoodWasteIntelligenceProps {
   scopeOutletName?: string;
   scopeOutletId?: string;
   scopeUserId?: string;
+  weekOffset?: number;
 }
 
 const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
@@ -29,23 +30,27 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
   dailyMode = false,
   scopeOutletName,
   scopeOutletId,
-  scopeUserId
+  scopeUserId,
+  weekOffset = 0
 }) => {
   const { t } = useI18n();
-  const { totalMass, carbonImpact, financialLoss, outletDetails, isLoading } = useFoodWasteData(
+  const { totalMass, carbonImpact, financialLoss, outletDetails, isLoading, error: wasteError } = useFoodWasteData(
     outletId,
     unitType,
     allOutlets,
-    dailyMode
+    dailyMode,
+    weekOffset
   );
   const activeOutletsCount = outletId ? 1 : allOutlets.length;
-  const { chartData: cumulativeData, outletKeys: wasteOutletKeys, dailyBenchmark, weeklyTotal, isLoading: isLoadingCumulative } = useFoodWasteChartData(
+  const { chartData: cumulativeData, outletKeys: wasteOutletKeys, dailyBenchmark, weeklyTotal, isLoading: isLoadingCumulative, error: chartError } = useFoodWasteChartData(
     benchmarks.food_waste_target_kg,
     activeOutletsCount,
     scopeOutletName,
     scopeUserId,
     scopeOutletId,
-    dailyMode
+    dailyMode,
+    allOutlets,
+    weekOffset
   );
 
   // Transform hook data for FoodWasteTemplateChart (aggregate all outlets per day)
@@ -67,6 +72,17 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
   const showAlertCarbon = carbonImpact > carbonTarget;
   const showAlertFinance = financialLoss > financialTarget;
 
+  if (wasteError || chartError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle size={32} className="text-brand-alert mx-auto mb-3" />
+          <p className="text-sm text-brand-alert font-semibold">{wasteError || chartError}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -84,10 +100,10 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
         </div>
         <div>
           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-            Food Waste Intelligence
+            {t('intelligence.foodWaste.title')}
           </h2>
           <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
-            Conversion of raw prep and spoilage data into financial impact.
+            {t('intelligence.foodWaste.subtitle')}
           </p>
         </div>
       </div>
@@ -103,7 +119,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
             </div>
             {showAlertMass && (
               <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
-                <AlertTriangle size={9} /> Attention
+                <AlertTriangle size={9} /> {t('intelligence.foodWaste.attention')}
               </div>
             )}
           </div>
@@ -125,7 +141,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
             </div>
             {showAlertCarbon && (
               <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
-                <AlertTriangle size={9} /> Attention
+                <AlertTriangle size={9} /> {t('intelligence.foodWaste.attention')}
               </div>
             )}
           </div>
@@ -147,7 +163,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
             </div>
             {showAlertFinance && (
               <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
-                <AlertTriangle size={9} /> Attention
+                <AlertTriangle size={9} /> {t('intelligence.foodWaste.attention')}
               </div>
             )}
           </div>
@@ -200,10 +216,10 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
           </div>
           <div>
             <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
-              Outlet Performance
+              {t('intelligence.foodWaste.outletPerfTitle')}
             </h4>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
-              Breakdown Analytics
+              {t('intelligence.foodWaste.outletPerfSubtitle')}
             </p>
           </div>
         </div>
@@ -218,7 +234,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
                   <span className="text-sm font-black text-white uppercase tracking-wider truncate">{outlet.name}</span>
                   {isAttention && (
                     <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
-                      <AlertCircle size={9} /> Attention
+                      <AlertCircle size={9} /> {t('intelligence.foodWaste.attention')}
                     </div>
                   )}
                 </div>

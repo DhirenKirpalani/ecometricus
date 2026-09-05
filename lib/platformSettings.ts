@@ -78,18 +78,27 @@ export async function savePlatformSettings(settings: Partial<PlatformSettings>):
 
 // ── Week-start calculation ─────────────────────────────────────────────────
 // Returns the Date representing the start of the current chart week
-// (midnight local time on the configured reset day).
+// (midnight local time on the day AFTER the configured reset day).
 //
 // weeklyResetDay: 0=Sun, 1=Mon, ... 6=Sat
+// The reset day is the LAST day of the chart week. The new week starts
+// the day after the reset day. This means on the reset day itself,
+// the current week's data is still shown (reset happens at end of day).
 //
-// Example: weeklyResetDay=6 (Saturday), today is Wednesday (day 3)
-//   diff = (3 - 6 + 7) % 7 = 4
-//   weekStart = today - 4 days = last Saturday
+// Example: weeklyResetDay=6 (Saturday), today is Saturday (day 6)
+//   weekStartDay = (6 + 1) % 7 = 0 (Sunday)
+//   diff = (6 - 0 + 7) % 7 = 6
+//   weekStart = today - 6 = last Sunday → full Sun-Sat week still visible
 //
-// On Saturday itself: diff = (6 - 6 + 7) % 7 = 0 → weekStart = today (reset day)
+// Example: weeklyResetDay=6 (Saturday), today is Sunday (day 0)
+//   weekStartDay = 0 (Sunday)
+//   diff = (0 - 0 + 7) % 7 = 0
+//   weekStart = today → new week starts
 export function getWeekStart(weeklyResetDay: number = 6, now: Date = new Date()): Date {
   const currentDay = now.getDay(); // 0=Sun ... 6=Sat
-  const diff = (currentDay - weeklyResetDay + 7) % 7;
+  // The week starts the day AFTER the reset day (reset day = last day of week)
+  const weekStartDay = (weeklyResetDay + 1) % 7;
+  const diff = (currentDay - weekStartDay + 7) % 7;
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - diff);
   weekStart.setHours(0, 0, 0, 0); // midnight local

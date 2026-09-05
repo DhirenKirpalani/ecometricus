@@ -20,6 +20,19 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-recharts': ['recharts'],
+            'vendor-pdf': ['jspdf'],
+            'vendor-markdown': ['react-markdown'],
+            'vendor-docs': ['mammoth', 'pdfjs-dist'],
+          },
+        },
+      },
     }
   };
 });

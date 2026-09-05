@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
 import {
     Trophy, Crown, Medal, Sparkles, CheckCircle2, Clock, Zap,
-    RefreshCw, Flame, Target, TrendingUp, Award, Users, Building2,
+    Flame, Target, TrendingUp, Award, Users, Building2,
     Calendar, Star, Camera, Leaf, Droplets, ChevronUp, ChevronDown, Check
 } from 'lucide-react';
 
@@ -376,9 +376,6 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                             allLabel={t('gamification.allOutlets')}
                         />
                     )}
-                    <button onClick={fetchData} className="p-3 bg-brand-dark/60 border border-brand-gold/20 rounded-xl hover:border-brand-gold/40 transition-all text-white/50 hover:text-brand-gold">
-                        <RefreshCw size={16} />
-                    </button>
                     <div className="px-4 py-2.5 bg-brand-gold/10 border border-brand-gold/40 rounded-xl flex items-center gap-2">
                         <Trophy size={14} className="text-brand-gold" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.goalBadge', { value: OUTLET_GOAL })}</span>

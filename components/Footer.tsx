@@ -49,16 +49,17 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
           {/* Navigate */}
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-4">{t('footer.navigate')}</p>
-            <ul className="space-y-2.5">
+            <ul className="space-y-2.5" aria-label={t('footer.navigate')}>
               {navLinks.map((link) => {
                 const active = currentPage === link.page;
                 return (
                   <li key={link.page}>
                     <button
                       onClick={() => onNavigate(link.page)}
+                      aria-current={active ? 'page' : undefined}
                       className={`text-xs transition-colors duration-200 flex items-center gap-1.5 ${active ? 'text-brand-gold font-bold' : 'text-white/70 hover:text-white'}`}
                     >
-                      {active && <span className="w-1 h-1 rounded-full bg-brand-gold" />}
+                      {active && <span className="w-1 h-1 rounded-full bg-brand-gold" aria-hidden="true" />}
                       {link.label}
                     </button>
                   </li>
@@ -70,16 +71,17 @@ const Footer: React.FC<FooterProps> = ({ onNavigate, currentPage }) => {
           {/* Legal */}
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white mb-4">{t('footer.legalContact')}</p>
-            <ul className="space-y-2.5">
+            <ul className="space-y-2.5" aria-label={t('footer.legalContact')}>
               {legalLinks.map((item) => {
                 const active = currentPage === item.page;
                 return (
                   <li key={item.label}>
                     <button
                       onClick={() => onNavigate(item.page)}
+                      aria-current={active ? 'page' : undefined}
                       className={`text-xs transition-colors duration-200 flex items-center gap-1.5 ${active ? 'text-brand-gold font-bold' : 'text-white/70 hover:text-white'}`}
                     >
-                      {active && <span className="w-1 h-1 rounded-full bg-brand-gold" />}
+                      {active && <span className="w-1 h-1 rounded-full bg-brand-gold" aria-hidden="true" />}
                       {item.label}
                     </button>
                   </li>

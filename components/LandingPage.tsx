@@ -66,6 +66,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
           <img
             src="/assets/hero-kitchen.png"
             alt="Chefs working at a kitchen prep table under heat lamps"
+            width={1920}
+            height={1080}
+            fetchPriority="high"
             className="w-full h-full object-cover opacity-95 brightness-[0.55] contrast-[1.05]"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-brand-dark/95 via-brand-dark/40 to-transparent" />
@@ -197,7 +200,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isLoggedIn = fals
                 {t('homepage.operationalSnapshots')} <span className="text-brand-gold">{t('homepage.snapshots')}</span>
               </h2>
             </div>
-            <button className="flex items-center gap-3 text-brand-gold hover:text-white transition-all group font-bold uppercase tracking-[0.2em] text-xs shrink-0">
+            <button onClick={() => onNavigate(Page.CONTACT)} className="flex items-center gap-3 text-brand-gold hover:text-white transition-all group font-bold uppercase tracking-[0.2em] text-xs shrink-0">
               {t('homepage.exploreCaseStudies')} <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform" />
             </button>
           </div>
