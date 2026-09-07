@@ -4,7 +4,7 @@ import { useI18n } from '../lib/useI18n';
 import {
     Trophy, Crown, Medal, Sparkles, CheckCircle2, Clock, Zap,
     Flame, Target, TrendingUp, Award, Users, Building2,
-    Calendar, Star, Camera, Leaf, Droplets, ChevronUp, ChevronDown, Check
+    Calendar, Star, Camera, Leaf, Droplets, ChevronUp, ChevronDown, Check, Gift
 } from 'lucide-react';
 
 // --- Interfaces ---
@@ -741,6 +741,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
             {activeView === 'activity' && (
                 <LiveActivityTab logs={logs} t={t} lang={lang} />
             )}
+
         </div>
     );
 };
@@ -759,7 +760,8 @@ const ACTION_META: Record<string, { icon: React.ReactNode; color: string; labelK
     'daily_checkin':      { icon: <CheckCircle2 size={13} />, color: '#22c55e', labelKey: 'gamification.actDailyCheckin' },
     'waste_log':          { icon: <Leaf size={13} />,         color: '#4ade80', labelKey: 'gamification.actWasteLog' },
     'water_log':          { icon: <Droplets size={13} />,     color: '#38bdf8', labelKey: 'gamification.actWaterLog' },
-    'points_earned':      { icon: <Trophy size={13} />,       color: '#C8A413', labelKey: 'gamification.actPointsEarned' },
+    'points_earned':       { icon: <Trophy size={13} />,       color: '#C8A413', labelKey: 'gamification.actPointsEarned' },
+    'supervisor_reward':  { icon: <Gift size={13} />,         color: '#f59e0b', labelKey: 'gamification.actSupervisorReward' },
 };
 
 const LiveActivityTab: React.FC<{

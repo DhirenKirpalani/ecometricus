@@ -72,6 +72,38 @@ export async function awardPoints(
 }
 
 /**
+ * Award supervisor bonus points to a staff member.
+ * No daily deduplication — can be awarded freely at any time.
+ *
+ * @param staffUserId  Supabase auth user ID of the recipient
+ * @param points       Number of points to award
+ * @param outletId     UUID of the outlet
+ */
+export async function awardBonusPoints(
+  staffUserId: string,
+  points: number,
+  outletId: string
+): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('gamification_ledger').insert({
+      profile_id: staffUserId,
+      points_awarded: points,
+      outlet_id: outletId,
+      action_key: 'supervisor_reward',
+    });
+    if (error) {
+      console.error('[Gamification] Bonus award failed:', error.message);
+      return false;
+    }
+    console.log(`[Gamification] Supervisor bonus: ${points} pts to ${staffUserId}`);
+    return true;
+  } catch (err) {
+    console.error('[Gamification] awardBonusPoints failed:', err);
+    return false;
+  }
+}
+
+/**
  * Fetch which quest actions the user has already completed today.
  * Returns a Set of action_key strings completed since midnight.
  */
