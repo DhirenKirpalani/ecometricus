@@ -201,7 +201,7 @@ INSTRUCTIONS:
 
 7. ROLE AWARENESS:
    - ${userProfile.role === 'admin' || userProfile.role === 'super_admin' ? 'You are talking to an ADMIN/GM. They have full access. You can use all tools including audit trail and cross-outlet comparison.' : ''}
-   - ${userProfile.role === 'supervisor' ? 'You are talking to a SUPERVISOR. They review data and log entries. Help them validate and triage alerts.' : ''}
+   - ${userProfile.role === 'supervisor' ? 'You are talking to a SUPERVISOR. They review data, log entries, and can reward staff members. Help them validate and triage alerts. When they want to reward a staff member (e.g. "give Jane 25 points", "reward John", "give Maria bonus points"), use the award_staff_points tool immediately — do not ask for confirmation, just do it and confirm in one sentence.' : ''}
    - ${userProfile.role === 'basic' ? `BASIC STAFF MODE — THIS OVERRIDES ALL RESPONSE FORMAT RULES ABOVE:
      • You are talking to a kitchen staff member (prep chef / line cook). They are busy and need instant, simple replies.
      • RESPONSE LENGTH: 1-2 SHORT SENTENCES MAXIMUM. No bullet points. No explanations. No markdown.
@@ -357,6 +357,7 @@ INSTRUCTIONS:
         log_resource_entry: t('mila.toolLogResource'),
         generate_report: t('mila.toolGenerateReport'),
         get_proactive_insights: t('mila.toolGetInsights'),
+        award_staff_points: t('mila.toolAwardStaffPoints'),
         points_awarded: t('mila.pointsAwarded'),
     };
 

@@ -94,19 +94,22 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
         }
         if (scopeOutletId) {
           // resource_logs has no outlet_id column — resolve to outlet_name
+          // Preloaded outlets map DB outlet_name → Outlet.name, so check both fields.
           const scopedOutlet = outletsData?.find((o: any) => o.id === scopeOutletId);
-          if (scopedOutlet?.outlet_name) {
-            resourceQuery = resourceQuery.eq('outlet_name', scopedOutlet.outlet_name);
+          const outletNameForFilter = scopedOutlet?.outlet_name || scopedOutlet?.name;
+          if (outletNameForFilter) {
+            resourceQuery = resourceQuery.eq('outlet_name', outletNameForFilter);
           } else {
-            // Fallback: no match, return nothing
+            // Fallback: outlet not resolved — return nothing
             resourceQuery = resourceQuery.eq('outlet_name', '__none__');
           }
         } else if (scopeOutletName) {
           resourceQuery = resourceQuery.eq('outlet_name', scopeOutletName);
         } else if (scopeUserId && outletsData && outletsData.length > 0) {
           // Admin/GM: scope resource logs to their own outlets only
-          // resource_logs has no outlet_id column — use outlet_name instead
-          const outletNames = outletsData.map((o: any) => o.outlet_name).filter(Boolean);
+          // resource_logs has no outlet_id column — use outlet_name instead.
+          // Preloaded outlets use Outlet.name (mapped from DB outlet_name), check both.
+          const outletNames = outletsData.map((o: any) => o.outlet_name || o.name).filter(Boolean);
           if (outletNames.length > 0) {
             resourceQuery = resourceQuery.in('outlet_name', outletNames);
           }

@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { retrieveContext, getKnowledgeBaseIndex, searchDocuments } from './mila-rag';
+import { awardBonusPoints } from './gamification';
 import type { UserProfile, UserRole } from '../types';
 
 // ── Tool Types ──
@@ -45,19 +46,20 @@ const ROLE_TOOLS: Record<string, string[]> = {
     'list_outlets', 'get_staff_compliance', 'generate_report',
     'get_audit_trail', 'get_benchmarks', 'log_waste_entry',
     'log_resource_entry', 'get_proactive_insights', 'web_search',
+    'award_staff_points',
   ],
   manager: [
     'query_waste_data', 'query_resource_data', 'get_kpi_summary',
     'search_knowledge_base', 'get_kb_index', 'list_outlets',
     'get_staff_compliance', 'generate_report', 'get_benchmarks',
     'log_waste_entry', 'log_resource_entry', 'get_proactive_insights',
-    'web_search',
+    'web_search', 'award_staff_points',
   ],
   supervisor: [
     'query_waste_data', 'query_resource_data', 'get_kpi_summary',
     'search_knowledge_base', 'get_kb_index', 'get_staff_compliance',
     'log_waste_entry', 'log_resource_entry', 'get_proactive_insights',
-    'web_search',
+    'web_search', 'award_staff_points',
   ],
   chef: [
     'query_waste_data', 'get_kpi_summary', 'search_knowledge_base',
@@ -305,6 +307,24 @@ const ALL_TOOLS: ToolDefinition[] = [
       },
     },
   },
+
+  // ── Supervisor Reward ──
+  {
+    type: 'function',
+    function: {
+      name: 'award_staff_points',
+      description: 'Award bonus gamification points to a staff member (e.g. prep chef) as a reward. Use when the supervisor says things like "give [name] 25 points", "reward [name] with 50 points", "give John some bonus points", etc. The staff member must belong to the same outlet.',
+      parameters: {
+        type: 'object',
+        properties: {
+          staff_name: { type: 'string', description: 'Full name or partial name of the staff member to reward (case-insensitive)' },
+          points: { type: 'number', description: 'Number of bonus points to award (1–500, default 25)' },
+          reason: { type: 'string', description: 'Optional reason or note for the reward (e.g. "great teamwork today")' },
+        },
+        required: ['staff_name'],
+      },
+    },
+  },
 ];
 
 // ── Tool Executors ──
@@ -346,6 +366,8 @@ export async function executeTool(
         return await execGenerateReport(args, ctx);
       case 'get_proactive_insights':
         return await execGetProactiveInsights(args, ctx);
+      case 'award_staff_points':
+        return await execAwardStaffPoints(args, ctx);
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -884,4 +906,73 @@ async function execGetProactiveInsights(args: any, ctx: ToolExecutionContext): P
   } catch {
     return JSON.stringify({ insights: [], message: 'Proactive insights feature is initializing.' });
   }
+}
+
+async function execAwardStaffPoints(args: any, ctx: ToolExecutionContext): Promise<string> {
+  const staffName: string = (args.staff_name || '').trim();
+  const points: number = Math.max(1, Math.min(500, parseInt(args.points) || 25));
+
+  if (!staffName) {
+    return JSON.stringify({ error: 'Please provide the staff member\'s name.' });
+  }
+
+  // Resolve outlet IDs — prefer context outlets, fall back to user's outletCode
+  const outletIds: string[] = (ctx.context?.outlets || [])
+    .map((o: any) => o.id)
+    .filter(Boolean) as string[];
+
+  if (outletIds.length === 0 && ctx.user.outletCode) {
+    const code = ctx.user.outletCode;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+    const { data: outlet } = await (isUuid
+      ? supabase.from('outlets').select('id').eq('id', code).maybeSingle()
+      : supabase.from('outlets').select('id').eq('outlet_id', code).maybeSingle()
+    );
+    if (outlet?.id) outletIds.push(outlet.id);
+  }
+
+  if (outletIds.length === 0) {
+    return JSON.stringify({ error: 'Could not resolve outlet for this user. Please check your outlet configuration.' });
+  }
+
+  // Find staff member by name in personnel
+  let personnelQuery = supabase
+    .from('personnel')
+    .select('full_name, email, outlet_id')
+    .in('outlet_id', outletIds)
+    .ilike('full_name', `%${staffName}%`);
+
+  const { data: personnel } = await personnelQuery;
+
+  if (!personnel || personnel.length === 0) {
+    return JSON.stringify({ error: `No staff member found matching "${staffName}" in your outlet. Please check the name and try again.` });
+  }
+
+  const match = personnel[0] as any;
+
+  // Resolve their profile ID by email
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', match.email)
+    .maybeSingle();
+
+  if (!profile?.id) {
+    return JSON.stringify({ error: `Found ${match.full_name} but could not resolve their account. They may not have logged in yet.` });
+  }
+
+  // Award the bonus points
+  const ok = await awardBonusPoints(profile.id, points, match.outlet_id);
+
+  if (!ok) {
+    return JSON.stringify({ error: 'Failed to award points. Please try again.' });
+  }
+
+  const reason: string = args.reason ? ` (${args.reason})` : '';
+  return JSON.stringify({
+    success: true,
+    staff_name: match.full_name,
+    points_awarded: points,
+    message: `Successfully awarded ${points} bonus points to ${match.full_name}${reason}.`,
+  });
 }

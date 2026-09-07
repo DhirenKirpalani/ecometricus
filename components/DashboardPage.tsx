@@ -5347,6 +5347,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                       </div>
                     </div>
 
+                    {/* ── Meter Source Disclaimer ── */}
+                    <div className="rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-4 sm:p-5 flex items-start gap-3">
+                      <div className="shrink-0 w-8 h-8 rounded-lg bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center">
+                        <span className="text-brand-gold text-base font-black">⚠</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black uppercase tracking-widest text-brand-gold mb-1.5">{t('dashboard.meterSourceTitle')}</p>
+                        <p className="text-xs text-white/60 leading-relaxed">{t('dashboard.meterSourceDesc')}</p>
+                      </div>
+                    </div>
+
                     {/* ── STEP 3: F&B KPIs ── */}
                     <div className="rounded-2xl overflow-hidden border border-brand-eco/20 shadow-[0_0_30px_rgba(34,197,94,0.04)]">
                       <div className="bg-gradient-to-r from-brand-eco/10 to-transparent px-4 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-brand-eco/15 flex-wrap">
