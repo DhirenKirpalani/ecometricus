@@ -750,6 +750,7 @@ export const translations: Record<string, TranslationSection> = {
     auditPersonnel:        { en: 'Personnel', es: 'Personal' },
     auditBenchmarks:       { en: 'Benchmarks', es: 'Parámetros' },
     auditDailyInput:       { en: 'Daily Input', es: 'Entrada Diaria' },
+    auditReports:          { en: 'Reports', es: 'Reportes' },
     other:                 { en: 'Other', es: 'Otro' },
     labelOutletAdded:      { en: 'Outlet Added', es: 'Outlet Agregado' },
     labelOutletRemoved:    { en: 'Outlet Removed', es: 'Outlet Eliminado' },
@@ -759,6 +760,7 @@ export const translations: Record<string, TranslationSection> = {
     labelPersonnelRemoved: { en: 'Personnel Removed', es: 'Personal Eliminado' },
     labelBenchmarksSaved:  { en: 'Benchmarks Saved', es: 'Parámetros Guardados' },
     labelBenchmarksUpdated: { en: 'Benchmarks Updated', es: 'Parámetros Actualizados' },
+    labelReportGenerated:  { en: 'Report Generated', es: 'Reporte Generado' },
     // Entry action labels
     labelEnergyEntryAdded:   { en: 'Energy Entry Added', es: 'Entrada de Energía Agregada' },
     labelEnergyEntryUpdated: { en: 'Energy Entry Updated', es: 'Entrada de Energía Actualizada' },
@@ -778,6 +780,7 @@ export const translations: Record<string, TranslationSection> = {
     auditCatPersonnel:     { en: 'Personnel', es: 'Personal' },
     auditCatOutlets:       { en: 'Outlets', es: 'Outlets' },
     auditCatSettings:      { en: 'Settings', es: 'Configuraciones' },
+    auditCatReports:       { en: 'Reports', es: 'Reportes' },
     auditCatOther:         { en: 'Other', es: 'Otro' },
     // Audit date groups
     auditToday:            { en: 'Today', es: 'Hoy' },
