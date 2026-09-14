@@ -20,7 +20,7 @@ interface ResourceTemplateChartProps {
     title: string;
     subtitle: string;
     unit: string;
-    maxVal: number;
+    maxVal?: number; // optional — computed dynamically when omitted
     icon: React.ReactNode;
     allOutlets?: Outlet[];
     /** Dynamic outlet keys from the hook */
@@ -35,7 +35,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
     title,
     subtitle,
     unit,
-    maxVal,
+    maxVal: maxValProp,
     icon,
     allOutlets,
     outletKeys = [],
@@ -45,44 +45,51 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
     const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
     const minVal = 0;
-    const range = maxVal - minVal;
     // SVG gradient IDs cannot contain spaces — sanitize the title
     const safeId = title.replace(/\s+/g, '-');
-
-    const getY = (val: number) => 100 - ((val - minVal) / (range || 1)) * 100;
-    const getX = (index: number, total: number) => 10 + (index / (total - 1)) * 80;
 
     // Build outlet metadata from dynamic keys + allOutlets
     const outletMeta: OutletMeta[] = useMemo(() => {
         if (outletKeys.length === 0) return [];
         return outletKeys.map((key, i) => {
-            const outlet = allOutlets?.find(o => o.name.toUpperCase() === key);
+            const outlet = allOutlets?.find(o => (o.outlet_name || o.name).toUpperCase() === key);
             const label = outlet?.name || key.charAt(0) + key.slice(1).toLowerCase();
             const color = outlet?.color_hex || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
             return { key, label, color };
         });
     }, [outletKeys, allOutlets]);
 
+    const totals = useMemo(() => data.map(d => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0)), [data, outletMeta]);
+
+    const maxVal = useMemo(() => {
+        if (maxValProp != null) return maxValProp;
+        const rawMax = Math.max(...totals, benchmark * 6, 1);
+        const interval = rawMax / 4;
+        const mag = Math.pow(10, Math.floor(Math.log10(interval || 1)));
+        const n = interval / mag;
+        let ni = n <= 1 ? 1 : n <= 1.5 ? 1.5 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 3 ? 3 : n <= 4 ? 4 : n <= 5 ? 5 : n <= 6 ? 6 : n <= 8 ? 8 : 10;
+        return ni * mag * 4;
+    }, [maxValProp, totals, benchmark]);
+
+    const fmtY = (v: number) => v === 0 ? '0' : v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1000 ? `${Math.round(v/1000)}K` : Math.round(v).toString();
+
+    const range = maxVal - minVal;
+    const getY = (val: number) => 100 - ((val - minVal) / (range || 1)) * 100;
+    const getX = (index: number, total: number) => 10 + (index / (total - 1)) * 80;
+
     const hasAlert = data.some(d => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0) > benchmark);
 
     const weeklyTotal = useMemo(() =>
-        data.reduce((acc, curr) => acc + outletMeta.reduce((s, o) => s + (Number(curr[o.key]) || 0), 0), 0).toLocaleString(),
-        [data, outletMeta]
+        totals.reduce((a, b) => a + b, 0).toLocaleString(),
+        [totals]
     );
 
     const avgDaily = useMemo(() =>
-        Math.round(data.reduce((acc, curr) => acc + outletMeta.reduce((s, o) => s + (Number(curr[o.key]) || 0), 0), 0) / (data.length || 1)).toLocaleString(),
-        [data, outletMeta]
+        Math.round(totals.reduce((a, b) => a + b, 0) / (data.length || 1)).toLocaleString(),
+        [totals, data.length]
     );
 
-    const yAxisLabels = useMemo(() => {
-        const steps = 5;
-        const labels = [];
-        for (let i = steps; i >= 0; i--) {
-            labels.push(Math.round(minVal + (i / steps) * range));
-        }
-        return labels;
-    }, [minVal, maxVal, range]);
+
 
     return (
         <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-6 shadow-xl w-full h-full flex flex-col transition-all duration-300 hover:border-brand-gold/30">
@@ -114,7 +121,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statBenchmark')}</p>
-                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{benchmark.toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">{unit}</span></p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(benchmark * 7).toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">{unit}/wk</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statWeekly')}</p>
@@ -130,9 +137,9 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
             <div className="flex-1 w-full relative min-h-0 pb-6">
                 {/* Y-Axis */}
                 <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none w-14">
-                    {yAxisLabels.map((val, i) => (
+                    {[maxVal, maxVal * 0.75, maxVal * 0.5, maxVal * 0.25, 0].map((val, i) => (
                         <div key={i} className="flex items-center justify-end pr-2 h-0">
-                            <span className="text-[9px] font-bold text-white/50 tabular-nums">{val.toLocaleString()}</span>
+                            <span className="text-[9px] font-bold text-white/50 tabular-nums">{fmtY(val)}</span>
                         </div>
                     ))}
                 </div>
@@ -141,7 +148,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                 <div className="absolute left-14 right-0 top-0 bottom-6">
                     {/* Grid lines */}
                     <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                        {yAxisLabels.map((_, i) => (
+                        {[0, 1, 2, 3, 4].map(i => (
                             <div key={i} className="w-full border-t border-white/5" />
                         ))}
                     </div>
@@ -150,8 +157,8 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                     <div className="absolute inset-0 pointer-events-none">
                         <div className="absolute right-0 -translate-y-1/2 flex items-center gap-1" style={{ top: `${getY(benchmark)}%` }}>
                             <div className="w-2 h-2 rounded-full bg-brand-alert border border-brand-alert" />
-                            <div className="bg-brand-alert/20 border border-brand-alert/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-alert uppercase tracking-wider">
-                                {benchmark.toLocaleString()}{unit}
+                            <div className="bg-brand-gold/20 border border-brand-gold/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-gold uppercase tracking-wider">
+                                {Math.round(benchmark).toLocaleString()}{unit}/d
                             </div>
                         </div>
                     </div>
@@ -162,19 +169,31 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                             <defs>
                                 {outletMeta.map(o => (
                                     <linearGradient key={o.key} id={`res-${safeId}-${o.key}`} x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor={o.color} stopOpacity="0.9" />
-                                        <stop offset="100%" stopColor={o.color} stopOpacity="0.65" />
+                                        <stop offset="0%" stopColor={o.color} stopOpacity="1" />
+                                        <stop offset="100%" stopColor={o.color} stopOpacity="0.95" />
                                     </linearGradient>
                                 ))}
-                                <linearGradient id={`res-${safeId}-alert`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.9" />
-                                    <stop offset="100%" stopColor="#dc2626" stopOpacity="0.6" />
-                                </linearGradient>
+                                {data.map((t, i) => {
+                                    const x = getX(i, data.length);
+                                    const total = outletMeta.reduce((sum, o) => sum + (Number(t[o.key]) || 0), 0);
+                                    const yTop = getY(Math.min(total, maxVal));
+                                    return (
+                                        <clipPath key={i} id={`res-${safeId}-clip-${i}`}>
+                                            <rect x={x - 6} y={yTop} width={12} height={100 - yTop} rx={3} />
+                                        </clipPath>
+                                    );
+                                })}
                             </defs>
+                            {/* Green safe zone below benchmark */}
+                            <rect x="0" y={getY(benchmark)} width="100" height={100 - getY(benchmark)} fill="#77B139" fillOpacity="0.08" />
+                            {/* Gold dotted benchmark line */}
+                            <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1.5" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.9" />
                             {data.map((t, i) => {
                                 const x = getX(i, data.length);
-                                const dayTotal = outletMeta.reduce((sum, o) => sum + (Number(t[o.key]) || 0), 0);
-                                const isOverBenchmark = dayTotal > benchmark;
+                                const total = outletMeta.reduce((sum, o) => sum + (Number(t[o.key]) || 0), 0);
+                                const isOverBenchmark = total > benchmark;
+                                const isHov = hoveredDay === i;
+                                const dimmed = hoveredDay !== null && !isHov;
                                 let cumulative = 0;
                                 const segments = outletMeta.map(o => {
                                     const val = Number(t[o.key]) || 0;
@@ -186,15 +205,29 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
                                     const yBottom = getY(Math.max(start, minVal));
                                     return { yTop, h: yBottom - yTop, key: o.key };
                                 }).filter((s): s is { yTop: number; h: number; key: string } => s !== null);
+                                const barTop = getY(Math.min(total, maxVal));
 
                                 return (
-                                    <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
-                                        {segments.map((s, si) => (
-                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h}
-                                                fill={isOverBenchmark ? `url(#res-${safeId}-alert)` : `url(#res-${safeId}-${s.key})`}
-                                                rx={si === 0 ? "3" : "0"}
-                                                className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.day !== t.day ? 0.4 : 0.85 }} />
+                                    <g key={i} className="cursor-pointer"
+                                        onClick={() => setSelectedDay(t)}
+                                        onMouseEnter={() => setHoveredDay(i)}
+                                        onMouseLeave={() => setHoveredDay(null)}
+                                        clipPath={`url(#res-${safeId}-clip-${i})`}>
+                                        {segments.map((s) => (
+                                            <rect key={s.key} x={x - 6} y={s.yTop} width={12} height={s.h}
+                                                fill={`url(#res-${safeId}-${s.key})`}
+                                                className="transition-all duration-300"
+                                                style={{ opacity: dimmed ? 0.25 : 1 }} />
                                         ))}
+                                        {isOverBenchmark && (
+                                            <rect x={x - 6} y={barTop} width={12} height={100 - barTop}
+                                                fill="rgba(239,68,68,0.22)"
+                                                style={{ opacity: dimmed ? 0.25 : 1 }} />
+                                        )}
+                                        {isHov && total > 0 && (
+                                            <rect x={x - 6} y={barTop} width={12} height={100 - barTop}
+                                                fill="white" fillOpacity="0.12" />
+                                        )}
                                         <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
                                     </g>
                                 );

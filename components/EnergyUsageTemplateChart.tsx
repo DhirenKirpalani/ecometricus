@@ -1,39 +1,79 @@
 import React, { useState, useMemo } from 'react';
 import { Info, Zap, TrendingDown, X as XIcon } from 'lucide-react';
+import { ResourceData } from '../hooks/useResourceChartData';
 import { useI18n } from '../lib/useI18n';
 
 const DAY_KEY_MAP: Record<string, string> = {
-  'Sun': 'daySun', 'Mon': 'dayMon', 'Tue': 'dayTue', 'Wed': 'dayWed',
-  'Thu': 'dayThu', 'Fri': 'dayFri', 'Sat': 'daySat',
+  'SUN': 'daySun', 'MON': 'dayMon', 'TUE': 'dayTue', 'WED': 'dayWed',
+  'THU': 'dayThu', 'FRI': 'dayFri', 'SAT': 'daySat',
 };
 
-interface EnergyUsageData {
-    day: string;
-    usage: number;
-}
+const DEFAULT_COLORS = ['#FACC15', '#EAB308', '#d4af37', '#77B139', '#60A5FA', '#F97316'];
+
+interface OutletMeta { key: string; label: string; color: string; }
 
 interface EnergyUsageTemplateChartProps {
-    data: EnergyUsageData[];
+    data: ResourceData[];
     benchmark: number;
+    outletKeys?: string[];
+    outletColors?: Record<string, string>;
+    outletLabels?: Record<string, string>;
 }
 
-const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ data, benchmark }) => {
+const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({
+    data,
+    benchmark,
+    outletKeys = [],
+    outletColors = {},
+    outletLabels = {},
+}) => {
     const { t } = useI18n();
-    const tDay = (day: string) => DAY_KEY_MAP[day] ? t(`charts.${DAY_KEY_MAP[day]}`) : day;
-    const [selectedDay, setSelectedDay] = useState<EnergyUsageData | null>(null);
+    const tDay = (day: string) => {
+        const upper = (day || '').toUpperCase();
+        return DAY_KEY_MAP[upper] ? t(`charts.${DAY_KEY_MAP[upper]}`) : day;
+    };
+    const [selectedDay, setSelectedDay] = useState<ResourceData | null>(null);
     const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
-    const minVal = 0;
-    const maxVal = Math.max(4500, ...data.map(d => d.usage), benchmark * 1.3);
-    const range = maxVal - minVal;
+    const outletMeta: OutletMeta[] = useMemo(() => {
+        if (outletKeys.length === 0) return [{ key: '__total', label: 'Total', color: DEFAULT_COLORS[0] }];
+        return outletKeys.map((key, i) => ({
+            key,
+            label: outletLabels[key] || key.charAt(0) + key.slice(1).toLowerCase(),
+            color: outletColors[key] || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+        }));
+    }, [outletKeys, outletColors, outletLabels]);
 
-    const getY = (val: number) => 100 - ((val - minVal) / range) * 100;
+    const normalizedData = useMemo(() => {
+        if (outletKeys.length > 0) return data;
+        return data.map(d => {
+            const total = Object.entries(d)
+                .filter(([k]) => k !== 'day')
+                .reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
+            return { ...d, __total: total };
+        });
+    }, [data, outletKeys]);
+
+    const minVal = 0;
+    const totals = normalizedData.map(d => outletMeta.reduce((sum, o) => sum + (Number((d as any)[o.key]) || 0), 0));
+    const rawMax = Math.max(...totals, benchmark * 6, 1);
+    const niceMax = (() => {
+        const interval = rawMax / 4;
+        const mag = Math.pow(10, Math.floor(Math.log10(interval || 1)));
+        const n = interval / mag;
+        let ni = n <= 1 ? 1 : n <= 1.5 ? 1.5 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 3 ? 3 : n <= 4 ? 4 : n <= 5 ? 5 : n <= 6 ? 6 : n <= 8 ? 8 : 10;
+        return ni * mag * 4;
+    })();
+    const maxVal = niceMax;
+    const range = maxVal - minVal;
+    const fmtY = (v: number) => v === 0 ? '0' : v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1000 ? `${Math.round(v/1000)}K` : Math.round(v).toString();
+
+    const getY = (val: number) => 100 - ((val - minVal) / (range || 1)) * 100;
     const getX = (index: number, total: number) => 10 + (index / (total - 1)) * 80;
 
-    const hasAlert = data.some(d => d.usage > benchmark);
-
-    const weeklyUsage = useMemo(() => data.reduce((acc, curr) => acc + curr.usage, 0).toLocaleString(), [data]);
-    const avgUsage = useMemo(() => Math.round(data.reduce((acc, curr) => acc + curr.usage, 0) / (data.length || 1)).toLocaleString(), [data]);
+    const weeklyTotal = totals.reduce((a, b) => a + b, 0);
+    const avgDay = weeklyTotal / (normalizedData.length || 1);
+    const hasAlert = weeklyTotal > benchmark * 7;
 
     return (
         <div className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-5 sm:p-6 shadow-xl w-full h-full flex flex-col transition-all duration-300 hover:border-brand-gold/40">
@@ -65,15 +105,15 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statBenchmark')}</p>
-                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{benchmark.toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">kWh</span></p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(benchmark * 7).toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">kWh/wk</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statWeekly')}</p>
-                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{weeklyUsage}<span className="text-[10px] text-white/40 ml-0.5">kWh</span></p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{weeklyTotal.toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">kWh</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statAvgDay')}</p>
-                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{avgUsage}<span className="text-[10px] text-white/40 ml-0.5">kWh</span></p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(avgDay).toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">kWh</span></p>
                 </div>
             </div>
 
@@ -83,7 +123,7 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
                 <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none w-14">
                     {[maxVal, maxVal * 0.75, maxVal * 0.5, maxVal * 0.25, 0].map((val, i) => (
                         <div key={i} className="flex items-center justify-end pr-2 h-0">
-                            <span className="text-[9px] font-bold text-white/50 tabular-nums">{Math.round(val).toLocaleString()}</span>
+                            <span className="text-[9px] font-bold text-white/50 tabular-nums">{fmtY(val)}</span>
                         </div>
                     ))}
                 </div>
@@ -92,9 +132,7 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
                 <div className="absolute left-14 right-0 top-0 bottom-6">
                     {/* Grid lines */}
                     <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                        {[0, 1, 2, 3, 4].map(i => (
-                            <div key={i} className="w-full border-t border-white/5" />
-                        ))}
+                        {[0, 1, 2, 3, 4].map(i => <div key={i} className="w-full border-t border-white/5" />)}
                     </div>
 
                     {/* Benchmark label */}
@@ -102,46 +140,84 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
                         <div className="absolute right-0 -translate-y-1/2 flex items-center gap-1" style={{ top: `${getY(benchmark)}%` }}>
                             <div className="w-2 h-2 rounded-full bg-brand-gold border border-brand-gold" />
                             <div className="bg-brand-gold/20 border border-brand-gold/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-gold uppercase tracking-wider">
-                                {benchmark.toLocaleString()}kWh
+                                {Math.round(benchmark).toLocaleString()}kWh/d
                             </div>
                         </div>
                     </div>
 
-                    {/* SVG Bar Chart */}
+                    {/* SVG Stacked Bars */}
                     <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
                         <defs>
-                            <linearGradient id="energyGood" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#FACC15" stopOpacity="0.9" />
-                                <stop offset="100%" stopColor="#EAB308" stopOpacity="0.6" />
-                            </linearGradient>
-                            <linearGradient id="energyBad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.9" />
-                                <stop offset="100%" stopColor="#dc2626" stopOpacity="0.6" />
-                            </linearGradient>
+                            {outletMeta.map(o => (
+                                <linearGradient key={o.key} id={`eu-${o.key}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor={o.color} stopOpacity="1" />
+                                    <stop offset="100%" stopColor={o.color} stopOpacity="0.95" />
+                                </linearGradient>
+                            ))}
+                            {normalizedData.map((d, i) => {
+                                const x = getX(i, normalizedData.length);
+                                const total = outletMeta.reduce((s, o) => s + (Number((d as any)[o.key]) || 0), 0);
+                                const yTop = getY(Math.min(total, maxVal));
+                                return (
+                                    <clipPath key={i} id={`eu-clip-${i}`}>
+                                        <rect x={x - 6} y={yTop} width={12} height={100 - yTop} rx={3} />
+                                    </clipPath>
+                                );
+                            })}
                         </defs>
-                        {/* Gold dotted benchmark line */}
-                        <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.85" />
-                        {data.map((t, i) => {
-                            const x = getX(i, data.length);
-                            const clamped = Math.max(minVal, Math.min(maxVal, t.usage));
-                            const y = getY(clamped);
-                            const height = 100 - y;
-                            const isGood = t.usage <= benchmark;
+                        {/* Green safe zone below benchmark */}
+                        <rect x="0" y={getY(benchmark)} width="100" height={100 - getY(benchmark)} fill="#77B139" fillOpacity="0.08" />
+                        {/* Benchmark line */}
+                        <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1.5" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.9" />
+                        {normalizedData.map((d, i) => {
+                            const x = getX(i, normalizedData.length);
+                            const total = outletMeta.reduce((s, o) => s + (Number((d as any)[o.key]) || 0), 0);
+                            const isOverBenchmark = total > benchmark;
+                            const isHov = hoveredDay === i;
+                            const dimmed = hoveredDay !== null && !isHov;
+                            let cumulative = 0;
+                            const segments = outletMeta.map(o => {
+                                const val = Number((d as any)[o.key]) || 0;
+                                const yTop = getY(cumulative + val);
+                                const yBot = getY(cumulative);
+                                const h = Math.max(0, yBot - yTop);
+                                cumulative += val;
+                                return { key: o.key, yTop, h };
+                            });
+                            const barTop = getY(Math.min(total, maxVal));
                             return (
-                                <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
-                                    <rect x={x - 5} y={y} width="10" height={height} fill={isGood ? 'url(#energyGood)' : 'url(#energyBad)'} rx="3"
-                                        className="transition-all duration-300 hover:opacity-100" style={{ opacity: selectedDay && selectedDay.day !== t.day ? 0.4 : 0.85 }} />
+                                <g key={i} className="cursor-pointer"
+                                    onClick={() => setSelectedDay(d)}
+                                    onMouseEnter={() => setHoveredDay(i)}
+                                    onMouseLeave={() => setHoveredDay(null)}
+                                    clipPath={`url(#eu-clip-${i})`}>
+                                    {segments.map((s) => (
+                                        <rect key={s.key} x={x - 6} y={s.yTop} width={12} height={s.h}
+                                            fill={`url(#eu-${s.key})`}
+                                            className="transition-all duration-300"
+                                            style={{ opacity: dimmed ? 0.25 : 1 }} />
+                                    ))}
+                                    {isOverBenchmark && (
+                                        <rect x={x - 6} y={barTop} width={12} height={100 - barTop}
+                                            fill="rgba(239,68,68,0.22)"
+                                            style={{ opacity: dimmed ? 0.25 : 1 }} />
+                                    )}
+                                    {isHov && total > 0 && (
+                                        <rect x={x - 6} y={barTop} width={12} height={100 - barTop}
+                                            fill="white" fillOpacity="0.12" />
+                                    )}
                                     <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
                                 </g>
                             );
                         })}
                     </svg>
 
-                    {/* Data point dots with hover labels */}
-                    {data.map((t, i) => {
-                        const xPct = getX(i, data.length);
-                        const yPct = getY(Math.max(minVal, Math.min(maxVal, t.usage)));
-                        const isGood = t.usage <= benchmark;
+                    {/* Data point dots */}
+                    {normalizedData.map((d, i) => {
+                        const xPct = getX(i, normalizedData.length);
+                        const total = outletMeta.reduce((sum, o) => sum + (Number((d as any)[o.key]) || 0), 0);
+                        const yPct = getY(Math.min(maxVal, Math.max(minVal, total)));
+                        const isGood = total <= benchmark;
                         const isHovered = hoveredDay === i;
                         return (
                             <div key={`dot-${i}`} className="absolute z-20" style={{ left: `${xPct}%`, top: `${yPct}%`, transform: 'translate(-50%, -50%)' }}>
@@ -149,23 +225,28 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
                                     className={`w-2.5 h-2.5 rounded-full border-2 cursor-pointer transition-all ${isGood ? 'bg-brand-gold border-brand-gold' : 'bg-brand-alert border-brand-alert'} ${isHovered ? 'scale-150 shadow-lg' : 'hover:scale-125'}`}
                                     onMouseEnter={() => setHoveredDay(i)}
                                     onMouseLeave={() => setHoveredDay(null)}
-                                    onClick={() => setSelectedDay(t)}
+                                    onClick={() => setSelectedDay(d)}
                                 />
                                 {isHovered && (
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-brand-dark border border-brand-gold/30 rounded-lg px-2 py-1 shadow-xl whitespace-nowrap z-30 pointer-events-none animate-in fade-in zoom-in duration-150">
-                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{tDay(t.day)}</p>
-                                        <p className={`text-[10px] font-black ${isGood ? 'text-brand-gold' : 'text-brand-alert'}`}>{t.usage.toLocaleString()}kWh</p>
+                                        <p className="text-[7px] font-black text-brand-gold uppercase tracking-wider">{tDay(d.day)}</p>
+                                        {outletMeta.map(o => {
+                                            const val = Number((d as any)[o.key]) || 0;
+                                            if (!val) return null;
+                                            return <p key={o.key} className="text-[9px] font-black" style={{ color: o.color }}>{o.label}: {val.toLocaleString()}kWh</p>;
+                                        })}
                                     </div>
                                 )}
                             </div>
                         );
                     })}
 
-                    {/* Tooltip */}
+                    {/* Click tooltip */}
                     {selectedDay && (() => {
-                        const index = data.findIndex(d => d.day === selectedDay.day);
-                        const xPct = getX(index, data.length);
-                        const yPct = getY(Math.max(minVal, Math.min(maxVal, selectedDay.usage)));
+                        const idx = normalizedData.findIndex(d => d.day === selectedDay.day);
+                        const xPct = getX(idx, normalizedData.length);
+                        const total = outletMeta.reduce((sum, o) => sum + (Number((selectedDay as any)[o.key]) || 0), 0);
+                        const yPct = getY(Math.min(maxVal, Math.max(minVal, total)));
                         const isTop = yPct < 30;
                         return (
                             <>
@@ -176,9 +257,13 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
                                         <XIcon size={10} className="text-white/50 hover:text-white" />
                                     </button>
                                     <p className="text-[8px] font-black text-brand-gold uppercase tracking-wider text-center mb-1">{tDay(selectedDay.day)}</p>
-                                    <p className={`text-base font-geometric font-black text-center ${selectedDay.usage <= benchmark ? 'text-brand-gold' : 'text-brand-alert'}`}>{selectedDay.usage.toLocaleString()}kWh</p>
-                                    <p className={`text-[7px] font-black uppercase text-center mt-0.5 ${selectedDay.usage <= benchmark ? 'text-brand-gold/70' : 'text-brand-alert/70'}`}>
-                                        {selectedDay.usage <= benchmark ? t('charts.statusEfficient') : t('charts.tooltipHighUsage')}
+                                    {outletMeta.map(o => {
+                                        const val = Number((selectedDay as any)[o.key]) || 0;
+                                        if (!val) return null;
+                                        return <p key={o.key} className="text-[10px] font-black text-center" style={{ color: o.color }}>{o.label}: {val.toLocaleString()}kWh</p>;
+                                    })}
+                                    <p className={`text-[7px] font-black uppercase text-center mt-1 ${total <= benchmark ? 'text-brand-gold/70' : 'text-brand-alert/70'}`}>
+                                        {total <= benchmark ? t('charts.statusEfficient') : t('charts.tooltipHighUsage')}
                                     </p>
                                 </div>
                             </>
@@ -188,13 +273,25 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({ dat
 
                 {/* X-Axis labels */}
                 <div className="absolute left-14 right-0 bottom-0 h-6">
-                    {data.map((t, i) => (
-                        <div key={t.day} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, data.length)}%` }}>
-                            {tDay(t.day)}
+                    {normalizedData.map((d, i) => (
+                        <div key={i} className="absolute bottom-0 -translate-x-1/2 text-[8px] font-bold text-white uppercase tracking-wider" style={{ left: `${getX(i, normalizedData.length)}%` }}>
+                            {tDay(d.day)}
                         </div>
                     ))}
                 </div>
             </div>
+
+            {/* Legend */}
+            {outletMeta.length > 1 && (
+                <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2 pt-2 border-t border-white/5">
+                    {outletMeta.map(o => (
+                        <div key={o.key} className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: o.color }} />
+                            <span className="text-[8px] font-bold text-white/50 uppercase tracking-wide">{o.label}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

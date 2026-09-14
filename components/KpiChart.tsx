@@ -176,7 +176,10 @@ const KpiChart: React.FC<KpiChartProps> = ({
 
   const renderBenchmark = () =>
     benchmark !== undefined && (
-      <ReferenceDot y={benchmark} x={data.length - 1} r={5} fill={COLORS.alert} stroke={COLORS.alert} strokeOpacity={0.8} />
+      <>
+        <ReferenceLine y={benchmark} stroke={COLORS.gold} strokeDasharray="4 3" strokeWidth={1.5} strokeOpacity={0.9} />
+        <ReferenceDot y={benchmark} x={data.length - 1} r={5} fill={COLORS.alert} stroke={COLORS.alert} strokeOpacity={0.8} />
+      </>
     );
 
   const renderChart = () => {
@@ -364,7 +367,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
       {/* Legend */}
       <div className="mt-3 pt-3 border-t border-white/5">
         {multiSeries && seriesNames.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1">
             {seriesNames.map((name, i) => (
               <div key={name} className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: outlets.find(o => o.name === name)?.color_hex || SERIES_COLORS[i % SERIES_COLORS.length] }} />
@@ -373,7 +376,7 @@ const KpiChart: React.FC<KpiChartProps> = ({
             ))}
           </div>
         ) : stacked && stackKeys.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1">
             {stackKeys.map((s) => (
               <div key={s.key} className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />

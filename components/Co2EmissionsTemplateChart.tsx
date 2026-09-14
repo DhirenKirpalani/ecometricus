@@ -66,8 +66,17 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
 
     const minVal = 0;
     const totals = normalizedData.map((d: any) => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0));
-    const maxVal = Math.max(benchmark * 1.5, ...totals, 100);
+    const rawMax = Math.max(...totals, benchmark * 6, 1);
+    const niceMax = (() => {
+        const interval = rawMax / 4;
+        const mag = Math.pow(10, Math.floor(Math.log10(interval || 1)));
+        const n = interval / mag;
+        let ni = n <= 1 ? 1 : n <= 1.5 ? 1.5 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 3 ? 3 : n <= 4 ? 4 : n <= 5 ? 5 : n <= 6 ? 6 : n <= 8 ? 8 : 10;
+        return ni * mag * 4;
+    })();
+    const maxVal = niceMax;
     const range = maxVal - minVal;
+    const fmtY = (v: number) => v === 0 ? '0' : v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1000 ? `${Math.round(v/1000)}K` : Math.round(v).toString();
 
     const getY = (val: number) => 100 - ((val - minVal) / (range || 1)) * 100;
     const getX = (index: number, total: number) => 10 + (index / (total - 1)) * 80;
@@ -106,7 +115,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statBenchmark')}</p>
-                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(benchmark)}<span className="text-[10px] text-white/40 ml-0.5">kg</span></p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(benchmark * 7)}<span className="text-[10px] text-white/40 ml-0.5">kg/wk</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statWeekly')}</p>
@@ -124,7 +133,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                 <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none w-12">
                     {[maxVal, maxVal * 0.75, maxVal * 0.5, maxVal * 0.25, 0].map((val, i) => (
                         <div key={i} className="flex items-center justify-end pr-2 h-0">
-                            <span className="text-[9px] font-bold text-white/50 tabular-nums">{Math.round(val)}</span>
+                            <span className="text-[9px] font-bold text-white/50 tabular-nums">{fmtY(val)}</span>
                         </div>
                     ))}
                 </div>
@@ -143,7 +152,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                         <div className="absolute right-0 -translate-y-1/2 flex items-center gap-1" style={{ top: `${getY(benchmark)}%` }}>
                             <div className="w-2 h-2 rounded-full bg-brand-gold border border-brand-gold" />
                             <div className="bg-brand-gold/20 border border-brand-gold/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-gold uppercase tracking-wider">
-                                {Math.round(benchmark)}kg
+                                {Math.round(benchmark)}kg/d
                             </div>
                         </div>
                     </div>
@@ -154,21 +163,31 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                             <defs>
                                 {outletMeta.map(o => (
                                     <linearGradient key={o.key} id={`co2-${o.key}`} x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor={o.color} stopOpacity="0.9" />
-                                        <stop offset="100%" stopColor={o.color} stopOpacity="0.65" />
+                                        <stop offset="0%" stopColor={o.color} stopOpacity="1" />
+                                        <stop offset="100%" stopColor={o.color} stopOpacity="0.95" />
                                     </linearGradient>
                                 ))}
-                                <linearGradient id="co2-alert" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.9" />
-                                    <stop offset="100%" stopColor="#dc2626" stopOpacity="0.6" />
-                                </linearGradient>
+                                {normalizedData.map((t: any, i) => {
+                                    const x = getX(i, normalizedData.length);
+                                    const total = outletMeta.reduce((s, o) => s + (Number(t[o.key]) || 0), 0);
+                                    const yTop = getY(Math.min(total, maxVal));
+                                    return (
+                                        <clipPath key={i} id={`co2-clip-${i}`}>
+                                            <rect x={x - 6} y={yTop} width={12} height={100 - yTop} rx={3} />
+                                        </clipPath>
+                                    );
+                                })}
                             </defs>
+                            {/* Green safe zone below benchmark */}
+                            <rect x="0" y={getY(benchmark)} width="100" height={100 - getY(benchmark)} fill="#77B139" fillOpacity="0.08" />
                             {/* Gold dotted benchmark line */}
-                            <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.85" />
+                            <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1.5" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.9" />
                             {normalizedData.map((t: any, i) => {
                                 const x = getX(i, normalizedData.length);
-                                const dayTotal = outletMeta.reduce((sum, o) => sum + (Number(t[o.key]) || 0), 0);
-                                const isOverBenchmark = dayTotal > benchmark;
+                                const total = outletMeta.reduce((s, o) => s + (Number(t[o.key]) || 0), 0);
+                                const isOverBenchmark = total > benchmark;
+                                const isHov = hoveredDay === i;
+                                const dimmed = hoveredDay !== null && !isHov;
                                 let cumulative = 0;
                                 const segments = outletMeta.map(o => {
                                     const val = Number(t[o.key]) || 0;
@@ -180,15 +199,29 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
                                     const yBottom = getY(Math.max(start, minVal));
                                     return { yTop, h: yBottom - yTop, key: o.key };
                                 }).filter((s): s is { yTop: number; h: number; key: string } => s !== null);
+                                const barTop = getY(Math.min(total, maxVal));
 
                                 return (
-                                    <g key={i} className="cursor-pointer" onClick={() => setSelectedDay(t)}>
-                                        {segments.map((s, si) => (
-                                            <rect key={si} x={x - 5} y={s.yTop} width="10" height={s.h}
-                                                fill={isOverBenchmark ? `url(#co2-alert)` : `url(#co2-${s.key})`}
-                                                rx={si === 0 ? "3" : "0"}
-                                                className="transition-all duration-300" style={{ opacity: selectedDay && selectedDay.date !== t.date ? 0.4 : 0.85 }} />
+                                    <g key={i} className="cursor-pointer"
+                                        onClick={() => setSelectedDay(t)}
+                                        onMouseEnter={() => setHoveredDay(i)}
+                                        onMouseLeave={() => setHoveredDay(null)}
+                                        clipPath={`url(#co2-clip-${i})`}>
+                                        {segments.map((s) => (
+                                            <rect key={s.key} x={x - 6} y={s.yTop} width={12} height={s.h}
+                                                fill={`url(#co2-${s.key})`}
+                                                className="transition-all duration-300"
+                                                style={{ opacity: dimmed ? 0.25 : 1 }} />
                                         ))}
+                                        {isOverBenchmark && (
+                                            <rect x={x - 6} y={barTop} width={12} height={100 - barTop}
+                                                fill="rgba(239,68,68,0.22)"
+                                                style={{ opacity: dimmed ? 0.25 : 1 }} />
+                                        )}
+                                        {isHov && total > 0 && (
+                                            <rect x={x - 6} y={barTop} width={12} height={100 - barTop}
+                                                fill="white" fillOpacity="0.12" />
+                                        )}
                                         <rect x={x - 10} y="0" width="20" height="100" fill="transparent" />
                                     </g>
                                 );

@@ -48,21 +48,20 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
   const showAlertWater = todayWater > waterTargetScaled;
   const showAlertEnergy = todayEnergy > energyTargetScaled;
 
-  // Build outlet breakdown dynamically — only include outlets with actual data
+  // Build outlet breakdown — include ALL registered outlets (even with 0 data)
   const outletBreakdown = useMemo(() => {
-    return outletKeys
-      .map(key => {
-        const outlet = allOutlets.find(o => o.name.toUpperCase() === key);
-        const water = waterData.reduce((acc, d) => acc + (Number(d[key]) || 0), 0);
-        const energy = energyData.reduce((acc, d) => acc + (Number(d[key]) || 0), 0);
-        return {
-          name: outlet?.name || key.charAt(0) + key.slice(1).toLowerCase(),
-          water,
-          energy,
-        };
-      })
-      .filter(outlet => outlet.water > 0 || outlet.energy > 0);
-  }, [outletKeys, waterData, energyData, allOutlets]);
+    return allOutlets.map(outlet => {
+      const key = (outlet.outlet_name || outlet.name).toUpperCase();
+      const water = waterData.reduce((acc, d) => acc + (Number(d[key]) || 0), 0);
+      const energy = energyData.reduce((acc, d) => acc + (Number(d[key]) || 0), 0);
+      return {
+        name: outlet.name,
+        color: outlet.color_hex || '#d4af37',
+        water,
+        energy,
+      };
+    });
+  }, [allOutlets, waterData, energyData]);
 
   if (resourceError) {
     return (
@@ -176,10 +175,9 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
           title={t('intelligence.resource.chartWaterTitle')}
           subtitle={t('intelligence.resource.chartWaterSubtitle')}
           unit="L"
-          maxVal={5000}
           icon={<Droplets size={18} className="text-blue-400" />}
           allOutlets={allOutlets}
-          outletKeys={outletKeys}
+          outletKeys={allOutlets.map(o => (o.outlet_name || o.name).toUpperCase())}
         />
         <ResourceTemplateChart
           data={energyData}
@@ -187,10 +185,9 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
           title={t('intelligence.resource.chartEnergyTitle')}
           subtitle={t('intelligence.resource.chartEnergySubtitle')}
           unit="kWh"
-          maxVal={250}
           icon={<Zap size={18} className="text-brand-gold" />}
           allOutlets={allOutlets}
-          outletKeys={outletKeys}
+          outletKeys={allOutlets.map(o => (o.outlet_name || o.name).toUpperCase())}
         />
       </div>
 
@@ -213,8 +210,8 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {outletBreakdown.map((outlet, id) => {
-              const perOutletTarget = outletKeys.length > 0 ? waterTarget / outletKeys.length : waterTarget;
-              const perOutletEnergyTarget = outletKeys.length > 0 ? energyTarget / outletKeys.length : energyTarget;
+              const perOutletTarget = allOutlets.length > 0 ? waterTarget / allOutlets.length : waterTarget;
+              const perOutletEnergyTarget = allOutlets.length > 0 ? energyTarget / allOutlets.length : energyTarget;
               const isWaterAttention = outlet.water > perOutletTarget;
               const isEnergyAttention = outlet.energy > perOutletEnergyTarget;
               const isAttention = isWaterAttention || isEnergyAttention;
@@ -243,8 +240,8 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
 
                   {/* Energy */}
                   <div className="pt-3 border-t border-white/5">
-                    <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest mb-1">{t('intelligence.resource.chartEnergyTitle')}</p>
-                    <p className="text-xl font-geometric font-black text-brand-gold leading-none">
+                    <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: `${outlet.color}99` }}>{t('intelligence.resource.chartEnergyTitle')}</p>
+                    <p className="text-xl font-geometric font-black leading-none" style={{ color: outlet.color }}>
                       {outlet.energy.toLocaleString()}<span className="text-xs font-medium text-white/40 uppercase ml-1">kWh</span>
                     </p>
                   </div>

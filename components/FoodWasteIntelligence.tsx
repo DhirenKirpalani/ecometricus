@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, AlertTriangle, TrendingDown, Scale, Cloud, DollarSign } from 'lucide-react';
+import { AlertCircle, AlertTriangle, TrendingDown, Scale, Cloud, DollarSign, Store } from 'lucide-react';
 import { useFoodWasteData } from '../hooks/useFoodWasteData';
 import { useFoodWasteChartData } from '../hooks/useFoodWasteChartData';
 import Co2EmissionsTemplateChart from './Co2EmissionsTemplateChart';
@@ -42,7 +42,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
     weekOffset
   );
   const activeOutletsCount = outletId ? 1 : allOutlets.length;
-  const { chartData: cumulativeData, outletKeys: wasteOutletKeys, dailyBenchmark, weeklyTotal, isLoading: isLoadingCumulative, error: chartError } = useFoodWasteChartData(
+  const { chartData: cumulativeData, outletKeys: wasteOutletKeys, dailyBenchmark, dailyMassBenchmark, weeklyTotal, isLoading: isLoadingCumulative, error: chartError } = useFoodWasteChartData(
     benchmarks.food_waste_target_kg,
     activeOutletsCount,
     scopeOutletName,
@@ -53,14 +53,16 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
     weekOffset
   );
 
-  // Transform hook data for FoodWasteTemplateChart (aggregate all outlets per day)
-  const foodWasteTemplateData = cumulativeData.map(d => {
-    const waste = wasteOutletKeys.reduce((s, k) => s + (Number((d as any)[k]) || 0), 0);
-    return {
-      day: d.date.charAt(0) + d.date.slice(1).toLowerCase(),
-      waste,
-    };
-  });
+  // Outlet color/label maps and all outlet name keys derived from allOutlets
+  const wasteOutletColors = allOutlets.reduce((acc, o) => {
+    acc[(o.outlet_name || o.name).toUpperCase()] = o.color_hex || '#77B139';
+    return acc;
+  }, {} as Record<string, string>);
+  const wasteOutletLabels = allOutlets.reduce((acc, o) => {
+    acc[(o.outlet_name || o.name).toUpperCase()] = o.name;
+    return acc;
+  }, {} as Record<string, string>);
+  const allWasteOutletKeys = allOutlets.map(o => (o.outlet_name || o.name).toUpperCase());
 
   // Targets — scale to daily for non-admin (today-only view)
   const divisor = dailyMode ? 7 : 1;
@@ -192,8 +194,11 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
             <>
               <div className="w-full h-full">
                 <FoodWasteTemplateChart
-                  data={foodWasteTemplateData}
-                  benchmark={dailyBenchmark}
+                  data={cumulativeData}
+                  benchmark={dailyMassBenchmark}
+                  outletKeys={allWasteOutletKeys}
+                  outletColors={wasteOutletColors}
+                  outletLabels={wasteOutletLabels}
                 />
               </div>
               <div className="w-full h-full">
@@ -201,6 +206,9 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
                   data={cumulativeData}
                   benchmark={dailyBenchmark}
                   weeklyTotal={weeklyTotal}
+                  outletKeys={allWasteOutletKeys}
+                  outletColors={wasteOutletColors}
+                  outletLabels={wasteOutletLabels}
                 />
               </div>
             </>
@@ -210,49 +218,65 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
 
       {/* Outlet Performance Breakdown — Card Grid */}
       <div>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-10 h-10 border border-brand-eco/50 rounded-xl bg-brand-eco/5 flex items-center justify-center shrink-0">
-            <TrendingDown size={18} className="text-brand-eco" />
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
+            <TrendingDown className="text-brand-eco" size={24} />
           </div>
           <div>
-            <h4 className="text-lg font-geometric font-bold text-white tracking-tight uppercase leading-tight">
+            <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
               {t('intelligence.foodWaste.outletPerfTitle')}
-            </h4>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-gold/80">
+            </h2>
+            <p className="text-[11px] sm:text-xs text-brand-gold font-medium mt-1">
               {t('intelligence.foodWaste.outletPerfSubtitle')}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {outletDetails.filter(o => o.mass > 0).map((outlet, id) => {
-            const isAttention = outlet.mass > massTarget / Math.max(outletDetails.filter(o => o.mass > 0).length, 1);
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {outletDetails.map((outlet, id) => {
+            const activeCount = Math.max(allOutlets.length, 1);
+            const perOutletMassTarget = massTarget / activeCount;
+            const isAttention = outlet.mass > perOutletMassTarget;
+            const outletColor = wasteOutletColors[(outlet.name || '').toUpperCase()] || '#d4af37';
             return (
-              <div key={id} className={`rounded-2xl border p-5 sm:p-6 transition-all duration-300 ${isAttention ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/10 bg-[#1c3933] hover:border-brand-gold/20'}`}>
+              <div key={id} className={`rounded-2xl border p-5 shadow-xl transition-all duration-300 ${isAttention ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/20 bg-[#1c3933] hover:border-brand-gold/30'}`}>
                 {/* Outlet name + status badge */}
                 <div className="flex items-center justify-between gap-2 mb-4">
-                  <span className="text-sm font-black text-white uppercase tracking-wider truncate">{outlet.name}</span>
+                  <div className="flex items-center gap-2">
+                    <Store size={14} className="text-brand-gold/50" />
+                    <span className="text-sm font-bold text-white uppercase tracking-wider truncate">{outlet.name}</span>
+                  </div>
                   {isAttention && (
-                    <div className="flex items-center gap-1.5 bg-brand-alert/20 text-brand-alert border border-brand-alert/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
-                      <AlertCircle size={9} /> {t('intelligence.foodWaste.attention')}
+                    <div className="flex items-center gap-1.5 bg-brand-alert/15 border border-brand-alert/30 px-2 py-0.5 rounded-lg shrink-0">
+                      <AlertTriangle size={9} className="text-brand-alert" />
+                      <span className="text-[8px] font-black text-brand-alert uppercase tracking-widest">{t('intelligence.foodWaste.attention')}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Mass metric */}
                 <div className="mb-3">
-                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">{t('intelligence.foodWaste.massLabel')}</p>
-                  <p className="text-2xl font-geometric font-black text-white leading-none">
+                  <p className="text-[8px] font-black text-brand-eco/60 uppercase tracking-widest mb-1">{t('intelligence.foodWaste.massLabel')}</p>
+                  <p className="text-xl font-geometric font-black text-white leading-none">
                     {outlet.mass.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                    <span className="text-xs font-medium text-white/40 uppercase ml-1.5">{unitType}</span>
+                    <span className="text-xs font-medium text-white/40 uppercase ml-1">{unitType}</span>
                   </p>
                 </div>
 
-                {/* Cost metric */}
-                <div className="pt-3 border-t border-brand-gold/8">
-                  <p className="text-[10px] font-bold text-brand-gold/60 uppercase tracking-widest mb-1">{t('intelligence.foodWaste.costLabel')}</p>
-                  <p className="text-lg font-geometric font-bold text-brand-gold leading-none">
-                    $ {outlet.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                {/* Carbon Impact */}
+                <div className="mb-3 pt-3 border-t border-white/5">
+                  <p className="text-[8px] font-black text-blue-400/60 uppercase tracking-widest mb-1">{t('intelligence.foodWaste.carbonImpactTitle')}</p>
+                  <p className="text-xl font-geometric font-black text-white leading-none">
+                    {outlet.carbon.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                    <span className="text-xs font-medium text-white/40 uppercase ml-1">kg</span>
+                  </p>
+                </div>
+
+                {/* Financial Impact */}
+                <div className="pt-3 border-t border-white/5">
+                  <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: `${outletColor}99` }}>{t('intelligence.foodWaste.costLabel')}</p>
+                  <p className="text-xl font-geometric font-black leading-none" style={{ color: outletColor }}>
+                    ${outlet.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </p>
                 </div>
               </div>
