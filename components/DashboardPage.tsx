@@ -1717,7 +1717,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const hookScopeUserId = isCompanyWide ? (isHookAdmin ? user.id : (dataOwnerUserId || user.id)) : undefined;
   const hookScopeOutletId = !isCompanyWide ? (personnelOutletId || undefined) : undefined;
   // SUMMARIZED tab hooks (admin/GM = cumulative weekly, not daily)
-  const { chartData: wasteChartData, outletKeys: wasteOutletKeys, dailyBenchmark: wasteDailyBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData(
+  const { chartData: wasteChartData, outletKeys: wasteOutletKeys, dailyBenchmark: wasteDailyBenchmark, dailyMassBenchmark: wasteDailyMassBenchmark, weeklyTotal: wasteWeeklyTotal } = useFoodWasteChartData(
     params.wasteTarget,
     outlets.length || 1,
     hookScopeOutlet,
@@ -1729,21 +1729,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   );
   const { waterData, energyData, outletKeys: resourceOutletKeys, waterDailyBenchmark: resourceWaterBenchmark, energyDailyBenchmark: resourceEnergyBenchmark } = useResourceChartData(params.waterTarget, params.energyTarget, hookScopeOutlet, hookScopeUserId, hookScopeOutletId, false, outlets, isCompanyWide ? weekOffset : 0);
 
-  // Transform hook data for template charts (aggregate all outlets per day dynamically)
-  const sumOutletKeys = (row: Record<string, any>, keys: string[]) => keys.reduce((s, k) => s + (Number(row[k]) || 0), 0);
-
-  const foodWasteTemplateData = wasteChartData.map(d => ({
-    day: d.date.charAt(0) + d.date.slice(1).toLowerCase(),
-    waste: sumOutletKeys(d, wasteOutletKeys)
-  }));
-  const waterTemplateData = waterData.map(d => ({
-    day: d.day.charAt(0) + d.day.slice(1).toLowerCase(),
-    usage: sumOutletKeys(d, resourceOutletKeys)
-  }));
-  const energyTemplateData = energyData.map(d => ({
-    day: d.day.charAt(0) + d.day.slice(1).toLowerCase(),
-    usage: sumOutletKeys(d, resourceOutletKeys)
-  }));
+  // Outlet color/label maps for template charts (keyed by outlet name UPPERCASE)
+  const templateOutletColors = outlets.reduce((acc, o) => {
+    acc[(o.outlet_name || o.name).toUpperCase()] = o.color_hex || '#d4af37';
+    return acc;
+  }, {} as Record<string, string>);
+  const templateOutletLabels = outlets.reduce((acc, o) => {
+    acc[(o.outlet_name || o.name).toUpperCase()] = o.name;
+    return acc;
+  }, {} as Record<string, string>);
+  // All outlet name keys from registered outlets (for charts that need all outlets even with 0 data)
+  const allOutletNameKeys = outlets.map(o => (o.outlet_name || o.name).toUpperCase());
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
@@ -3652,20 +3648,29 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                           <div className="w-full max-w-full grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3 mb-3">
                             <div className="w-full h-[300px] sm:h-[380px]">
                               <FoodWasteTemplateChart
-                                data={foodWasteTemplateData}
-                                benchmark={wasteDailyBenchmark}
+                                data={wasteChartData}
+                                benchmark={wasteDailyMassBenchmark}
+                                outletKeys={allOutletNameKeys}
+                                outletColors={templateOutletColors}
+                                outletLabels={templateOutletLabels}
                               />
                             </div>
                             <div className="w-full h-[300px] sm:h-[380px]">
                               <WaterUsageTemplateChart
-                                data={waterTemplateData}
+                                data={waterData}
                                 benchmark={resourceWaterBenchmark}
+                                outletKeys={allOutletNameKeys}
+                                outletColors={templateOutletColors}
+                                outletLabels={templateOutletLabels}
                               />
                             </div>
                             <div className="w-full h-[300px] sm:h-[380px]">
                               <EnergyUsageTemplateChart
-                                data={energyTemplateData}
+                                data={energyData}
                                 benchmark={resourceEnergyBenchmark}
+                                outletKeys={allOutletNameKeys}
+                                outletColors={templateOutletColors}
+                                outletLabels={templateOutletLabels}
                               />
                             </div>
                             <div className="w-full h-[300px] sm:h-[380px]">
@@ -3673,9 +3678,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                 data={wasteChartData}
                                 benchmark={wasteDailyBenchmark}
                                 weeklyTotal={wasteWeeklyTotal}
-                                outletKeys={wasteOutletKeys}
-                                outletColors={outlets.reduce((acc, o) => { acc[o.name.toUpperCase()] = o.color_hex || '#d4af37'; return acc; }, {} as Record<string, string>)}
-                                outletLabels={outlets.reduce((acc, o) => { acc[o.name.toUpperCase()] = o.name; return acc; }, {} as Record<string, string>)}
+                                outletKeys={allOutletNameKeys}
+                                outletColors={templateOutletColors}
+                                outletLabels={templateOutletLabels}
                               />
                             </div>
                           </div>

@@ -998,7 +998,7 @@ export const translations: Record<string, TranslationSection> = {
       waterTitle:         { en: 'Total Water Usage', es: 'Consumo Total de Agua' },
       energyTitle:        { en: 'Total Energy Load', es: 'Carga Total de Energía' },
       cumulativeLabel:    { en: 'Weekly cumulative', es: 'Semanal acumulativo' },
-      alert:              { en: 'Alert', es: 'Alerta' },
+      alert:              { en: 'Attention', es: 'Atención' },
       onTarget:           { en: 'On Target', es: 'En Objetivo' },
       waterUnit:          { en: 'Litres', es: 'Litros' },
       energyUnit:         { en: 'kWh', es: 'kWh' },
@@ -1129,7 +1129,7 @@ export const translations: Record<string, TranslationSection> = {
 
   // ─── Chart Components ──────────────────────────────────────────────────────
   charts: {
-    statusAlert:        { en: 'Alert', es: 'Alerta' },
+    statusAlert:        { en: 'Attention', es: 'Atención' },
     statusOnTarget:     { en: 'On Target', es: 'En Objetivo' },
     statusAttention:    { en: 'Attention', es: 'Atención' },
     statusOptimal:      { en: 'Optimal', es: 'Óptimo' },

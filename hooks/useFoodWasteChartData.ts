@@ -12,6 +12,7 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
   const [outletKeys, setOutletKeys] = useState<string[]>([]);
   const [target, setTarget] = useState(1800);
   const [dailyBenchmark, setDailyBenchmark] = useState(0);
+  const [dailyMassBenchmark, setDailyMassBenchmark] = useState(0);
   const [weeklyTotal, setWeeklyTotal] = useState(0);
   const [totalKg, setTotalKg] = useState(0);
   const [totalCo2e, setTotalCo2e] = useState(0);
@@ -120,18 +121,16 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
             if (log.outlet_id) activeOutletIds.add(log.outlet_id);
           });
         }
-        const effectiveOutletCount = Math.max(activeOutletIds.size, 1);
-
-        // Mila Logic: Standardized Proportional Scaling
-        // Use actual active outlet count for benchmark (not total registered outlets)
-        const weeklyMassTarget = targetKg * effectiveOutletCount;
-        const dailyMassTarget = (targetKg / 7) * effectiveOutletCount;
+        // targetKg is the total weekly budget across all outlets — do not multiply by outlet count
+        const weeklyMassTarget = targetKg;
+        const dailyMassTarget = targetKg / 7;
 
         const weeklyCo2Target = weeklyMassTarget * 2.85;
         const dailyCo2Benchmark = dailyMassTarget * 2.85;
 
         setTarget(weeklyCo2Target);
         setDailyBenchmark(dailyCo2Benchmark);
+        setDailyMassBenchmark(dailyMassTarget);
 
         // 2. Initialize Day Maps with dynamic outlet keys
         const dayMap: Record<string, any> = {};
@@ -195,5 +194,5 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
     };
   }, [targetKg, activeOutletCount, scopeOutletName, scopeUserId, scopeOutletId, dailyMode, preloadedOutlets, weekOffset]);
 
-  return { chartData, outletKeys, target, dailyBenchmark, weeklyTotal, isLoading, error };
+  return { chartData, outletKeys, target, dailyBenchmark, dailyMassBenchmark, weeklyTotal, isLoading, error };
 };

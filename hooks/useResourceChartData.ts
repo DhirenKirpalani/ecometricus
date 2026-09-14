@@ -15,9 +15,9 @@ export const useResourceChartData = (waterTargetParam?: number, energyTargetPara
   const waterTarget = waterTargetParam ?? 25000;
   const energyTarget = energyTargetParam ?? 1000;
 
-  // Daily benchmark = weekly target / 7
-  const waterDailyBenchmark = Math.round(waterTarget / 7);
-  const energyDailyBenchmark = Math.round(energyTarget / 7);
+  // Daily benchmark = weekly target / 7 (keep as float so benchmark × 7 = exact target)
+  const waterDailyBenchmark = waterTarget / 7;
+  const energyDailyBenchmark = energyTarget / 7;
 
   const [waterWeeklyTotal, setWaterWeeklyTotal] = useState(0);
   const [energyWeeklyTotal, setEnergyWeeklyTotal] = useState(0);

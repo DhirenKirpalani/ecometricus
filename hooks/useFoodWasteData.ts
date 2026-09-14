@@ -12,6 +12,7 @@ interface FoodWasteData {
     name: string;
     mass: number;
     cost: number;
+    carbon: number;
   }[];
   isLoading: boolean;
   error: string | null;
@@ -102,7 +103,10 @@ export const useFoodWasteData = (
     const outletDetails = (allOutlets || []).map(outlet => {
       const outletData = data.filter(d => d.outlet_id === (outlet as any).id);
       let mass = outletData.reduce((acc, curr) => acc + (Number(curr.mass_kg) || 0), 0);
-      let cost = outletData.reduce((acc, curr) => acc + (Number(curr.cost_usd) || 0), 0);
+      // Use mass × cost_per_kg (same formula as financialLoss total) — cost_usd is often null
+      let cost = outletData.reduce((acc, curr) => acc + ((Number(curr.mass_kg) || 0) * (Number(curr.cost_per_kg) || 6.53)), 0);
+      // Carbon impact = mass × 2.85 (same coefficient as total carbonImpact)
+      let carbon = mass * 2.85;
 
       if (unitType === 'Lbs') {
         mass *= LBS_CONVERSION;
@@ -111,7 +115,8 @@ export const useFoodWasteData = (
       return {
         name: outlet.name,
         mass,
-        cost
+        cost,
+        carbon
       };
     });
 

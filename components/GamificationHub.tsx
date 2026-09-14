@@ -13,6 +13,7 @@ interface OutletData {
     id: string;
     name: string;
     outlet_color: string;
+    color_hex?: string;
     total_points: number;
     engagement_pct: number;
 }
@@ -193,9 +194,22 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                 pMap.set(r.id, { name: r.name, outlet_name: r.outlet_name, outlet_dot_color: r.outlet_dot_color });
             });
             // Also add profiles that didn't match personnel but are in the ledger
+            // Resolve their outlet from the ledger's outlet_id
+            const ledgerOutletByProfile = new Map<string, string>();
+            (ledgerData as any[]).forEach((l: any) => {
+                if (l.profile_id && l.outlet_id && !ledgerOutletByProfile.has(l.profile_id)) {
+                    ledgerOutletByProfile.set(l.profile_id, l.outlet_id);
+                }
+            });
             profilesData.forEach((p: any) => {
                 if (!pMap.has(p.id)) {
-                    pMap.set(p.id, { name: p.full_name || 'Staff', outlet_name: '', outlet_dot_color: '#ccc' });
+                    const outletId = ledgerOutletByProfile.get(p.id) || p.outlet_id;
+                    const outlet = scopedOutlets.find((o: any) => o.id === outletId);
+                    pMap.set(p.id, {
+                        name: p.full_name || 'Staff',
+                        outlet_name: outlet?.name || (outletId ? 'Unknown' : ''),
+                        outlet_dot_color: outlet?.color_hex || '#ccc'
+                    });
                 }
             });
             setProfileMap(pMap);
@@ -441,7 +455,7 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
             {activeView === 'outlets' && (
                 <div className="space-y-4 animate-in fade-in duration-500">
                     {outlets.map((o) => {
-                        const themeColor = getThemeColor(o.name, (o as any).color_hex);
+                        const themeColor = getThemeColor(o.name, o.color_hex);
                         return (
                             <div key={o.id} className="bg-[#1c3933] border border-brand-gold/20 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 hover:border-brand-gold/30 transition-all">
                                 {/* Circular Progress */}
@@ -642,96 +656,128 @@ const GamificationHub: React.FC<GamificationHubProps> = ({ goal = 3000, outletId
                         </div>
                     ) : (
                         <>
-                            {/* Streak leaders */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {[...checkins]
-                                    .sort((a, b) => b.streak_days - a.streak_days)
-                                    .slice(0, 3)
-                                    .map((c, i) => {
-                                        const outlet = outlets.find((o: any) => o.id === c.outlet_code);
-                                        return (
-                                        <div key={i} className={`rounded-2xl border p-5 ${i === 0 ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/20 bg-[#1c3933]'}`}>
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Flame size={18} className={i === 0 ? 'text-brand-alert' : 'text-brand-gold/60'} />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.streakRank', { value: i + 1 })}</span>
-                                                </div>
-                                                {i === 0 && <Crown size={16} className="text-brand-alert" />}
-                                            </div>
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
-                                                    <span className="text-brand-gold text-sm font-black">{c.user_name?.charAt(0) || '?'}</span>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-lg font-geometric font-black text-white truncate">{c.user_name}</p>
-                                                    <p className="text-[10px] text-white/40 uppercase tracking-wider truncate">{outlet?.name || t('gamification.outletFallback')}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-3xl font-black text-white">{c.streak_days}</span>
-                                                <span className="text-[10px] font-bold text-white/40 uppercase">{t('gamification.days')}</span>
-                                            </div>
-                                        </div>
-                                        );
-                                    })}
-                            </div>
+                            {/* Aggregate check-ins by outlet */}
+                            {(() => {
+                                const byOutlet = new Map<string, { outletId: string; outletName: string; color: string; maxStreak: number; latestDate: string; totalWaste: number; totalWater: number; totalEnergy: number; topUser: string; checkinCount: number }>();
+                                checkins.forEach((c: any) => {
+                                    const outlet = outlets.find((o: any) => o.id === c.outlet_code);
+                                    const key = c.outlet_code;
+                                    const existing = byOutlet.get(key);
+                                    if (!existing) {
+                                        byOutlet.set(key, {
+                                            outletId: key,
+                                            outletName: outlet?.name || t('gamification.outletFallback'),
+                                            color: outlet?.color_hex || '#C8A413',
+                                            maxStreak: c.streak_days,
+                                            latestDate: c.checkin_date,
+                                            totalWaste: c.waste_entries || 0,
+                                            totalWater: c.water_entries || 0,
+                                            totalEnergy: c.energy_entries || 0,
+                                            topUser: c.user_name,
+                                            checkinCount: 1
+                                        });
+                                    } else {
+                                        existing.maxStreak = Math.max(existing.maxStreak, c.streak_days);
+                                        if (new Date(c.checkin_date) > new Date(existing.latestDate)) {
+                                            existing.latestDate = c.checkin_date;
+                                            existing.topUser = c.user_name;
+                                        }
+                                        existing.totalWaste += c.waste_entries || 0;
+                                        existing.totalWater += c.water_entries || 0;
+                                        existing.totalEnergy += c.energy_entries || 0;
+                                        existing.checkinCount += 1;
+                                    }
+                                });
+                                const outletStreaks = [...byOutlet.values()].sort((a, b) => b.maxStreak - a.maxStreak);
 
-                            {/* Full check-in list */}
-                            <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
-                                <table className="w-full">
-                                    <colgroup>
-                                        <col className="w-[40%]" />
-                                        <col className="w-[20%]" />
-                                        <col className="w-[20%]" />
-                                        <col className="w-[20%]" />
-                                    </colgroup>
-                                    <thead>
-                                        <tr className="border-b border-brand-gold/15">
-                                            <th className="px-5 py-3 text-left text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.userHeader')}</th>
-                                            <th className="px-5 py-3 text-center text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.entriesHeader')}</th>
-                                            <th className="px-5 py-3 text-center text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.streakHeader')}</th>
-                                            <th className="px-5 py-3 text-right text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.dateHeader')}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-brand-gold/5">
-                                        {checkins.map((c, i) => {
-                                            const outlet = outlets.find((o: any) => o.id === c.outlet_code);
-                                            const formattedDate = new Date(c.checkin_date).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' });
-                                            return (
-                                            <tr key={i} className="hover:bg-brand-gold/5 transition-all">
-                                                <td className="px-5 py-3">
-                                                    <div className="flex items-center gap-2.5 min-w-0">
-                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-gold/5 border border-brand-gold/20 flex items-center justify-center shrink-0">
-                                                            <span className="text-brand-gold text-xs font-black">{c.user_name?.charAt(0) || '?'}</span>
+                                return (
+                                    <>
+                                        {/* Streak leaders by outlet */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            {outletStreaks.slice(0, 3).map((s, i) => (
+                                                <div key={s.outletId} className={`rounded-2xl border p-5 ${i === 0 ? 'border-brand-alert/40 bg-brand-alert/5' : 'border-brand-gold/20 bg-[#1c3933]'}`}>
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <Flame size={18} className={i === 0 ? 'text-brand-alert' : 'text-brand-gold/60'} />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">{t('gamification.streakRank', { value: i + 1 })}</span>
+                                                        </div>
+                                                        {i === 0 && <Crown size={16} className="text-brand-alert" />}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 mb-3">
+                                                        <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-2" style={{ borderColor: s.color, backgroundColor: `${s.color}15` }}>
+                                                            <Building2 size={18} style={{ color: s.color }} />
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <p className="text-sm font-bold text-white truncate">{c.user_name}</p>
-                                                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate">{outlet?.name || t('gamification.outletFallback')}</p>
+                                                            <p className="text-lg font-geometric font-black text-white truncate">{s.outletName}</p>
+                                                            <p className="text-[10px] text-white/40 uppercase tracking-wider truncate">{s.topUser}</p>
                                                         </div>
                                                     </div>
-                                                </td>
-                                                <td className="px-5 py-3 text-center">
-                                                    <div className="flex items-center gap-1.5 justify-center">
-                                                        <span className="text-brand-eco text-[11px] font-black" title="Waste">{c.waste_entries}</span>
-                                                        <span className="text-white/15 text-[10px]">/</span>
-                                                        <span className="text-blue-400 text-[11px] font-black" title="Water">{c.water_entries}</span>
-                                                        <span className="text-white/15 text-[10px]">/</span>
-                                                        <span className="text-amber-400 text-[11px] font-black" title="Energy">{c.energy_entries}</span>
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="text-3xl font-black text-white">{s.maxStreak}</span>
+                                                        <span className="text-[10px] font-bold text-white/40 uppercase">{t('gamification.days')}</span>
                                                     </div>
-                                                </td>
-                                                <td className="px-5 py-3 text-center">
-                                                    <div className="flex items-center gap-1 justify-center">
-                                                        <Flame size={12} className={c.streak_days >= 3 ? 'text-brand-alert' : 'text-white/30'} />
-                                                        <span className="text-sm font-black text-white">{c.streak_days}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-5 py-3 text-right text-[10px] text-white/30 font-medium">{formattedDate}</td>
-                                            </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Full outlet streak list */}
+                                        <div className="rounded-2xl border border-brand-gold/20 bg-[#1c3933] overflow-hidden">
+                                            <table className="w-full">
+                                                <colgroup>
+                                                    <col className="w-[40%]" />
+                                                    <col className="w-[20%]" />
+                                                    <col className="w-[20%]" />
+                                                    <col className="w-[20%]" />
+                                                </colgroup>
+                                                <thead>
+                                                    <tr className="border-b border-brand-gold/15">
+                                                        <th className="px-5 py-3 text-left text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.userHeader')}</th>
+                                                        <th className="px-5 py-3 text-center text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.entriesHeader')}</th>
+                                                        <th className="px-5 py-3 text-center text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.streakHeader')}</th>
+                                                        <th className="px-5 py-3 text-right text-[10px] font-black text-brand-gold uppercase tracking-widest">{t('gamification.dateHeader')}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-brand-gold/5">
+                                                    {outletStreaks.map((s) => {
+                                                        const formattedDate = new Date(s.latestDate).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' });
+                                                        return (
+                                                        <tr key={s.outletId} className="hover:bg-brand-gold/5 transition-all">
+                                                            <td className="px-5 py-3">
+                                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2" style={{ borderColor: s.color, backgroundColor: `${s.color}15` }}>
+                                                                        <Building2 size={14} style={{ color: s.color }} />
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-sm font-bold text-white truncate">{s.outletName}</p>
+                                                                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate">{s.topUser}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-3 text-center">
+                                                                <div className="flex items-center gap-1.5 justify-center">
+                                                                    <span className="text-brand-eco text-[11px] font-black" title="Waste">{s.totalWaste}</span>
+                                                                    <span className="text-white/15 text-[10px]">/</span>
+                                                                    <span className="text-blue-400 text-[11px] font-black" title="Water">{s.totalWater}</span>
+                                                                    <span className="text-white/15 text-[10px]">/</span>
+                                                                    <span className="text-amber-400 text-[11px] font-black" title="Energy">{s.totalEnergy}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-3 text-center">
+                                                                <div className="flex items-center gap-1 justify-center">
+                                                                    <Flame size={12} className={s.maxStreak >= 3 ? 'text-brand-alert' : 'text-white/30'} />
+                                                                    <span className="text-sm font-black text-white">{s.maxStreak}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-3 text-right text-[10px] text-white/30 font-medium">{formattedDate}</td>
+                                                        </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </>
                     )}
                 </div>
@@ -863,6 +909,12 @@ const LiveActivityTab: React.FC<{
                                                     <span className="text-[11px] font-bold text-white truncate">{t(meta.labelKey)}</span>
                                                     <span className="text-white/15 text-[10px]">·</span>
                                                     <span className="text-[9px] font-black text-white/40 uppercase tracking-wider truncate">{log.staff_name}</span>
+                                                    {log.outlet_name && log.outlet_name !== 'Outlet' && (
+                                                        <>
+                                                            <span className="text-white/15 text-[10px]">·</span>
+                                                            <span className="text-[9px] font-bold text-brand-gold/50 uppercase tracking-wider truncate hidden sm:inline">{log.outlet_name}</span>
+                                                        </>
+                                                    )}
                                                 </div>
                                                 <span className="text-[9px] text-white/25 font-medium shrink-0 hidden sm:inline">{timeStr}</span>
                                                 <span className="text-xs font-black shrink-0" style={{ color: meta.color }}>+{log.points_awarded}</span>
