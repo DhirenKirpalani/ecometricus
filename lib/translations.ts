@@ -656,6 +656,7 @@ export const translations: Record<string, TranslationSection> = {
     cycleQuarterly:        { en: 'Quarterly', es: 'Trimestral' },
     reportCycle:           { en: 'Report Cycle', es: 'Ciclo de Reporte' },
     outletSelection:       { en: 'Outlet Selection', es: 'Selección de Outlet' },
+    chartOutletFilter:     { en: 'Filter charts by outlet', es: 'Filtrar gráficos por outlet' },
     fromDate:              { en: 'From Date', es: 'Desde Fecha' },
     toDate:                { en: 'To Date', es: 'Hasta Fecha' },
     auditCommentsPlaceholder: { en: 'Add operational notes or compliance details for the current reporting cycle...', es: 'Agrega notas operativas o detalles de cumplimiento para el ciclo de reporte actual...' },

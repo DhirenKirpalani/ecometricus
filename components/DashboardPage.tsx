@@ -5,6 +5,7 @@ import { useNavigate as useRouterNavigate, useLocation } from 'react-router-dom'
 import MilaWidget from './MilaWidget';
 import AlertsPanel from './AlertsPanel';
 import GamificationHub from './GamificationHub';
+import CustomSelect from './CustomSelect';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
 import { sha256 } from '../lib/hash';
@@ -86,7 +87,8 @@ import {
   Store,
   User,
   Briefcase,
-  ClipboardList
+  ClipboardList,
+  Filter
 } from 'lucide-react';
 import FoodWasteChart from './FoodWasteChart';
 import WaterUsageChart from './WaterUsageChart';
@@ -472,79 +474,6 @@ const Sparkline: React.FC<{ color: string, data: number[] }> = ({ color, data })
     </svg>
   </div>
 );
-
-// ── Fully-themed custom select (native <select> can't be styled on macOS) ──
-interface CustomSelectProps {
-  value: string;
-  options: string[];
-  onChange: (v: string) => void;
-  disabled?: boolean;
-  placeholder?: string;
-  emptyMessage?: string;
-  checkedValues?: string[];
-  translateOption?: (v: string) => string;
-}
-const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onChange, disabled, placeholder, emptyMessage, checkedValues, translateOption }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const display = (v: string) => (translateOption ? translateOption(v) : v);
-
-  return (
-    <div ref={ref} className="relative w-full">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => !disabled && setOpen(o => !o)}
-        className={`w-full flex items-center justify-between bg-[#152E2A] border rounded-xl py-3 px-4 text-sm text-left transition-colors
-          ${disabled ? 'opacity-40 cursor-not-allowed border-brand-gold/15' : 'border-brand-gold/25 hover:border-brand-gold/150 cursor-pointer'}
-          ${open ? 'border-brand-gold' : ''}`}
-      >
-        <span className={value ? 'text-white' : 'text-white/40'}>{value ? display(value) : (placeholder || 'Select…')}</span>
-        <ChevronDown size={14} className={`text-brand-gold/60 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute z-[9999] mt-1 w-full rounded-xl border border-brand-gold/25 bg-[#152E2A] shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
-          <ul className="max-h-56 overflow-y-auto scrollbar-gold py-1">
-            {options.length === 0 ? (
-              <li className="px-4 py-3 text-xs text-white/30 italic text-center select-none">
-                {emptyMessage ?? 'No options available'}
-              </li>
-            ) : options.map(opt => {
-              const isSelected = opt === value || (checkedValues && checkedValues.includes(opt));
-              return (
-              <li key={opt}>
-                <button
-                  type="button"
-                  onClick={() => { onChange(opt); setOpen(false); }}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2
-                    ${isSelected
-                      ? 'text-brand-gold bg-brand-gold/10 font-semibold'
-                      : 'text-white/70 hover:text-white hover:bg-brand-dark/60'}`}
-                >
-                  {isSelected && <Check size={12} className="text-brand-gold shrink-0" />}
-                  {!isSelected && <span className="w-3 shrink-0" />}
-                  {display(opt)}
-                </button>
-              </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ── Custom date picker (native date input popup can't be themed on macOS) ──
 const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1740,6 +1669,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   }, {} as Record<string, string>);
   // All outlet name keys from registered outlets (for charts that need all outlets even with 0 data)
   const allOutletNameKeys = outlets.map(o => (o.outlet_name || o.name).toUpperCase());
+  // Chart outlet filter — specific outlet code (no "all" option)
+  const [chartOutletFilter, setChartOutletFilter] = useState<string>('');
+  // Filtered outlet keys for charts based on the selected outlet
+  const filteredOutletKeys = useMemo(() => {
+    const code = chartOutletFilter || outlets[0]?.code || '';
+    const selected = outlets.find(o => o.code === code);
+    if (!selected) return allOutletNameKeys;
+    return [(selected.outlet_name || selected.name).toUpperCase()];
+  }, [chartOutletFilter, allOutletNameKeys, outlets]);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
@@ -1748,52 +1686,122 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   // Dynamic fetch whenever the selected outlet changes
   useEffect(() => {
     const fetchDynamicBenchmarks = async () => {
-      const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
-        ? (params.selectedManualOutlet === 'all'
-          ? t('dashboard.allOutlets')
-          : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
-        : 'Unknown Outlet';
+      // Resolve the selected outlet name — works for both profile and manual mode
+      let selectedOutletName = 'Unknown Outlet';
+      if (params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
+        selectedOutletName = outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet';
+      } else if (params.selectedManualOutlet === 'all') {
+        selectedOutletName = t('dashboard.allOutlets');
+      }
         
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       
+      // Try to fetch per-outlet benchmarks
       const { data, error } = await supabase
         .from('benchmarks')
         .select('*')
         .eq('outlet_name', selectedOutletName)
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
         
       if (data) {
+        // Per-outlet benchmarks found — use them
         setParams(prev => ({
           ...prev,
           id: data.id || prev.id,
           wasteTarget: data.food_waste_target_kg || prev.wasteTarget,
           energyTarget: data.energy_limit_kwh || prev.energyTarget,
-          waterTarget: data.water_usage_liters || data.water_usage_target_l || prev.waterTarget
+          waterTarget: data.water_usage_liters || data.water_usage_target_l || prev.waterTarget,
+          foodCostTarget: data.food_cost_cap_percent || prev.foodCostTarget,
+          laborCostTarget: data.labor_cost_cap_percent || prev.laborCostTarget,
+          profitMarginTarget: data.profit_margin_target || prev.profitMarginTarget,
+          totalSalesTarget: data.total_sales_target || prev.totalSalesTarget,
+          sentimentTarget: data.sentiment_target || prev.sentimentTarget,
+          avgCheckTarget: data.avg_check_target || prev.avgCheckTarget,
+          gamificationGoal: data.gamification_goal || prev.gamificationGoal
         }));
         
         if (data.updated_at || data.created_at) {
           setParamsUpdatedAt(new Date(data.updated_at || data.created_at).toLocaleString());
         }
       } else {
-        // Fallback to absolute defaults if no data exists
-        setParams(prev => ({
-          ...prev,
-          wasteTarget: 100,
-          energyTarget: 1200,
-          waterTarget: 30000
-        }));
-        setParamsUpdatedAt(null);
+        // No per-outlet benchmarks — fall back to the global "Unknown Outlet" record
+        const { data: globalData } = await supabase
+          .from('benchmarks')
+          .select('*')
+          .eq('outlet_name', 'Unknown Outlet')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        
+        if (globalData) {
+          setParams(prev => ({
+            ...prev,
+            id: globalData.id || prev.id,
+            wasteTarget: globalData.food_waste_target_kg || prev.wasteTarget,
+            energyTarget: globalData.energy_limit_kwh || prev.energyTarget,
+            waterTarget: globalData.water_usage_liters || globalData.water_usage_target_l || prev.waterTarget,
+            foodCostTarget: globalData.food_cost_cap_percent || prev.foodCostTarget,
+            laborCostTarget: globalData.labor_cost_cap_percent || prev.laborCostTarget,
+            profitMarginTarget: globalData.profit_margin_target || prev.profitMarginTarget,
+            totalSalesTarget: globalData.total_sales_target || prev.totalSalesTarget,
+            sentimentTarget: globalData.sentiment_target || prev.sentimentTarget,
+            avgCheckTarget: globalData.avg_check_target || prev.avgCheckTarget,
+            gamificationGoal: globalData.gamification_goal || prev.gamificationGoal
+          }));
+          if (globalData.updated_at || globalData.created_at) {
+            setParamsUpdatedAt(new Date(globalData.updated_at || globalData.created_at).toLocaleString());
+          }
+        }
       }
     };
 
-    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet) {
+    // Fetch whenever outlet selection changes (any mode)
+    if (params.selectedManualOutlet) {
       fetchDynamicBenchmarks();
     }
   }, [params.benchmarkRegion, params.selectedManualOutlet, outlets]);
 
   const [manualOutletSettings, setManualOutletSettings] = useState<Record<string, any>>({});
+
+  // Per-outlet benchmarks for chart filter — fetched when chart outlet filter changes
+  const [chartOutletBenchmarks, setChartOutletBenchmarks] = useState<{ waste: number; water: number; energy: number } | null>(null);
+  useEffect(() => {
+    const fetchChartOutletBenchmarks = async () => {
+      const code = chartOutletFilter || outlets[0]?.code || '';
+      if (!code || outlets.length <= 1) { setChartOutletBenchmarks(null); return; }
+      const outlet = outlets.find(o => o.code === code);
+      if (!outlet) { setChartOutletBenchmarks(null); return; }
+      const outletName = outlet.outlet_name || outlet.name || '';
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from('benchmarks')
+        .select('food_waste_target_kg, water_usage_liters, energy_limit_kwh')
+        .eq('outlet_name', outletName)
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (data) {
+        setChartOutletBenchmarks({
+          waste: data.food_waste_target_kg || params.wasteTarget,
+          water: data.water_usage_liters || params.waterTarget,
+          energy: data.energy_limit_kwh || params.energyTarget,
+        });
+      } else {
+        setChartOutletBenchmarks(null);
+      }
+    };
+    fetchChartOutletBenchmarks();
+  }, [chartOutletFilter, outlets]);
+
+  // Effective chart benchmarks — use per-outlet values when available, otherwise global params
+  const effectiveChartWasteTarget = chartOutletBenchmarks?.waste ?? params.wasteTarget;
+  const effectiveChartWaterTarget = chartOutletBenchmarks?.water ?? params.waterTarget;
+  const effectiveChartEnergyTarget = chartOutletBenchmarks?.energy ?? params.energyTarget;
+  const effectiveChartWasteDailyBenchmark = effectiveChartWasteTarget / 7;
+  const effectiveChartCo2DailyBenchmark = (effectiveChartWasteTarget / 7) * 2.85;
+  const effectiveChartWaterDailyBenchmark = effectiveChartWaterTarget / 7;
+  const effectiveChartEnergyDailyBenchmark = effectiveChartEnergyTarget / 7;
 
   // Handle auto-mapping roles/permissions when position changes
   // Skip when editing an existing user — use a ref to avoid race conditions
@@ -1858,9 +1866,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     }
   }, [company.currentOutletName, outlets, sequenceCounter]);
 
-  // Load per-outlet settings when manual outlet selection changes
+  // Load per-outlet settings when outlet selection changes (any mode)
   useEffect(() => {
-    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
+    if (params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
       const saved = manualOutletSettings[params.selectedManualOutlet];
       if (saved) {
         setParams(prev => ({ ...prev, ...saved }));
@@ -2430,7 +2438,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
     }
     const userId = session.user.id;
 
-    const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
+    const selectedOutletName = params.selectedManualOutlet
       ? (params.selectedManualOutlet === 'all'
         ? t('dashboard.allOutlets')
         : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
@@ -2467,7 +2475,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       logAction('benchmarks_saved', 'benchmark', params.benchmarkRegion, `Saved benchmark parameters (${params.benchmarkRegion})`, { wasteTarget: params.wasteTarget, energyTarget: params.energyTarget, waterTarget: params.waterTarget });
     }
 
-    if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
+    if (params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
       setManualOutletSettings(prev => ({
         ...prev,
         [params.selectedManualOutlet]: {
@@ -2505,7 +2513,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { setAutoSaveStatus('idle'); return; }
 
-        const selectedOutletName = params.benchmarkRegion === 'Manual' && params.selectedManualOutlet
+        const selectedOutletName = params.selectedManualOutlet
           ? (params.selectedManualOutlet === 'all'
             ? t('dashboard.allOutlets')
             : (outlets.find(o => o.code === params.selectedManualOutlet)?.name || 'Unknown Outlet'))
@@ -2527,7 +2535,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id, outlet_name' });
 
-        if (params.benchmarkRegion === 'Manual' && params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
+        if (params.selectedManualOutlet && params.selectedManualOutlet !== 'all') {
           setManualOutletSettings(prev => ({
             ...prev,
             [params.selectedManualOutlet]: {
@@ -4542,6 +4550,27 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                                   {t('dashboard.sustainabilityReportSubtitle')}
                                 </p>
                               </div>
+                              {/* Outlet filter for charts */}
+                              {outlets.length > 1 && (
+                                <div className="flex items-center gap-2 ml-auto shrink-0">
+                                  <Filter size={14} className="text-brand-gold/60" />
+                                  <div className="w-44">
+                                    <CustomSelect
+                                      compact
+                                      value={(() => {
+                                        const code = chartOutletFilter || outlets[0]?.code || '';
+                                        const o = outlets.find(o => o.code === code);
+                                        return o ? `${o.name} (${code})` : '';
+                                      })()}
+                                      options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                                      onChange={v => {
+                                        const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
+                                        setChartOutletFilter(code);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -4549,8 +4578,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-full h-[300px] sm:h-[380px]">
                               <FoodWasteTemplateChart
                                 data={wasteChartData}
-                                benchmark={wasteDailyMassBenchmark}
-                                outletKeys={allOutletNameKeys}
+                                benchmark={effectiveChartWasteDailyBenchmark}
+                                outletKeys={filteredOutletKeys}
                                 outletColors={templateOutletColors}
                                 outletLabels={templateOutletLabels}
                               />
@@ -4558,8 +4587,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-full h-[300px] sm:h-[380px]">
                               <WaterUsageTemplateChart
                                 data={waterData}
-                                benchmark={resourceWaterBenchmark}
-                                outletKeys={allOutletNameKeys}
+                                benchmark={effectiveChartWaterDailyBenchmark}
+                                outletKeys={filteredOutletKeys}
                                 outletColors={templateOutletColors}
                                 outletLabels={templateOutletLabels}
                               />
@@ -4567,8 +4596,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-full h-[300px] sm:h-[380px]">
                               <EnergyUsageTemplateChart
                                 data={energyData}
-                                benchmark={resourceEnergyBenchmark}
-                                outletKeys={allOutletNameKeys}
+                                benchmark={effectiveChartEnergyDailyBenchmark}
+                                outletKeys={filteredOutletKeys}
                                 outletColors={templateOutletColors}
                                 outletLabels={templateOutletLabels}
                               />
@@ -4576,9 +4605,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             <div className="w-full h-[300px] sm:h-[380px]">
                               <Co2EmissionsTemplateChart
                                 data={wasteChartData}
-                                benchmark={wasteDailyBenchmark}
+                                benchmark={effectiveChartCo2DailyBenchmark}
                                 weeklyTotal={wasteWeeklyTotal}
-                                outletKeys={allOutletNameKeys}
+                                outletKeys={filteredOutletKeys}
                                 outletColors={templateOutletColors}
                                 outletLabels={templateOutletLabels}
                               />
