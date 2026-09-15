@@ -2585,13 +2585,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // ── Role-based report config ──
       const roleLower = (user.role || '').toLowerCase();
       const isSupervisorReport = roleLower === 'supervisor' || roleLower === 'basic';
-      const reportType = isSupervisorReport ? 'Report 1 — Single Outlet Report' : 'Report 2 — Cumulative / Property-Wide Report';
+      const reportType = isSupervisorReport ? 'Report 1 — Single Outlet Report' : 'Report 2 — Cumulative Report';
       const reportScope = isSupervisorReport
         ? (userOutletName || auditReport.outletSelection || '—')
         : (auditReport.outletSelection || 'All Outlets');
       const generatedForRole = isSupervisorReport
         ? 'Supervisor (Executive Chef / Outlet Manager)'
-        : (isGM ? 'General Manager (Property-Wide)' : 'Admin / Super Admin (Property-Wide)');
+        : (isGM ? 'General Manager' : 'Admin');
 
       // ── Compute week date range ──
       const wStart = effectiveWeekStartISO ? new Date(effectiveWeekStartISO) : new Date();
@@ -2724,65 +2724,96 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // Helper: section header
       const sectionHeader = (num: string, title: string) => {
         if (y > pageH - 80) { doc.addPage(); y = margin; }
+        // Gold accent bar
+        doc.setFillColor(200, 164, 19);
+        doc.rect(margin, y - 8, 3, 12, 'F');
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(40, 40, 40);
-        doc.text(`${num}. ${title}`, margin, y);
-        y += 8;
+        doc.setTextColor(28, 57, 51);
+        doc.text(`${num ? num + '. ' : ''}${title}`, margin + 8, y);
+        y += 4;
         doc.setDrawColor(200, 164, 19);
-        doc.setLineWidth(1);
+        doc.setLineWidth(0.8);
         doc.line(margin, y, pageW - margin, y);
-        y += 16;
+        y += 18;
       };
 
       // Helper: config row
       const configRow = (label: string, val: string) => {
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(100, 100, 100);
+        doc.setTextColor(120, 120, 120);
         doc.text(label, margin, y);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(40, 40, 40);
+        doc.setTextColor(28, 57, 51);
         doc.text(val, margin + 170, y);
         y += 15;
       };
 
-      // Helper: table header row
-      const tableHeader = (cols: { text: string; x: number }[]) => {
-        doc.setFontSize(8);
+      // Helper: table header row (dark brand header)
+      const tableHeader = (cols: { text: string; x: number; width?: number }[]) => {
+        // Consistent 6pt gap above the header rect
+        y += 6;
+        // Dark header background — centered on text baseline
+        doc.setFillColor(28, 57, 51);
+        const headerH = 18;
+        const rectY = y - 11;
+        doc.rect(margin, rectY, pageW - margin * 2, headerH, 'F');
+        doc.setFontSize(7.5);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(100, 100, 100);
-        cols.forEach(c => doc.text(c.text, c.x, y));
-        y += 5;
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.5);
-        doc.line(margin, y, pageW - margin, y);
-        y += 12;
+        doc.setTextColor(200, 164, 19);
+        cols.forEach(c => doc.text(c.text, c.x, y - 1));
+        y += headerH + 2; // 2pt gap between header and first data row
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(40, 40, 40);
       };
 
-      // Helper: table data row
-      const tableRow = (cols: { text: string; x: number; color?: [number, number, number]; badge?: boolean }[]) => {
+      // Helper: table data row (with zebra striping)
+      let zebraIdx = 0;
+      const tableRow = (cols: { text: string; x: number; color?: [number, number, number]; badge?: boolean; bold?: boolean }[]) => {
         if (y > pageH - 40) { doc.addPage(); y = margin; }
+        const rowH = 14;
+        // Zebra background — starts 2pt below header for a small gap
+        if (zebraIdx % 2 === 0) {
+          doc.setFillColor(248, 250, 248);
+          doc.rect(margin, y - 10, pageW - margin * 2, rowH, 'F');
+        }
+        zebraIdx++;
         doc.setFontSize(8);
         cols.forEach(c => {
           if (c.badge && c.color) {
-            // Draw pill badge: colored rect + white text
             const tw = doc.getTextWidth(c.text) + 8;
             doc.setFillColor(...c.color);
-            doc.roundedRect(c.x - 1, y - 8, tw, 11, 2, 2, 'F');
+            doc.roundedRect(c.x - 1, y - 8, tw, 11, 2.5, 2.5, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
             doc.text(c.text, c.x + 3, y);
             doc.setFont('helvetica', 'normal');
           } else {
-            if (c.color) doc.setTextColor(...c.color); else doc.setTextColor(40, 40, 40);
+            if (c.color) doc.setTextColor(...c.color);
+            else doc.setTextColor(40, 40, 40);
+            if (c.bold) doc.setFont('helvetica', 'bold');
             doc.text(c.text, c.x, y);
+            if (c.bold) doc.setFont('helvetica', 'normal');
           }
         });
         doc.setTextColor(40, 40, 40);
-        y += 13;
+        y += rowH;
+      };
+
+      // Helper: reset zebra for new table
+      const resetZebra = () => { zebraIdx = 0; };
+
+      // Helper: narrative note (italic, muted)
+      const narrativeNote = (text: string) => {
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(100, 100, 100);
+        doc.splitTextToSize(text, pageW - margin * 2).forEach((line: string) => {
+          if (y > pageH - 40) { doc.addPage(); y = margin; }
+          doc.text(line, margin, y); y += 11;
+        });
+        doc.setFont('helvetica', 'normal');
+        y += 4;
       };
 
       // ── Page header bar ──
@@ -2810,7 +2841,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // Right side
       doc.setFontSize(7.5);
       doc.setTextColor(180, 220, 180);
-      doc.text(`Report Generated: Mila AI v2.4`, pageW - margin, 20, { align: 'right' });
+      doc.text(`Report Generated: Mila AI v${__APP_VERSION__}`, pageW - margin, 20, { align: 'right' });
       doc.setTextColor(180, 180, 180);
       doc.text(new Date().toLocaleString(lang === 'es' ? 'es-ES' : 'en-US'), pageW - margin, 32, { align: 'right' });
       // Gold rule below header
@@ -2829,52 +2860,59 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       sectionHeader('1', 'REPORT CONFIGURATION');
       configRow('REPORT TYPE', reportType);
       configRow('GENERATED FOR (ROLE)', generatedForRole);
-      configRow('PROPERTY', `${company.company_name || company.name || '—'}`);
       configRow('OUTLET', reportScope);
       configRow('REPORT CYCLE', auditReport.cycle || 'Weekly');
       configRow('DATE RANGE', dateRangeStr);
       configRow('GHG BOUNDARY', 'Scope 1 + Scope 2 (kitchen fuel + purchased electricity)');
       configRow('COVERS SERVED', 'Not logged this cycle — required for intensity metrics (see §7)');
-      y += 6;
+      y += 10;
 
       // ── 1A. METER SOURCE DECLARATION ──
       sectionHeader('1A', 'METER SOURCE DECLARATION');
+      resetZebra();
       tableHeader([
         { text: 'UTILITY', x: margin },
-        { text: 'METER TYPE', x: margin + 100 },
-        { text: 'SCOPE NOTE', x: margin + 220 },
-        { text: 'DATA STATUS', x: margin + 380 },
+        { text: 'METER TYPE', x: margin + 90 },
+        { text: 'SCOPE NOTE', x: margin + 210 },
+        { text: 'DATA STATUS', x: margin + 360 },
+        { text: 'DECLARED BY', x: margin + 430 },
       ]);
       tableRow([
         { text: 'Water', x: margin },
-        { text: 'Submeter (F&B)', x: margin + 100 },
-        { text: 'Covers kitchen + dish pit', x: margin + 220 },
-        { text: 'MEASURED', x: margin + 380, color: [119, 177, 57], badge: true },
+        { text: 'Submeter (F&B)', x: margin + 90 },
+        { text: 'Covers kitchen + dish pit', x: margin + 210 },
+        { text: 'MEASURED', x: margin + 360, color: [119, 177, 57], badge: true },
+        { text: `Outlet Manager — ${reportScope.split(' ')[0]}`, x: margin + 430 },
       ]);
       tableRow([
         { text: 'Energy', x: margin },
-        { text: 'Whole-Hotel Meter', x: margin + 100 },
-        { text: 'No kitchen-only submeter', x: margin + 220 },
-        { text: 'ESTIMATED', x: margin + 380, color: [200, 130, 19], badge: true },
+        { text: 'Whole-Hotel Meter', x: margin + 90 },
+        { text: 'No kitchen-only submeter', x: margin + 210 },
+        { text: 'ESTIMATED', x: margin + 360, color: [200, 130, 19], badge: true },
+        { text: `Outlet Manager — ${reportScope.split(' ')[0]}`, x: margin + 430 },
       ]);
-      y += 6;
+      narrativeNote('Energy is drawn from the whole-hotel meter — no F&B-dedicated submeter exists for this outlet yet. Every Energy figure in this report is tagged ESTIMATED and should not be read as kitchen-isolated consumption until submetering is installed or a sourced allocation ratio is applied.');
+      y += 10;
 
       // ── 2. EXECUTIVE SUMMARY ──
       sectionHeader('2', 'EXECUTIVE SUMMARY');
+      narrativeNote('Every figure below is a direct read from the Weekly Results Table (§4) — no summary statistic is stated without a corresponding table cell.');
+      resetZebra();
       tableHeader([
         { text: 'METRIC', x: margin },
-        { text: 'WEEKLY TOTAL', x: margin + 110 },
-        { text: 'DAILY AVG', x: margin + 200 },
-        { text: 'TARGET/DAY', x: margin + 270 },
-        { text: 'AVG VS TARGET', x: margin + 340 },
-        { text: 'STATUS', x: margin + 430 },
+        { text: 'WEEKLY TOTAL', x: margin + 95 },
+        { text: 'DAILY AVG', x: margin + 175 },
+        { text: 'TARGET/DAY', x: margin + 240 },
+        { text: 'AVG VS TARGET', x: margin + 305 },
+        { text: 'STATUS', x: margin + 380 },
+        { text: 'METER', x: margin + 445 },
       ]);
       const summaryRows = [
-        { metric: 'Food Waste', weekly: `${weeklyWaste} kg`, avg: `${wasteAvg.toFixed(1)} kg`, target: `<${wasteDailyTarget} kg`, variance: wasteVar, status: getStatus(wasteVar) },
-        { metric: 'Water', weekly: `${weeklyWater.toLocaleString()} L`, avg: `${waterAvg.toFixed(1)} L`, target: `<=${Math.round(waterDailyTarget)} L`, variance: waterVar, status: getStatus(waterVar) },
-        { metric: 'Energy', weekly: `${weeklyEnergy.toLocaleString()} kWh`, avg: `${energyAvg.toFixed(1)} kWh`, target: `<=${Math.round(energyDailyTarget)} kWh`, variance: energyVar, status: getStatus(energyVar) },
-        { metric: 'CO2e', weekly: `${weeklyCo2} kg`, avg: `${co2Avg.toFixed(1)} kg`, target: `<${co2DailyTarget.toFixed(0)} kg`, variance: co2Var, status: getStatus(co2Var) },
-        { metric: 'Financial Loss', weekly: `$${weeklyFinancial.toLocaleString()}`, avg: `$${financialAvg.toFixed(1)}`, target: `<$${financialDailyTarget}`, variance: financialVar, status: getStatus(financialVar) },
+        { metric: 'Food Waste', weekly: `${weeklyWaste} kg`, avg: `${wasteAvg.toFixed(1)} kg`, target: `<${wasteDailyTarget} kg`, variance: wasteVar, status: getStatus(wasteVar), meter: 'MEASURED' },
+        { metric: 'Water', weekly: `${weeklyWater.toLocaleString()} L`, avg: `${waterAvg.toFixed(1)} L`, target: `<=${Math.round(waterDailyTarget)} L`, variance: waterVar, status: getStatus(waterVar), meter: 'MEASURED' },
+        { metric: 'Energy', weekly: `${weeklyEnergy.toLocaleString()} kWh`, avg: `${energyAvg.toFixed(1)} kWh`, target: `<=${Math.round(energyDailyTarget)} kWh`, variance: energyVar, status: getStatus(energyVar), meter: 'ESTIMATED' },
+        { metric: 'CO2e', weekly: `${weeklyCo2} kg`, avg: `${co2Avg.toFixed(1)} kg`, target: `<${co2DailyTarget.toFixed(0)} kg`, variance: co2Var, status: getStatus(co2Var), meter: 'PARTIAL' },
+        { metric: 'Financial Loss', weekly: `$${weeklyFinancial.toLocaleString()}`, avg: `$${financialAvg.toFixed(1)}`, target: `<$${financialDailyTarget}`, variance: financialVar, status: getStatus(financialVar), meter: 'N/A' },
       ];
       const statusColor = (s: string): [number, number, number] => {
         if (s === 'URGENT') return [220, 38, 38];
@@ -2882,20 +2920,29 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         if (s === 'WATCH') return [200, 164, 19];
         return [119, 177, 57];
       };
+      const meterColor = (m: string): [number, number, number] => {
+        if (m === 'MEASURED') return [119, 177, 57];
+        if (m === 'ESTIMATED') return [200, 130, 19];
+        if (m === 'PARTIAL') return [168, 85, 247];
+        return [120, 120, 120];
+      };
       summaryRows.forEach(r => {
         tableRow([
           { text: r.metric, x: margin },
-          { text: r.weekly, x: margin + 110 },
-          { text: r.avg, x: margin + 200 },
-          { text: r.target, x: margin + 270 },
-          { text: `${r.variance > 0 ? '+' : ''}${r.variance.toFixed(1)}%`, x: margin + 340, color: r.variance > 0 ? [220, 38, 38] : [119, 177, 57] },
-          { text: r.status, x: margin + 430, color: statusColor(r.status), badge: true },
+          { text: r.weekly, x: margin + 95 },
+          { text: r.avg, x: margin + 175 },
+          { text: r.target, x: margin + 240 },
+          { text: `${r.variance > 0 ? '+' : ''}${r.variance.toFixed(1)}%`, x: margin + 305, color: r.variance > 0 ? [220, 38, 38] : [119, 177, 57] },
+          { text: r.status, x: margin + 380, color: statusColor(r.status), badge: true },
+          { text: r.meter, x: margin + 445, color: meterColor(r.meter), badge: true },
         ]);
       });
-      y += 6;
+      narrativeNote('CO2e is tagged PARTIAL because it blends a MEASURED food-waste component with an ESTIMATED energy component — the two are not yet decomposed separately (see §7).');
+      y += 10;
 
       // ── 3. ESG / GSTC / SDG ALIGNMENT ──
       sectionHeader('3', 'ESG / GSTC / SDG ALIGNMENT — F&B-SCOPED');
+      resetZebra();
       tableHeader([
         { text: 'PILLAR', x: margin },
         { text: 'METRIC (F&B-SCOPED)', x: margin + 60 },
@@ -2919,10 +2966,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           { text: r.sdg, x: margin + 370 },
         ]);
       });
-      y += 6;
+      y += 10;
 
       // ── 4. WEEKLY RESULTS TABLE ──
       sectionHeader('4', 'WEEKLY RESULTS TABLE — SINGLE SOURCE OF TRUTH');
+      resetZebra();
       tableHeader([
         { text: 'DAY', x: margin },
         { text: 'FOOD WASTE (KG)', x: margin + 70 },
@@ -2931,6 +2979,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         { text: 'CO2e (KG)', x: margin + 370 },
         { text: 'FINANCIAL ($)', x: margin + 450 },
       ]);
+      // Sub-header row showing meter status per column
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(120, 120, 120);
+      doc.text('MEASURED', margin + 70, y - 1);
+      doc.text('MEASURED', margin + 180, y - 1);
+      doc.text('ESTIMATED', margin + 280, y - 1);
+      doc.text('PARTIAL', margin + 370, y - 1);
+      doc.text('N/A', margin + 450, y - 1);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(40, 40, 40);
       dailyRows.forEach(r => {
         tableRow([
           { text: r.day, x: margin },
@@ -2943,25 +3003,34 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       });
       // Totals row
       doc.setDrawColor(200, 164, 19);
-      doc.setLineWidth(0.5);
+      doc.setLineWidth(0.8);
       doc.line(margin, y - 3, pageW - margin, y - 3);
       tableRow([
-        { text: 'Weekly Total', x: margin },
-        { text: String(weeklyWaste), x: margin + 70, color: [200, 164, 19] },
-        { text: weeklyWater.toLocaleString(), x: margin + 180, color: [200, 164, 19] },
-        { text: weeklyEnergy.toLocaleString(), x: margin + 280, color: [200, 164, 19] },
-        { text: String(weeklyCo2), x: margin + 370, color: [200, 164, 19] },
-        { text: weeklyFinancial.toLocaleString(), x: margin + 450, color: [200, 164, 19] },
+        { text: 'Weekly Total', x: margin, bold: true },
+        { text: String(weeklyWaste), x: margin + 70, color: [200, 164, 19], bold: true },
+        { text: weeklyWater.toLocaleString(), x: margin + 180, color: [200, 164, 19], bold: true },
+        { text: weeklyEnergy.toLocaleString(), x: margin + 280, color: [200, 164, 19], bold: true },
+        { text: String(weeklyCo2), x: margin + 370, color: [200, 164, 19], bold: true },
+        { text: weeklyFinancial.toLocaleString(), x: margin + 450, color: [200, 164, 19], bold: true },
       ]);
       tableRow([
-        { text: 'Daily Avg', x: margin },
-        { text: wasteAvg.toFixed(1), x: margin + 70 },
-        { text: waterAvg.toFixed(1), x: margin + 180 },
-        { text: energyAvg.toFixed(1), x: margin + 280 },
-        { text: co2Avg.toFixed(1), x: margin + 370 },
-        { text: financialAvg.toFixed(1), x: margin + 450 },
+        { text: 'Daily Avg', x: margin, bold: true },
+        { text: wasteAvg.toFixed(1), x: margin + 70, bold: true },
+        { text: waterAvg.toFixed(1), x: margin + 180, bold: true },
+        { text: energyAvg.toFixed(1), x: margin + 280, bold: true },
+        { text: co2Avg.toFixed(1), x: margin + 370, bold: true },
+        { text: financialAvg.toFixed(1), x: margin + 450, bold: true },
       ]);
-      y += 6;
+      tableRow([
+        { text: 'Per Cover Served', x: margin },
+        { text: 'Not calculable — covers data not logged this cycle', x: margin + 70, color: [150, 150, 150] },
+      ]);
+      tableRow([
+        { text: 'Per Occupied Room', x: margin },
+        { text: 'Not calculable — occupancy data not logged this cycle', x: margin + 70, color: [150, 150, 150] },
+      ]);
+      narrativeNote('Intensity rows are intentionally left unfilled rather than estimated. Populating them with invented occupancy figures would fabricate a benchmark; the report is designed to visibly show this gap until the input exists.');
+      y += 10;
 
       // ── 4B. SUSTAINABILITY PERFORMANCE CHARTS ──
       doc.addPage();
@@ -2976,7 +3045,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       doc.setTextColor(200, 164, 19);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text('REPORT 1 — OUTLET REPORT', margin + (logoBase64 ? 28 : 0), 13);
+      doc.text(reportType.toUpperCase(), margin + (logoBase64 ? 28 : 0), 13);
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(8);
       doc.text('Sustainability Performance Charts', margin + (logoBase64 ? 28 : 0), 25);
@@ -2985,7 +3054,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       doc.text(`${reportScope}  |  ${dateRangeStr}`, pageW - margin, 19, { align: 'right' });
       doc.setFillColor(200, 164, 19);
       doc.rect(0, 38, pageW, 1.5, 'F');
-      y = 55;
+      y = 66; // 38 (header) + 1.5 (gold rule) + 2.5 (gap) + 24 (card title bar height)
 
       // ── Bar chart drawing helper ──
       const drawBarChart = (
@@ -3000,97 +3069,148 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         cw: number,
         ch: number
       ) => {
+        const padL = 22; // left padding for Y-axis labels
+        const padB = 14; // bottom padding for day labels
+        const chartX = cx + padL;
+        const chartY = cy + 4;
+        const chartW = cw - padL - 4;
+        const chartH = ch - padB - 4;
         const maxVal = Math.max(...rows.map(r => r.value), benchmark * 1.5, 1);
-        const getBarH = (v: number) => (v / maxVal) * ch;
-        const getBarY = (v: number) => cy + ch - getBarH(v);
-        const barW = Math.floor(cw / rows.length) - 3;
-        const benchY = cy + ch - (benchmark / maxVal) * ch;
+        const getBarH = (v: number) => (v / maxVal) * chartH;
+        const barW = Math.floor(chartW / rows.length) - 4;
+        const benchY = chartY + chartH - (benchmark / maxVal) * chartH;
 
-        // Title
+        // ── Card container ──
+        doc.setFillColor(252, 253, 252);
+        doc.setDrawColor(225, 228, 225);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(cx, cy - 24, cw, ch + 28, 4, 4, 'FD');
+
+        // ── Title bar ──
+        doc.setFillColor(barColor[0], barColor[1], barColor[2]);
+        doc.roundedRect(cx, cy - 24, cw, 16, 4, 4, 'F');
+        // Square bottom of title bar
+        doc.setFillColor(barColor[0], barColor[1], barColor[2]);
+        doc.rect(cx, cy - 12, cw, 4, 'F');
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8);
-        doc.setTextColor(40, 40, 40);
-        doc.text(title, cx, cy - 18);
+        doc.setTextColor(255, 255, 255);
+        doc.text(title, cx + 6, cy - 13);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.5);
-        doc.setTextColor(120, 120, 120);
-        doc.text(subtitle, cx, cy - 9);
+        doc.setFontSize(6);
+        doc.setTextColor(255, 255, 255);
+        doc.setTextColor(255, 255, 255);
+        doc.text(subtitle, cx + 6, cy - 7);
 
-        // Chart background
-        doc.setFillColor(248, 248, 248);
-        doc.rect(cx, cy, cw, ch, 'F');
+        // ── Chart plot area background ──
+        doc.setFillColor(255, 255, 255);
+        doc.rect(chartX, chartY, chartW, chartH, 'F');
 
-        // Grid lines (4)
-        for (let gi = 1; gi <= 4; gi++) {
-          const gy = cy + (ch / 4) * gi;
-          doc.setDrawColor(220, 220, 220);
-          doc.setLineWidth(0.3);
-          doc.line(cx, gy, cx + cw, gy);
-          // Y-axis label
+        // ── Green safe zone (0 to benchmark) ──
+        if (benchmark > 0 && benchY >= chartY && benchY <= chartY + chartH) {
+          doc.setFillColor(119, 177, 57);
+          doc.setGState(doc.GState({ opacity: 0.06 }));
+          doc.rect(chartX, benchY, chartW, chartY + chartH - benchY, 'F');
+          doc.setGState(doc.GState({ opacity: 1 }));
+        }
+
+        // ── Grid lines (4) with Y-axis labels ──
+        for (let gi = 0; gi <= 4; gi++) {
+          const gy = chartY + (chartH / 4) * gi;
+          if (gi > 0 && gi < 4) {
+            doc.setDrawColor(235, 238, 235);
+            doc.setLineWidth(0.3);
+            doc.setLineDashPattern([1, 1], 0);
+            doc.line(chartX, gy, chartX + chartW, gy);
+            doc.setLineDashPattern([], 0);
+          }
           const labelVal = maxVal - (maxVal / 4) * gi;
           const labelStr = labelVal >= 1000 ? `${Math.round(labelVal / 1000)}K` : Math.round(labelVal).toString();
           doc.setFontSize(5.5);
-          doc.setTextColor(140, 140, 140);
-          doc.text(labelStr, cx - 2, gy + 2, { align: 'right' });
+          doc.setTextColor(160, 160, 160);
+          doc.text(labelStr, chartX - 3, gy + 2, { align: 'right' });
         }
 
-        // Bars
+        // ── Bars with gradient effect ──
         rows.forEach((r, i) => {
-          const bx = cx + i * (barW + 3) + 2;
-          const bh = Math.max(getBarH(r.value), r.value > 0 ? 2 : 0);
-          const by = cy + ch - bh;
+          const bx = chartX + i * (barW + 4) + 2;
+          const bh = Math.max(getBarH(r.value), r.value > 0 ? 3 : 0);
+          const by = chartY + chartH - bh;
+          const isOver = r.value > benchmark && benchmark > 0;
 
-          // Bar fill
-          if (r.value > benchmark) {
-            // Red tint over normal color
-            doc.setFillColor(...barColor);
-            doc.rect(bx, by, barW, bh, 'F');
+          // Gradient: draw 3 stacked rects from light → dark
+          const segs = 3;
+          for (let s = 0; s < segs; s++) {
+            const segH = bh / segs;
+            const segY = by + s * segH;
+            const factor = 1 - (s / segs) * 0.25; // top lighter, bottom darker
+            doc.setFillColor(
+              Math.round(barColor[0] * factor),
+              Math.round(barColor[1] * factor),
+              Math.round(barColor[2] * factor)
+            );
+            if (s === 0) {
+              // Rounded top on first segment
+              doc.roundedRect(bx, segY, barW, segH + 1, 1.5, 1.5, 'F');
+              // Square bottom of rounded rect
+              doc.rect(bx, segY + segH, barW, 1, 'F');
+            } else {
+              doc.rect(bx, segY, barW, segH, 'F');
+            }
+          }
+
+          // Red overlay for over-benchmark
+          if (isOver) {
             doc.setFillColor(220, 38, 38);
-            doc.setGState(doc.GState({ opacity: 0.2 }));
+            doc.setGState(doc.GState({ opacity: 0.18 }));
             doc.rect(bx, by, barW, bh, 'F');
             doc.setGState(doc.GState({ opacity: 1 }));
-          } else {
-            doc.setFillColor(...barColor);
-            doc.rect(bx, by, barW, bh, 'F');
           }
 
           // Day label
           doc.setFontSize(5.5);
-          doc.setTextColor(80, 80, 80);
-          doc.text(r.day.slice(0, 3), bx + barW / 2, cy + ch + 8, { align: 'center' });
+          doc.setTextColor(100, 100, 100);
+          doc.text(r.day, bx + barW / 2, chartY + chartH + 9, { align: 'center' });
 
-          // Value label on bar
+          // Value label above bar
           if (r.value > 0) {
             const valStr = r.value >= 1000 ? `${(r.value / 1000).toFixed(1)}K` : String(Math.round(r.value));
-            doc.setFontSize(5);
+            doc.setFontSize(5.5);
+            doc.setFont('helvetica', 'bold');
             doc.setTextColor(60, 60, 60);
-            doc.text(valStr, bx + barW / 2, Math.max(by - 2, cy + 4), { align: 'center' });
+            doc.text(valStr, bx + barW / 2, Math.max(by - 3, chartY + 5), { align: 'center' });
+            doc.setFont('helvetica', 'normal');
           }
         });
 
-        // Benchmark dashed line
-        if (benchmark > 0 && benchY >= cy && benchY <= cy + ch) {
+        // ── Benchmark dashed line ──
+        if (benchmark > 0 && benchY >= chartY && benchY <= chartY + chartH) {
           doc.setDrawColor(200, 164, 19);
-          doc.setLineWidth(0.8);
-          doc.setLineDashPattern([3, 2], 0);
-          doc.line(cx, benchY, cx + cw, benchY);
+          doc.setLineWidth(1);
+          doc.setLineDashPattern([4, 2], 0);
+          doc.line(chartX, benchY, chartX + chartW, benchY);
           doc.setLineDashPattern([], 0);
-          // Benchmark label
+          // Benchmark label badge
           const bLabel = benchmark >= 1000 ? `${(benchmark / 1000).toFixed(1)}K ${unit}/d` : `${Math.round(benchmark)} ${unit}/d`;
           doc.setFontSize(5.5);
-          doc.setTextColor(160, 120, 0);
-          doc.text(bLabel, cx + cw + 2, benchY + 2);
+          doc.setFont('helvetica', 'bold');
+          const bLabelW = doc.getTextWidth(bLabel) + 6;
+          doc.setFillColor(200, 164, 19);
+          doc.roundedRect(chartX + chartW - bLabelW - 2, benchY - 8, bLabelW, 9, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.text(bLabel, chartX + chartW - bLabelW + 1, benchY - 1);
+          doc.setFont('helvetica', 'normal');
         }
 
-        // Border
+        // ── X-axis line ──
         doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.4);
-        doc.rect(cx, cy, cw, ch);
+        doc.setLineWidth(0.5);
+        doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH);
       };
 
       // ── Layout: 2 charts per row, 2 rows ──
-      const cW = (pageW - margin * 2 - 30) / 2;
-      const cH = 90;
+      const cW = (pageW - margin * 2 - 24) / 2;
+      const cH = 110;
       const allDayRows = cycleDays.map(d => ({ day: d.slice(0, 3), value: wasteByDay[d] || 0 }));
       const waterDayRows = cycleDays.map(d => ({ day: d.slice(0, 3), value: waterByDay[d] || 0 }));
       const energyDayRows = cycleDays.map(d => ({ day: d.slice(0, 3), value: energyByDay[d] || 0 }));
@@ -3098,15 +3218,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // Row 1
       drawBarChart('FOOD WASTE', 'Daily consumption (kg)', 'kg', allDayRows, wasteDailyTarget, [119, 177, 57], margin, y, cW, cH);
-      drawBarChart('WATER USAGE', 'Daily consumption (L)', 'L', waterDayRows, waterDailyTarget, [59, 130, 246], margin + cW + 30, y, cW, cH);
-      y += cH + 30;
+      drawBarChart('WATER USAGE', 'Daily consumption (L)', 'L', waterDayRows, waterDailyTarget, [59, 130, 246], margin + cW + 24, y, cW, cH);
+      y += cH + 34;
 
       // Row 2
       drawBarChart('ENERGY LOAD', 'Daily consumption (kWh)', 'kWh', energyDayRows, energyDailyTarget, [234, 179, 8], margin, y, cW, cH);
-      drawBarChart('CO2e EMISSIONS', 'Daily carbon footprint (kg)', 'kg', co2DayRows, co2DailyTarget, [168, 85, 247], margin + cW + 30, y, cW, cH);
-      y += cH + 30;
+      drawBarChart('CO2e EMISSIONS', 'Daily carbon footprint (kg)', 'kg', co2DayRows, co2DailyTarget, [168, 85, 247], margin + cW + 24, y, cW, cH);
+      y += cH + 34;
 
-      // Legend
+      // Legend (centered, with rounded swatches)
       const legendItems = [
         { label: 'Food Waste (kg)', color: [119, 177, 57] as [number, number, number] },
         { label: 'Water Usage (L)', color: [59, 130, 246] as [number, number, number] },
@@ -3114,28 +3234,62 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         { label: 'CO2e (kg)', color: [168, 85, 247] as [number, number, number] },
         { label: 'Benchmark', color: [200, 164, 19] as [number, number, number], dashed: true },
       ];
-      let lx = margin;
+      // Center the legend
       doc.setFontSize(6.5);
+      const totalLegendW = legendItems.reduce((s, item) => s + doc.getTextWidth(item.label) + 26, 0);
+      let lx = (pageW - totalLegendW) / 2;
       legendItems.forEach(item => {
-        doc.setFillColor(...item.color);
         if ((item as any).dashed) {
           doc.setDrawColor(...item.color);
-          doc.setLineWidth(1);
+          doc.setLineWidth(1.2);
           doc.setLineDashPattern([3, 2], 0);
           doc.line(lx, y + 3, lx + 14, y + 3);
           doc.setLineDashPattern([], 0);
         } else {
-          doc.rect(lx, y - 2, 10, 7, 'F');
+          doc.setFillColor(...item.color);
+          doc.roundedRect(lx, y - 2, 10, 7, 1.5, 1.5, 'F');
         }
         doc.setTextColor(60, 60, 60);
         doc.text(item.label, lx + 14, y + 4);
-        lx += doc.getTextWidth(item.label) + 28;
+        lx += doc.getTextWidth(item.label) + 26;
       });
       y += 16;
+
+      // ── Chart narratives ──
+      const maxWasteDay = cycleDays.reduce((max, d) => (wasteByDay[d] || 0) > (wasteByDay[max] || 0) ? d : max, cycleDays[0]);
+      const maxWasteVal = wasteByDay[maxWasteDay] || 0;
+      const overWaterDays = cycleDays.filter(d => (waterByDay[d] || 0) > waterDailyTarget).length;
+      const overEnergyDays = cycleDays.filter(d => (energyByDay[d] || 0) > energyDailyTarget).length;
+      const overCo2Days = cycleDays.filter(d => ((wasteByDay[d] || 0) * 2.85) > co2DailyTarget).length;
+      const overFinancialDays = cycleDays.filter(d => ((wasteByDay[d] || 0) * 6.53) > financialDailyTarget).length;
+
+      if (wasteVar <= 0) {
+        narrativeNote(`All days fall below the ${wasteDailyTarget} kg/day target; weekly total of ${weeklyWaste} kg is a compliant result, not an overage. ${maxWasteVal > 0 ? `${maxWasteDay.charAt(0) + maxWasteDay.slice(1).toLowerCase()}'s ${maxWasteVal} kg is the cycle high.` : ''}`);
+      } else {
+        narrativeNote(`${cycleDays.filter(d => (wasteByDay[d] || 0) > wasteDailyTarget).length} day(s) exceed the ${wasteDailyTarget} kg/day target. ${maxWasteVal > 0 ? `${maxWasteDay.charAt(0) + maxWasteDay.slice(1).toLowerCase()}'s ${maxWasteVal} kg is the cycle high.` : ''}`);
+      }
+      if (overWaterDays > 0) {
+        narrativeNote(`Usage trends upward across the week, crossing the ${Math.round(waterDailyTarget)} L/day benchmark on ${overWaterDays} day(s). MEASURED — F&B-dedicated submeter.`);
+      } else {
+        narrativeNote(`All days fall below the ${Math.round(waterDailyTarget)} L/day benchmark. MEASURED — F&B-dedicated submeter.`);
+      }
+      if (overEnergyDays > 0) {
+        narrativeNote(`Every day exceeds the ${Math.round(energyDailyTarget)} kWh/day benchmark. Consistent day-over-day escalation, but figures are ESTIMATED from the whole-hotel meter — no kitchen-only submeter exists yet, so this may include non-F&B load.`);
+      } else {
+        narrativeNote(`All days fall below the ${Math.round(energyDailyTarget)} kWh/day benchmark. ESTIMATED from whole-hotel meter.`);
+      }
+      if (overCo2Days > 0) {
+        narrativeNote(`${overCo2Days} day(s) exceed the ${co2DailyTarget.toFixed(0)} kg CO2e/day target. Trend line closely mirrors the energy chart, consistent with energy being the larger contributor — the exact split has not yet been decomposed by source.`);
+      }
+      if (overFinancialDays > 0) {
+        narrativeNote(`${overFinancialDays} day(s) exceed the $${financialDailyTarget}/day target. Weekly total of $${weeklyFinancial.toLocaleString()} is the sum of daily food-waste financial impact.`);
+      }
 
       // ── 5. WASTE DESTINATION BREAKDOWN ──
       if (destinationData.length > 0) {
         sectionHeader('5', 'WASTE DESTINATION BREAKDOWN (PREP CHEF-LOGGED)');
+        narrativeNote('Every food waste entry is categorized at the point of logging by the Prep Chef (basic role) using the Waste Destination field — this is direct operational data, not a modeled estimate.');
+        resetZebra();
         tableHeader([
           { text: 'DESTINATION', x: margin },
           { text: 'KG', x: margin + 200 },
@@ -3149,17 +3303,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             { text: d.destination, x: margin },
             { text: String(d.kg), x: margin + 200 },
             { text: `${pct.toFixed(1)}%`, x: margin + 270 },
-            { text: isDiverted ? 'DIVERTED' : 'NOT DIVERTED', x: margin + 370, color: isDiverted ? [119, 177, 57] : [220, 38, 38] },
+            { text: isDiverted ? 'DIVERTED' : 'NOT DIVERTED', x: margin + 370, color: isDiverted ? [119, 177, 57] : [220, 38, 38], badge: true },
           ]);
         });
         // Totals
         doc.setDrawColor(200, 164, 19);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.8);
         doc.line(margin, y - 3, pageW - margin, y - 3);
         tableRow([
-          { text: 'Weekly Total', x: margin },
-          { text: String(totalDestKg), x: margin + 200, color: [200, 164, 19] },
-          { text: '100%', x: margin + 270 },
+          { text: 'Weekly Total', x: margin, bold: true },
+          { text: String(totalDestKg), x: margin + 200, color: [200, 164, 19], bold: true },
+          { text: '100%', x: margin + 270, bold: true },
           { text: '—', x: margin + 370 },
         ]);
         y += 4;
@@ -3170,12 +3324,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         y += 14;
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(60, 60, 60);
-        const diversionNote = `of logged food waste this cycle was diverted from landfill (${divertedKg} kg of ${totalDestKg} kg), calculated directly from the table above.`;
+        const diversionNote = `of logged food waste this cycle was diverted from landfill (${divertedKg} kg of ${totalDestKg} kg), calculated directly from the table above — no external emissions-factor assumption required for this figure, since it's a straight ratio of logged categorical data.`;
         doc.splitTextToSize(diversionNote, pageW - margin * 2).forEach((line: string) => {
           if (y > pageH - 40) { doc.addPage(); y = margin; }
           doc.text(line, margin, y); y += 12;
         });
-        y += 6;
+        y += 4;
+        const landfillEntry2 = destinationData.find(d => d.destination === 'Landfill' || d.destination === 'Landfill / General Waste');
+        const compostEntry = destinationData.find(d => d.destination === 'Compost');
+        if (landfillEntry2) {
+          const landfillPct2 = totalDestKg > 0 ? (landfillEntry2.kg / totalDestKg) * 100 : 0;
+          narrativeNote(`Landfill/General Waste is the single largest category at ${landfillEntry2.kg} kg (${landfillPct2.toFixed(1)}%) — the primary target for improving diversion rate next cycle.`);
+        }
+        if (compostEntry) {
+          const compostPct = totalDestKg > 0 ? (compostEntry.kg / totalDestKg) * 100 : 0;
+          narrativeNote(`Compost is the largest active diversion channel at ${compostEntry.kg} kg (${compostPct.toFixed(1)}%).`);
+        }
+        y += 10;
       }
 
       // ── 6. RECOMMENDED ACTIONS — DIVERSION ──
@@ -3197,11 +3362,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
             doc.text(line, margin, y); y += 12;
           });
         }
-        y += 6;
+        y += 10;
       }
 
       // ── 7. PRIORITY MATRIX ──
       sectionHeader('7', 'PRIORITY MATRIX — IMPORTANCE VS. URGENCY');
+      resetZebra();
       tableHeader([
         { text: 'PRIORITY', x: margin },
         { text: 'METRIC', x: margin + 70 },
@@ -3210,11 +3376,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       ]);
       // Sort by variance descending
       const priorities = [
-        { metric: 'Energy Consumption', variance: energyVar, action: 'Audit kitchen/HVAC equipment efficiency; primary lever for CO2e overage.' },
+        { metric: 'Energy Consumption', variance: energyVar, action: 'Audit kitchen/HVAC equipment efficiency this week; this is the primary lever for the CO2e overage too.' },
         { metric: 'CO2e Emissions', variance: co2Var, action: 'Track jointly with energy; do not treat as independent root cause.' },
-        { metric: 'Financial Loss', variance: financialVar, action: 'Cross-check against food-waste and energy cost drivers.' },
-        { metric: 'Water Consumption', variance: waterVar, action: 'Monitor; no corrective action required yet if compliant.' },
-        { metric: 'Food Waste Volume', variance: wasteVar, action: 'No action required if compliant.' },
+        { metric: 'Financial Loss', variance: financialVar, action: 'Cross-check against food-waste and energy cost drivers before assuming a single cause.' },
+        { metric: 'Water Consumption', variance: waterVar, action: 'Monitor; no corrective action required yet, watch weekend trend.' },
+        { metric: 'Food Waste Volume', variance: wasteVar, action: 'No action required — compliant.' },
       ].sort((a, b) => b.variance - a.variance);
       priorities.forEach(p => {
         const priority = p.variance > 50 ? 'RED' : p.variance > 10 ? 'ORANGE' : p.variance > 0 ? 'GOLD' : 'GREEN';
@@ -3226,7 +3392,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           { text: p.action, x: margin + 290 },
         ]);
       });
-      y += 6;
+      y += 10;
 
       // ── 8. ACTION PLAN — FOLLOWING WEEK ──
       sectionHeader('8', 'ACTION PLAN — FOLLOWING WEEK');
@@ -3247,19 +3413,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       if (urgentMetrics.length === 0 && importantMetrics.length === 0) {
         doc.text('All metrics within target range. No corrective actions required.', margin, y); y += 14;
       }
-      y += 6;
+      y += 10;
 
       // ── 9. DATA PROVENANCE & METHODOLOGY ──
       sectionHeader('9', 'DATA PROVENANCE & METHODOLOGY');
+      resetZebra();
       tableHeader([
         { text: 'FIELD', x: margin },
         { text: 'STATUS', x: margin + 200 },
       ]);
       const provenanceRows = [
-        ['Data source per metric', 'Direct from logged operational data (food_waste_logs, resource_logs)'],
-        ['GHG boundary', 'Scope 1 + 2 assumed for this report'],
+        ['Data source per metric', 'Direct from logged operational data (food_waste_logs, resource_logs, gamification_ledger)'],
+        ['GHG boundary', 'Scope 1 + 2 assumed for this report; must be explicitly confirmed before CSRD-aligned use'],
         ['Emission factors', `CO2e = food waste kg × 2.85 (Mila coefficient); Financial = kg × $6.53`],
-        ['Intensity normalization', 'Blocked — covers/occupancy not logged this cycle'],
+        ['Intensity normalization (per cover / per room)', 'Blocked — covers/occupancy not logged this cycle'],
       ];
       provenanceRows.forEach(([field, status]) => {
         tableRow([
@@ -3267,15 +3434,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           { text: status, x: margin + 200 },
         ]);
       });
-      y += 6;
+      y += 10;
 
       // ── 10. REVIEWER ATTESTATION ──
       sectionHeader('10', 'REVIEWER ATTESTATION');
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(60, 60, 60);
-      doc.text(`PREPARED BY (MILA AI v2.4) — ${new Date().toLocaleDateString()}`, margin, y); y += 14;
-      doc.text('REVIEWED BY (HUMAN SIGN-OFF) — _______________ DATE: ___________', margin, y); y += 18;
+      doc.text(`PREPARED BY (MILA AI v${__APP_VERSION__}) — ${new Date().toLocaleDateString()}`, margin, y); y += 14;
+      doc.text('REVIEWED BY (HUMAN SIGN-OFF) — _______________ DATE: ___________', margin, y); y += 22;
 
       // ── 11. APPENDIX — SOURCES ──
       sectionHeader('11', 'APPENDIX — SOURCES USED');
@@ -3284,11 +3451,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         if (y > pageH - 40) { doc.addPage(); y = margin; }
         doc.text(line, margin, y); y += 11;
       });
+      doc.splitTextToSize('GSTC Requirements for Hotel\'s Performance Against Certain Criteria (April 2024) — gstc.org', pageW - margin * 2).forEach((line: string) => {
+        if (y > pageH - 40) { doc.addPage(); y = margin; }
+        doc.text(line, margin, y); y += 11;
+      });
       doc.splitTextToSize('GRI Sustainability Reporting Standards (gri.org)', pageW - margin * 2).forEach((line: string) => {
         if (y > pageH - 40) { doc.addPage(); y = margin; }
         doc.text(line, margin, y); y += 11;
       });
-      y += 6;
+      y += 10;
 
       // ── Audit Comments (if provided) ──
       if (auditReport.comments) {
@@ -3300,7 +3471,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           if (y > pageH - 40) { doc.addPage(); y = margin; }
           doc.text(line, margin, y); y += 12;
         });
-        y += 6;
+        y += 10;
       }
 
       // ── Supplementary: Social Engagement ──
@@ -3332,20 +3503,108 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(60, 60, 60);
-      doc.text(`Property: ${company.company_name || company.name || '—'}`, margin, y); y += 14;
       doc.text(`Outlet: ${reportScope}`, margin, y); y += 14;
-      doc.text(`Date Range: ${dateRangeStr}`, margin, y); y += 20;
+      doc.text(`Date Range: ${dateRangeStr}`, margin, y); y += 14;
+      doc.text(`Role: ${generatedForRole}`, margin, y); y += 18;
 
+      narrativeNote('This is a supplementary report. Core sustainability scoring, the Priority Matrix, and compliance status (§1–11) are based entirely on Food Waste, Water, Energy, CO2e, and Financial Impact. Nothing on this page affects those figures or their RED/ORANGE/GOLD/GREEN status. This section exists because staff engagement is a documented driver of sustainability-data quality and consistency in hospitality operations — it is tracked and reported separately, not blended into the audit-grade Environmental/Governance metrics above.');
+
+      // ── Framework note ──
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(40, 40, 40);
-      doc.text('OUTLET ENGAGEMENT SNAPSHOT', margin, y); y += 14;
+      doc.setFontSize(9);
+      doc.text('FRAMEWORK NOTE', margin, y); y += 12;
+      narrativeNote('Engagement scoring has no single clean GRI disclosure code. Closest adjacent references: GRI 404 (Training & Education — points are earned through sustainability-behavior actions) and SDG 8 (Decent Work), SDG 4 (Skills), SDG 12 (behavior-driven consumption outcomes). These are directional associations, not certified mappings — labeled as such rather than presented with the same evidentiary weight as the measured Environmental data.');
+
+      // ── Engagement snapshot ──
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.setFontSize(9);
+      doc.text(`OUTLET ENGAGEMENT SNAPSHOT — ${reportScope.toUpperCase()}`, margin, y); y += 12;
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(60, 60, 60);
+      const nextTierPts = totalPoints < 200 ? 200 - totalPoints : totalPoints < 500 ? 500 - totalPoints : 0;
       configRow('PROGRAM TIER', 'Earth Keeper — Starter Tier');
-      configRow('TOTAL POINTS (CYCLE)', `${totalPoints} pts`);
+      configRow('TOTAL POINTS (CYCLE)', `${totalPoints} pts${nextTierPts > 0 ? ` — ${nextTierPts} to next tier` : ''}`);
       configRow('ACTIVE STREAK', `${activeStreak} day(s)`);
-      configRow('CROSS-OUTLET RANK', isSupervisorReport ? 'Not shown — Supervisor view is locked to this outlet' : 'See Gamification Hub');
+      configRow('CROSS-OUTLET RANK', isSupervisorReport ? 'Not shown — Supervisor view is locked to this outlet (see Report 2 for property-wide leaderboard)' : 'See Gamification Hub');
+      y += 10;
+
+      // ── Live action log ──
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.setFontSize(9);
+      doc.text('LIVE ACTION LOG — THIS CYCLE', margin, y); y += 12;
+      resetZebra();
+      tableHeader([
+        { text: 'ACTION LOGGED', x: margin },
+        { text: 'POINTS', x: margin + 300 },
+        { text: 'LINKED METRIC', x: margin + 370 },
+      ]);
+      // Fetch live action logs from gamification_ledger
+      try {
+        let actionQuery = supabase.from('gamification_ledger').select('action_key, points_awarded, created_at').order('created_at', { ascending: false }).limit(7);
+        if (isSupervisorReport && personnelOutletId) {
+          actionQuery = actionQuery.eq('outlet_id', personnelOutletId);
+        }
+        const { data: actionLogs } = await actionQuery;
+        const actionLabels: Record<string, string> = {
+          entry_with_photo: 'Entry with Photo',
+          energy_reading: 'Energy Reading',
+          on_time_entry: 'On-Time Entry',
+          streak_bonus: 'Streak Bonus',
+          mila_comment: 'Mila AI Comment',
+          mila_suggestion: 'Mila AI Suggestion',
+          calibration_check: 'Completed calibration check',
+          spoilage_photo: 'Submitted spoilage photo',
+          rescued_produce: 'Rescued near-expiry produce',
+          water_flow_reduction: 'Reduced water flow rate',
+          organic_segregation: 'Correctly segregated organics',
+          batched_dishwasher: 'Batched dishwasher load',
+          lights_off: 'Turned off prep station lights',
+        };
+        const metricLinks: Record<string, string> = {
+          entry_with_photo: 'Food Waste',
+          energy_reading: 'Energy',
+          on_time_entry: 'Food Waste',
+          streak_bonus: 'Engagement',
+          mila_comment: 'Engagement',
+          mila_suggestion: 'Engagement',
+          calibration_check: 'Energy / Water accuracy',
+          spoilage_photo: 'Food Waste',
+          rescued_produce: 'Food Waste',
+          water_flow_reduction: 'Water',
+          organic_segregation: 'Waste Destination',
+          batched_dishwasher: 'Water / Energy',
+          lights_off: 'Energy',
+        };
+        if (actionLogs && actionLogs.length > 0) {
+          actionLogs.forEach((log: any) => {
+            const label = actionLabels[log.action_key] || (log.action_key || 'Action').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+            const metric = metricLinks[log.action_key] || '—';
+            tableRow([
+              { text: label, x: margin },
+              { text: `+${log.points_awarded || 0}`, x: margin + 300, color: [119, 177, 57], bold: true },
+              { text: metric, x: margin + 370 },
+            ]);
+          });
+        } else {
+          tableRow([
+            { text: 'No actions logged this cycle', x: margin, color: [150, 150, 150] },
+            { text: '—', x: margin + 300 },
+            { text: '—', x: margin + 370 },
+          ]);
+        }
+      } catch {
+        tableRow([
+          { text: 'Action log unavailable', x: margin, color: [150, 150, 150] },
+          { text: '—', x: margin + 300 },
+          { text: '—', x: margin + 370 },
+        ]);
+      }
       y += 6;
+      narrativeNote('Each logged action links back to a core metric (right column) purely for narrative traceability — it does not alter, offset, or recalculate any figure in the Environmental sections above. Points are a behavioral indicator, not a unit of measurement.');
+      y += 10;
 
       // ── Footer on each page ──
       const pageCount = doc.getNumberOfPages();
@@ -3353,13 +3612,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         doc.setPage(i);
         doc.setFontSize(7);
         doc.setTextColor(150, 150, 150);
-        doc.text(
-          `Ecometricus Intelligence | Mila AI v2.4 | ${company.company_name || company.name || ''} | Page ${i}/${pageCount}`,
-          pageW / 2, pageH - 15, { align: 'center' }
-        );
+        const isSuppPage = (i === pageCount);
+        const footerText = isSuppPage
+          ? `Ecometricus Intelligence | Mila AI v${__APP_VERSION__} — SUPPLEMENTARY | Additional Report — Not Numbered in Core Sequence`
+          : `Ecometricus Intelligence | Mila AI v${__APP_VERSION__} | ${company.company_name || company.name || ''} | Page ${i}/${pageCount}`;
+        doc.text(footerText, pageW / 2, pageH - 15, { align: 'center' });
       }
 
-      const fileName = `audit-report-${isSupervisorReport ? 'outlet' : 'property'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      const reportNum = isSupervisorReport ? 'Report1' : 'Report2';
+      const scopeSlug = isSupervisorReport
+        ? `Outlet_${(reportScope.split(' ')[0] || 'Unknown').replace(/[^a-zA-Z0-9]/g, '')}`
+        : 'Property';
+      const fileName = `Ecometricus_Audit_${reportNum}_${scopeSlug}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
       showToast(t('dashboard.reportDownloaded') || 'Report downloaded.', 'success');
 
@@ -3368,7 +3632,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         'report_generated',
         'audit_report',
         fileName,
-        `${isSupervisorReport ? 'Report 1 (Single Outlet)' : 'Report 2 (Property-Wide)'} generated for ${reportScope} — ${auditReport.cycle || 'Weekly'} cycle, ${dateRangeStr}`,
+        `${isSupervisorReport ? 'Report 1 (Single Outlet)' : 'Report 2 (Cumulative)'} generated for ${reportScope} — ${auditReport.cycle || 'Weekly'} cycle, ${dateRangeStr}`,
         {
           reportType: isSupervisorReport ? 'outlet' : 'property',
           outlet: reportScope,
