@@ -303,7 +303,7 @@ const Co2EmissionsTemplateChart: React.FC<Co2EmissionsTemplateChartProps> = ({
             </div>
 
             {/* Legend */}
-            {outletMeta.length > 0 && (
+            {outletMeta.length > 1 && (
                 <div className="flex flex-wrap justify-center gap-3 pt-3 border-t border-white/5 mt-2">
                     {outletMeta.map(o => (
                         <div key={o.key} className="flex items-center gap-1.5">

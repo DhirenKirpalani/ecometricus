@@ -1,7 +1,9 @@
-import React, { useMemo } from 'react';
-import { Cpu, Droplets, Zap, AlertTriangle, ShieldCheck, TrendingDown, Store } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Cpu, Droplets, Zap, AlertTriangle, ShieldCheck, TrendingDown, Store, Filter } from 'lucide-react';
 import { useResourceChartData } from '../hooks/useResourceChartData';
 import ResourceTemplateChart from './ResourceTemplateChart';
+import CustomSelect from './CustomSelect';
+import { supabase } from '../lib/supabase';
 import { Outlet } from '../types';
 import { useI18n } from '../lib/useI18n';
 
@@ -18,6 +20,8 @@ const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '
 
 const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets, dailyMode = false, scopeOutletName, scopeOutletId, scopeUserId, weekOffset = 0 }) => {
   const { t } = useI18n();
+  const [chartOutletFilter, setChartOutletFilter] = useState<string>(allOutlets[0]?.code || 'all');
+
   const {
     waterData,
     energyData,
@@ -31,6 +35,43 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
     isLoading,
     error: resourceError
   } = useResourceChartData(undefined, undefined, scopeOutletName, scopeUserId, scopeOutletId, dailyMode, allOutlets, weekOffset);
+
+  // Per-outlet benchmarks for chart filter
+  const [chartOutletBenchmarks, setChartOutletBenchmarks] = useState<{ water: number; energy: number } | null>(null);
+  useEffect(() => {
+    const fetchOutletBenchmarks = async () => {
+      if (!chartOutletFilter || chartOutletFilter === 'all' || allOutlets.length <= 1) {
+        setChartOutletBenchmarks(null);
+        return;
+      }
+      const outlet = allOutlets.find(o => o.code === chartOutletFilter);
+      if (!outlet) { setChartOutletBenchmarks(null); return; }
+      const outletName = (outlet.outlet_name || outlet.name || '').toUpperCase();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from('benchmarks')
+        .select('water_usage_liters, energy_limit_kwh')
+        .eq('outlet_name', outletName)
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (data && (data.water_usage_liters || data.energy_limit_kwh)) {
+        setChartOutletBenchmarks({
+          water: data.water_usage_liters || waterTarget,
+          energy: data.energy_limit_kwh || energyTarget,
+        });
+      } else {
+        setChartOutletBenchmarks(null);
+      }
+    };
+    fetchOutletBenchmarks();
+  }, [chartOutletFilter, allOutlets, waterTarget, energyTarget]);
+
+  // Effective chart benchmarks — use per-outlet values when available
+  const effectiveWaterTarget = chartOutletBenchmarks?.water ?? waterTarget;
+  const effectiveEnergyTarget = chartOutletBenchmarks?.energy ?? energyTarget;
+  const effectiveWaterDailyBenchmark = effectiveWaterTarget / 7;
+  const effectiveEnergyDailyBenchmark = effectiveEnergyTarget / 7;
 
   // For daily mode (supervisor/basic): KPI cards show today only, not the full 7-day chart total
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -63,6 +104,15 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
     });
   }, [allOutlets, waterData, energyData]);
 
+  // Filtered outlet keys based on chart outlet filter
+  const filteredOutletKeys = useMemo(() => {
+    const allKeys = allOutlets.map(o => (o.outlet_name || o.name).toUpperCase());
+    if (chartOutletFilter === 'all') return allKeys;
+    const selected = allOutlets.find(o => o.code === chartOutletFilter);
+    if (!selected) return allKeys;
+    return [(selected.outlet_name || selected.name).toUpperCase()];
+  }, [chartOutletFilter, allOutlets]);
+
   if (resourceError) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -86,11 +136,11 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
 
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
           <Cpu className="text-brand-eco" size={24} />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
             {t('intelligence.resource.title')}
           </h2>
@@ -98,6 +148,26 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
             {t('intelligence.resource.subtitle')}
           </p>
         </div>
+        {/* Outlet filter for charts */}
+        {allOutlets.length > 1 && (
+          <div className="flex items-center gap-2 w-full sm:w-auto sm:shrink-0">
+            <Filter size={14} className="text-brand-gold/60 shrink-0" />
+            <div className="flex-1 sm:w-44">
+              <CustomSelect
+                compact
+                value={(() => {
+                  const o = allOutlets.find(o => o.code === chartOutletFilter);
+                  return o ? `${o.name} (${o.code})` : '';
+                })()}
+                options={allOutlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                onChange={v => {
+                  const code = allOutlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
+                  setChartOutletFilter(code);
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -171,23 +241,23 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[440px]">
         <ResourceTemplateChart
           data={waterData}
-          benchmark={waterDailyBenchmark}
+          benchmark={effectiveWaterDailyBenchmark}
           title={t('intelligence.resource.chartWaterTitle')}
           subtitle={t('intelligence.resource.chartWaterSubtitle')}
           unit="L"
           icon={<Droplets size={18} className="text-blue-400" />}
           allOutlets={allOutlets}
-          outletKeys={allOutlets.map(o => (o.outlet_name || o.name).toUpperCase())}
+          outletKeys={filteredOutletKeys}
         />
         <ResourceTemplateChart
           data={energyData}
-          benchmark={energyDailyBenchmark}
+          benchmark={effectiveEnergyDailyBenchmark}
           title={t('intelligence.resource.chartEnergyTitle')}
           subtitle={t('intelligence.resource.chartEnergySubtitle')}
           unit="kWh"
           icon={<Zap size={18} className="text-brand-gold" />}
           allOutlets={allOutlets}
-          outletKeys={allOutlets.map(o => (o.outlet_name || o.name).toUpperCase())}
+          outletKeys={filteredOutletKeys}
         />
       </div>
 

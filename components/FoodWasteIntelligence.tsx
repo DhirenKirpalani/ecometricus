@@ -1,9 +1,11 @@
-import React from 'react';
-import { AlertCircle, AlertTriangle, TrendingDown, Scale, Cloud, DollarSign, Store } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { AlertCircle, AlertTriangle, TrendingDown, Scale, Cloud, DollarSign, Store, Filter } from 'lucide-react';
 import { useFoodWasteData } from '../hooks/useFoodWasteData';
 import { useFoodWasteChartData } from '../hooks/useFoodWasteChartData';
 import Co2EmissionsTemplateChart from './Co2EmissionsTemplateChart';
 import FoodWasteTemplateChart from './FoodWasteTemplateChart';
+import CustomSelect from './CustomSelect';
+import { supabase } from '../lib/supabase';
 import { Outlet } from '../types';
 import { useI18n } from '../lib/useI18n';
 
@@ -34,6 +36,40 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
   weekOffset = 0
 }) => {
   const { t } = useI18n();
+  const [chartOutletFilter, setChartOutletFilter] = useState<string>(allOutlets[0]?.code || 'all');
+
+  // Per-outlet benchmarks for chart filter
+  const [chartOutletBenchmarks, setChartOutletBenchmarks] = useState<{ waste: number } | null>(null);
+  useEffect(() => {
+    const fetchOutletBenchmarks = async () => {
+      if (!chartOutletFilter || chartOutletFilter === 'all' || allOutlets.length <= 1) {
+        setChartOutletBenchmarks(null);
+        return;
+      }
+      const outlet = allOutlets.find(o => o.code === chartOutletFilter);
+      if (!outlet) { setChartOutletBenchmarks(null); return; }
+      const outletName = outlet.outlet_name || outlet.name || '';
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from('benchmarks')
+        .select('food_waste_target_kg')
+        .eq('outlet_name', outletName)
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (data && data.food_waste_target_kg) {
+        setChartOutletBenchmarks({ waste: data.food_waste_target_kg });
+      } else {
+        setChartOutletBenchmarks(null);
+      }
+    };
+    fetchOutletBenchmarks();
+  }, [chartOutletFilter, allOutlets]);
+
+  // Effective chart benchmarks — use per-outlet values when available
+  const effectiveWasteTarget = chartOutletBenchmarks?.waste ?? benchmarks.food_waste_target_kg;
+  const effectiveDailyMassBenchmark = effectiveWasteTarget / 7;
+  const effectiveDailyCo2Benchmark = (effectiveWasteTarget / 7) * 2.85;
   const { totalMass, carbonImpact, financialLoss, outletDetails, isLoading, error: wasteError } = useFoodWasteData(
     outletId,
     unitType,
@@ -63,6 +99,14 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
     return acc;
   }, {} as Record<string, string>);
   const allWasteOutletKeys = allOutlets.map(o => (o.outlet_name || o.name).toUpperCase());
+
+  // Filtered outlet keys based on chart outlet filter
+  const filteredWasteOutletKeys = useMemo(() => {
+    if (chartOutletFilter === 'all') return allWasteOutletKeys;
+    const selected = allOutlets.find(o => o.code === chartOutletFilter);
+    if (!selected) return allWasteOutletKeys;
+    return [(selected.outlet_name || selected.name).toUpperCase()];
+  }, [chartOutletFilter, allWasteOutletKeys, allOutlets]);
 
   // Targets — scale to daily for non-admin (today-only view)
   const divisor = dailyMode ? 7 : 1;
@@ -96,11 +140,11 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <div className="w-12 h-12 bg-brand-eco/10 border border-brand-eco/30 rounded-xl flex items-center justify-center shrink-0">
           <Scale className="text-brand-eco" size={24} />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="text-xl sm:text-2xl font-geometric font-bold text-white tracking-tight uppercase leading-tight">
             {t('intelligence.foodWaste.title')}
           </h2>
@@ -108,6 +152,26 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
             {t('intelligence.foodWaste.subtitle')}
           </p>
         </div>
+        {/* Outlet filter for charts */}
+        {allOutlets.length > 1 && (
+          <div className="flex items-center gap-2 w-full sm:w-auto sm:shrink-0">
+            <Filter size={14} className="text-brand-gold/60 shrink-0" />
+            <div className="flex-1 sm:w-44">
+              <CustomSelect
+                compact
+                value={(() => {
+                  const o = allOutlets.find(o => o.code === chartOutletFilter);
+                  return o ? `${o.name} (${o.code})` : '';
+                })()}
+                options={allOutlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
+                onChange={v => {
+                  const code = allOutlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
+                  setChartOutletFilter(code);
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary KPI Cards */}
@@ -195,8 +259,8 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
               <div className="w-full h-full">
                 <FoodWasteTemplateChart
                   data={cumulativeData}
-                  benchmark={dailyMassBenchmark}
-                  outletKeys={allWasteOutletKeys}
+                  benchmark={effectiveDailyMassBenchmark}
+                  outletKeys={filteredWasteOutletKeys}
                   outletColors={wasteOutletColors}
                   outletLabels={wasteOutletLabels}
                 />
@@ -204,9 +268,9 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
               <div className="w-full h-full">
                 <Co2EmissionsTemplateChart
                   data={cumulativeData}
-                  benchmark={dailyBenchmark}
+                  benchmark={effectiveDailyCo2Benchmark}
                   weeklyTotal={weeklyTotal}
-                  outletKeys={allWasteOutletKeys}
+                  outletKeys={filteredWasteOutletKeys}
                   outletColors={wasteOutletColors}
                   outletLabels={wasteOutletLabels}
                 />
