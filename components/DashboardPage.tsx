@@ -3054,13 +3054,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       ]);
       // Sub-header row showing meter status per column
       y += 8;
-      doc.setFontSize(6);
+      doc.setFontSize(5.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(120, 120, 120);
-      doc.text('MEASURED', margin + 70 + 6, y);
-      doc.text('MEASURED', margin + 180 + 6, y);
-      doc.text('ESTIMATED', margin + 280 + 6, y);
-      doc.text('PARTIAL', margin + 370 + 6, y);
+      doc.text('MEAS.', margin + 70 + 6, y);
+      doc.text('MEAS.', margin + 180 + 6, y);
+      doc.text('EST.', margin + 280 + 6, y);
+      doc.text('PART.', margin + 370 + 6, y);
       doc.text('N/A', margin + 450 + 6, y);
       y += 8;
       doc.setFont('helvetica', 'normal');
