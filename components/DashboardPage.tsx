@@ -6,6 +6,7 @@ import MilaWidget from './MilaWidget';
 import AlertsPanel from './AlertsPanel';
 import GamificationHub from './GamificationHub';
 import CustomSelect from './CustomSelect';
+import OutletFilterDropdown from './OutletFilterDropdown';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/useI18n';
 import { sha256 } from '../lib/hash';
@@ -1769,17 +1770,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   useEffect(() => {
     const fetchChartOutletBenchmarks = async () => {
       const code = chartOutletFilter || outlets[0]?.code || '';
-      if (!code || outlets.length <= 1) { setChartOutletBenchmarks(null); return; }
+      if (!code) { setChartOutletBenchmarks(null); return; }
       const outlet = outlets.find(o => o.code === code);
       if (!outlet) { setChartOutletBenchmarks(null); return; }
       const outletName = outlet.outlet_name || outlet.name || '';
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+      // Use the data owner's user_id (admin) — for supervisors, this is resolved from personnel
+      const benchmarkUserId = dataOwnerUserId || session.user.id;
       const { data } = await supabase
         .from('benchmarks')
         .select('food_waste_target_kg, water_usage_liters, energy_limit_kwh')
         .eq('outlet_name', outletName)
-        .eq('user_id', session.user.id)
+        .eq('user_id', benchmarkUserId)
         .maybeSingle();
       if (data) {
         setChartOutletBenchmarks({
@@ -1792,7 +1795,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       }
     };
     fetchChartOutletBenchmarks();
-  }, [chartOutletFilter, outlets]);
+  }, [chartOutletFilter, outlets, dataOwnerUserId]);
 
   // Effective chart benchmarks — use per-outlet values when available, otherwise global params
   const effectiveChartWasteTarget = chartOutletBenchmarks?.waste ?? params.wasteTarget;
@@ -2607,6 +2610,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const wStart = effectiveWeekStartISO ? new Date(effectiveWeekStartISO) : new Date();
       const wEnd = new Date(wStart);
       wEnd.setDate(wEnd.getDate() + 6);
+      const wStartISO = (effectiveWeekStartISO || wStart.toISOString());
       const fmtDate = (d: Date) => d.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const dateRangeStr = auditReport.fromDate && auditReport.toDate
         ? `${auditReport.fromDate} – ${auditReport.toDate}`
@@ -2638,8 +2642,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         energyByDay[dayKey] = (energyByDay[dayKey] || 0) + total;
       });
 
-      // Order: MON–SAT (6-day cycle)
-      const cycleDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      // Order: SUN–SAT (full 7-day week)
+      const cycleDays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
       const dailyRows = cycleDays.map(d => {
         const waste = wasteByDay[d] || 0;
         const co2 = waste * 2.85;
@@ -2661,10 +2665,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const weeklyFinancial = dailyRows.reduce((s, d) => s + d.financial, 0);
       const dayCount = dailyRows.length || 1;
 
-      // Benchmarks (daily targets)
+      // Benchmarks (daily targets — stored as daily in benchmarks table)
       const wasteDailyTarget = params.wasteTarget || 100;
-      const waterDailyTarget = (params.waterTarget || 6300) / 7;
-      const energyDailyTarget = (params.energyTarget || 1200) / 7;
+      const waterDailyTarget = params.waterTarget || 6300;
+      const energyDailyTarget = params.energyTarget || 1200;
       const co2DailyTarget = wasteDailyTarget * 2.85;
       const financialDailyTarget = (params.financial_cap || 1000);
 
@@ -2690,12 +2694,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const co2Var = calcVariance(co2Avg, co2DailyTarget);
       const financialVar = calcVariance(financialAvg, financialDailyTarget);
 
-      // ── Query waste destination breakdown ──
+      // ── Query waste destination breakdown (filtered to current week) ──
       let destinationData: { destination: string; kg: number }[] = [];
       try {
-        let destQuery = supabase.from('food_waste_logs').select('destination, mass_kg');
+        let destQuery = supabase.from('food_waste_logs').select('destination, mass_kg, created_at');
         if (isSupervisorReport && personnelOutletId) {
           destQuery = destQuery.eq('outlet_id', personnelOutletId);
+        }
+        // Filter to current week
+        if (wStartISO) {
+          destQuery = destQuery.gte('created_at', wStartISO);
+          const wEndISO = new Date(wEnd);
+          wEndISO.setDate(wEndISO.getDate() + 1);
+          destQuery = destQuery.lt('created_at', wEndISO.toISOString());
         }
         const { data: destRows } = await destQuery;
         if (destRows) {
@@ -2715,16 +2726,67 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       const divertedKg = destinationData.filter(d => DIVERTED.includes(d.destination)).reduce((s, d) => s + d.kg, 0);
       const diversionRate = totalDestKg > 0 ? (divertedKg / totalDestKg) * 100 : 0;
 
-      // ── Query engagement data ──
+      // ── Query engagement data (filtered to current week, grouped by employee) ──
       let totalPoints = 0;
       let activeStreak = 0;
+      let employeePoints: { name: string; points: number; streak: number }[] = [];
+      let actionLogsData: { action_key: string; points_awarded: number; created_at: string; staff_name: string }[] = [];
       try {
-        let ptsQuery = supabase.from('gamification_ledger').select('points_awarded');
+        const wEndISO = new Date(wEnd);
+        wEndISO.setDate(wEndISO.getDate() + 1);
+
+        // Fetch ledger entries for this week
+        let ptsQuery = supabase.from('gamification_ledger').select('profile_id, points_awarded, action_key, created_at, outlet_id');
         if (isSupervisorReport && personnelOutletId) {
           ptsQuery = ptsQuery.eq('outlet_id', personnelOutletId);
         }
+        ptsQuery = ptsQuery.gte('created_at', wStartISO).lt('created_at', wEndISO.toISOString());
         const { data: ptsRows } = await ptsQuery;
-        if (ptsRows) totalPoints = ptsRows.reduce((s: number, r: any) => s + (Number(r.points_awarded) || 0), 0);
+
+        if (ptsRows) {
+          totalPoints = ptsRows.reduce((s: number, r: any) => s + (Number(r.points_awarded) || 0), 0);
+
+          // Group by profile_id to get per-employee points
+          const profilePoints = new Map<string, number>();
+          const profileDates = new Map<string, string[]>();
+          ptsRows.forEach((r: any) => {
+            if (r.profile_id) {
+              profilePoints.set(r.profile_id, (profilePoints.get(r.profile_id) || 0) + (Number(r.points_awarded) || 0));
+              if (!profileDates.has(r.profile_id)) profileDates.set(r.profile_id, []);
+              profileDates.get(r.profile_id)!.push(r.created_at);
+            }
+          });
+
+          // Fetch profile names
+          const profileIds = [...profilePoints.keys()];
+          let profileNames = new Map<string, string>();
+          if (profileIds.length > 0) {
+            const { data: profData } = await supabase.from('profiles').select('id, full_name').in('id', profileIds);
+            (profData || []).forEach((p: any) => profileNames.set(p.id, p.full_name || 'Staff'));
+          }
+
+          // Build employee points list
+          employeePoints = [...profilePoints.entries()].map(([pid, pts]) => {
+            const dates = (profileDates.get(pid) || []).sort();
+            // Calculate streak: consecutive days with entries
+            let streak = 0;
+            if (dates.length > 0) {
+              const uniqueDays = new Set(dates.map((d: string) => d.split('T')[0]));
+              streak = uniqueDays.size;
+            }
+            return { name: profileNames.get(pid) || 'Staff', points: pts, streak };
+          }).sort((a, b) => b.points - a.points);
+
+          activeStreak = employeePoints.length > 0 ? Math.max(...employeePoints.map(e => e.streak)) : 0;
+
+          // Build action logs with staff names
+          actionLogsData = ptsRows.slice().reverse().slice(-20).map((r: any) => ({
+            action_key: r.action_key || '',
+            points_awarded: r.points_awarded || 0,
+            created_at: r.created_at,
+            staff_name: profileNames.get(r.profile_id) || 'Staff',
+          }));
+        }
       } catch { /* ignore */ }
 
       // ═══════════════════════════════════════════════════════
@@ -2772,7 +2834,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(200, 164, 19);
-        cols.forEach(c => doc.text(c.text, c.x, y - 1));
+        cols.forEach(c => doc.text(c.text, c.x + 6, y - 1));
         y += headerH + 2; // 2pt gap between header and first data row
         doc.setFont('helvetica', 'normal');
       };
@@ -2793,16 +2855,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           if (c.badge && c.color) {
             const tw = doc.getTextWidth(c.text) + 8;
             doc.setFillColor(...c.color);
-            doc.roundedRect(c.x - 1, y - 8, tw, 11, 2.5, 2.5, 'F');
+            doc.roundedRect(c.x + 5, y - 8, tw, 11, 2.5, 2.5, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            doc.text(c.text, c.x + 3, y);
+            doc.text(c.text, c.x + 8, y);
             doc.setFont('helvetica', 'normal');
           } else {
             if (c.color) doc.setTextColor(...c.color);
             else doc.setTextColor(40, 40, 40);
             if (c.bold) doc.setFont('helvetica', 'bold');
-            doc.text(c.text, c.x, y);
+            doc.text(c.text, c.x + 6, y);
             if (c.bold) doc.setFont('helvetica', 'normal');
           }
         });
@@ -2815,6 +2877,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // Helper: narrative note (italic, muted)
       const narrativeNote = (text: string) => {
+        y += 8; // consistent spacing above each narrative note
         doc.setFontSize(8);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(100, 100, 100);
@@ -2874,7 +2937,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       configRow('REPORT CYCLE', auditReport.cycle || 'Weekly');
       configRow('DATE RANGE', dateRangeStr);
       configRow('GHG BOUNDARY', 'Scope 1 + Scope 2 (kitchen fuel + purchased electricity)');
-      configRow('COVERS SERVED', 'Not logged this cycle — required for intensity metrics (see §7)');
+      configRow('COVERS SERVED', 'Not logged this cycle — required for intensity metrics (see §4)');
       y += 10;
 
       // ── 1A. METER SOURCE DECLARATION ──
@@ -2947,7 +3010,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           { text: r.meter, x: margin + 445, color: meterColor(r.meter), badge: true },
         ]);
       });
-      narrativeNote('CO2e is tagged PARTIAL because it blends a MEASURED food-waste component with an ESTIMATED energy component — the two are not yet decomposed separately (see §7).');
+      narrativeNote('CO2e is tagged PARTIAL because it blends a MEASURED food-waste component with an ESTIMATED energy component — the two are not yet decomposed separately (see §9).');
       y += 10;
 
       // ── 3. ESG / GSTC / SDG ALIGNMENT ──
@@ -2990,15 +3053,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         { text: 'FINANCIAL ($)', x: margin + 450 },
       ]);
       // Sub-header row showing meter status per column
+      y += 8;
       doc.setFontSize(6);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(120, 120, 120);
-      doc.text('MEASURED', margin + 70, y - 1);
-      doc.text('MEASURED', margin + 180, y - 1);
-      doc.text('ESTIMATED', margin + 280, y - 1);
-      doc.text('PARTIAL', margin + 370, y - 1);
-      doc.text('N/A', margin + 450, y - 1);
-      y += 6;
+      doc.text('MEASURED', margin + 70 + 6, y);
+      doc.text('MEASURED', margin + 180 + 6, y);
+      doc.text('ESTIMATED', margin + 280 + 6, y);
+      doc.text('PARTIAL', margin + 370 + 6, y);
+      doc.text('N/A', margin + 450 + 6, y);
+      y += 8;
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(40, 40, 40);
       dailyRows.forEach(r => {
@@ -3014,7 +3078,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       // Totals row
       doc.setDrawColor(200, 164, 19);
       doc.setLineWidth(0.8);
-      doc.line(margin, y - 3, pageW - margin, y - 3);
+      doc.line(margin, y - 8, pageW - margin, y - 8);
+      y += 2;
       tableRow([
         { text: 'Weekly Total', x: margin, bold: true },
         { text: String(weeklyWaste), x: margin + 70, color: [200, 164, 19], bold: true },
@@ -3064,7 +3129,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       doc.text(`${reportScope}  |  ${dateRangeStr}`, pageW - margin, 19, { align: 'right' });
       doc.setFillColor(200, 164, 19);
       doc.rect(0, 38, pageW, 1.5, 'F');
-      y = 66; // 38 (header) + 1.5 (gold rule) + 2.5 (gap) + 24 (card title bar height)
+      y = 86; // 38 (header) + 1.5 (gold rule) + 2.5 (gap) + 24 (card title bar height) + 20 (breathing room)
 
       // ── Bar chart drawing helper ──
       const drawBarChart = (
@@ -3098,17 +3163,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
         // ── Title bar ──
         doc.setFillColor(barColor[0], barColor[1], barColor[2]);
-        doc.roundedRect(cx, cy - 24, cw, 16, 4, 4, 'F');
+        doc.roundedRect(cx, cy - 24, cw, 20, 4, 4, 'F');
         // Square bottom of title bar
         doc.setFillColor(barColor[0], barColor[1], barColor[2]);
-        doc.rect(cx, cy - 12, cw, 4, 'F');
+        doc.rect(cx, cy - 12, cw, 8, 'F');
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8);
         doc.setTextColor(255, 255, 255);
-        doc.text(title, cx + 6, cy - 13);
+        doc.text(title, cx + 6, cy - 15);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6);
-        doc.setTextColor(255, 255, 255);
         doc.setTextColor(255, 255, 255);
         doc.text(subtitle, cx + 6, cy - 7);
 
@@ -3263,7 +3327,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         doc.text(item.label, lx + 14, y + 4);
         lx += doc.getTextWidth(item.label) + 26;
       });
-      y += 16;
+      y += 24;
 
       // ── Chart narratives ──
       const maxWasteDay = cycleDays.reduce((max, d) => (wasteByDay[d] || 0) > (wasteByDay[max] || 0) ? d : max, cycleDays[0]);
@@ -3297,6 +3361,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
 
       // ── 5. WASTE DESTINATION BREAKDOWN ──
       if (destinationData.length > 0) {
+        y += 16;
         sectionHeader('5', 'WASTE DESTINATION BREAKDOWN (PREP CHEF-LOGGED)');
         narrativeNote('Every food waste entry is categorized at the point of logging by the Prep Chef (basic role) using the Waste Destination field — this is direct operational data, not a modeled estimate.');
         resetZebra();
@@ -3319,7 +3384,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         // Totals
         doc.setDrawColor(200, 164, 19);
         doc.setLineWidth(0.8);
-        doc.line(margin, y - 3, pageW - margin, y - 3);
+        doc.line(margin, y - 8, pageW - margin, y - 8);
+        y += 2;
         tableRow([
           { text: 'Weekly Total', x: margin, bold: true },
           { text: String(totalDestKg), x: margin + 200, color: [200, 164, 19], bold: true },
@@ -3353,30 +3419,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         y += 10;
       }
 
-      // ── 6. RECOMMENDED ACTIONS — DIVERSION ──
-      if (destinationData.length > 0) {
-        sectionHeader('6', 'RECOMMENDED ACTIONS — DIVERSION');
-        const landfillEntry = destinationData.find(d => d.destination === 'Landfill');
-        if (landfillEntry) {
-          const landfillPct = totalDestKg > 0 ? (landfillEntry.kg / totalDestKg) * 100 : 0;
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(60, 60, 60);
-          doc.splitTextToSize(`Reduce Landfill Share (currently ${landfillPct.toFixed(1)}%): Review whether any of the ${landfillEntry.kg} kg currently logged as "Landfill" is eligible for reclassification to Compost or Animal Feed at the point of logging.`, pageW - margin * 2).forEach((line: string) => {
-            if (y > pageH - 40) { doc.addPage(); y = margin; }
-            doc.text(line, margin, y); y += 12;
-          });
-          y += 4;
-          doc.splitTextToSize('Expand Compost/Anaerobic Digestion capacity: These are already the primary diversion channels; confirm current vendor capacity is not a ceiling on further shifting volume away from landfill.', pageW - margin * 2).forEach((line: string) => {
-            if (y > pageH - 40) { doc.addPage(); y = margin; }
-            doc.text(line, margin, y); y += 12;
-          });
-        }
-        y += 10;
-      }
-
-      // ── 7. PRIORITY MATRIX ──
-      sectionHeader('7', 'PRIORITY MATRIX — IMPORTANCE VS. URGENCY');
+      // ── 6. PRIORITY MATRIX ──
+      sectionHeader('6', 'PRIORITY MATRIX — IMPORTANCE VS. URGENCY');
       resetZebra();
       tableHeader([
         { text: 'PRIORITY', x: margin },
@@ -3402,6 +3446,45 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
           { text: p.action, x: margin + 290 },
         ]);
       });
+      y += 10;
+
+      // ── 7. RECOMMENDATIONS ──
+      sectionHeader('7', 'RECOMMENDATIONS');
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+
+      // Diversion recommendations
+      if (destinationData.length > 0) {
+        const landfillEntry = destinationData.find(d => d.destination === 'Landfill' || d.destination === 'Landfill / General Waste');
+        if (landfillEntry) {
+          const landfillPct = totalDestKg > 0 ? (landfillEntry.kg / totalDestKg) * 100 : 0;
+          doc.splitTextToSize(`• Reduce Landfill Share (currently ${landfillPct.toFixed(1)}%): Review whether any of the ${landfillEntry.kg} kg currently logged as "Landfill" is eligible for reclassification to Compost or Animal Feed at the point of logging.`, pageW - margin * 2).forEach((line: string) => {
+            if (y > pageH - 40) { doc.addPage(); y = margin; }
+            doc.text(line, margin, y); y += 12;
+          });
+          y += 3;
+          doc.splitTextToSize('• Expand Compost/Anaerobic Digestion capacity: These are already the primary diversion channels; confirm current vendor capacity is not a ceiling on further shifting volume away from landfill.', pageW - margin * 2).forEach((line: string) => {
+            if (y > pageH - 40) { doc.addPage(); y = margin; }
+            doc.text(line, margin, y); y += 12;
+          });
+          y += 3;
+        }
+      }
+
+      // Metric-based recommendations from priority matrix
+      priorities.filter(p => p.variance > 0).forEach(p => {
+        const tag = p.variance > 50 ? 'URGENT' : p.variance > 10 ? 'IMPORTANT' : 'WATCH';
+        doc.splitTextToSize(`• ${p.metric} (${tag}): ${p.action}`, pageW - margin * 2).forEach((line: string) => {
+          if (y > pageH - 40) { doc.addPage(); y = margin; }
+          doc.text(line, margin, y); y += 12;
+        });
+        y += 3;
+      });
+
+      if (destinationData.length === 0 && priorities.every(p => p.variance <= 0)) {
+        doc.text('All metrics within target range. No corrective actions required.', margin, y); y += 14;
+      }
       y += 10;
 
       // ── 8. ACTION PLAN — FOLLOWING WEEK ──
@@ -3451,8 +3534,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(60, 60, 60);
-      doc.text(`PREPARED BY (MILA AI v${__APP_VERSION__}) — ${new Date().toLocaleDateString()}`, margin, y); y += 14;
-      doc.text('REVIEWED BY (HUMAN SIGN-OFF) — _______________ DATE: ___________', margin, y); y += 22;
+      const outletTeamName = isSupervisorReport
+        ? `${reportScope} Team`
+        : 'Property Management Team';
+      const supervisorName = user?.fullName || user?.email?.split('@')[0] || '_______________';
+      doc.text(`PREPARED BY: ${outletTeamName}`, margin, y); y += 14;
+      doc.text(`REVIEWED BY (SUPERVISOR): ${supervisorName}`, margin, y); y += 14;
+      doc.text(`ELECTRONIC SIGN-OFF: ${user?.email || '_______________'}`, margin, y); y += 14;
+      doc.text(`ROLE: ${generatedForRole}`, margin, y); y += 14;
+      doc.text(`DATE: ${new Date().toLocaleDateString()}`, margin, y); y += 14;
+      doc.text(`SYSTEM: Mila AI v${__APP_VERSION__}`, margin, y); y += 22;
 
       // ── 11. APPENDIX — SOURCES ──
       sectionHeader('11', 'APPENDIX — SOURCES USED');
@@ -3499,16 +3590,31 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
         doc.setFont('helvetica', 'bold');
         doc.text('E', margin + 5.5, 30);
       }
+      // Title — same layout as main page header
       doc.setTextColor(200, 164, 19);
-      doc.setFontSize(8);
-      doc.text('ADDITIONAL REPORT — SUPPLEMENTARY', margin + 28, 22);
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(13);
+      doc.setFontSize(15);
       doc.setFont('helvetica', 'bold');
-      doc.text('Social Engagement Impact — Earth Keeper Program', margin + 28, 36);
+      doc.text('ECOMETRICUS', margin + 38, 26);
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      doc.text('SUPPLEMENTARY — SOCIAL ENGAGEMENT IMPACT', margin + 38, 38);
+      // Right side
+      doc.setFontSize(7.5);
+      doc.setTextColor(180, 220, 180);
+      doc.text(`Report Generated: Mila AI v${__APP_VERSION__}`, pageW - margin, 20, { align: 'right' });
+      doc.setTextColor(180, 180, 180);
+      doc.text(new Date().toLocaleString(lang === 'es' ? 'es-ES' : 'en-US'), pageW - margin, 32, { align: 'right' });
+      // Gold rule below header
       doc.setFillColor(200, 164, 19);
       doc.rect(0, 80, pageW, 2, 'F');
       y = 98;
+
+      // ── Compliance subtitle ──
+      doc.setTextColor(119, 177, 57);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SUPPLEMENTARY  •  EARTH KEEPER PROGRAM', margin, y);
+      y += 18;
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
@@ -3535,81 +3641,98 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       doc.setTextColor(60, 60, 60);
       const nextTierPts = totalPoints < 200 ? 200 - totalPoints : totalPoints < 500 ? 500 - totalPoints : 0;
       configRow('PROGRAM TIER', 'Earth Keeper — Starter Tier');
-      configRow('TOTAL POINTS (CYCLE)', `${totalPoints} pts${nextTierPts > 0 ? ` — ${nextTierPts} to next tier` : ''}`);
+      configRow('TOTAL POINTS (THIS WEEK)', `${totalPoints} pts${nextTierPts > 0 ? ` — ${nextTierPts} to next tier` : ''}`);
       configRow('ACTIVE STREAK', `${activeStreak} day(s)`);
       configRow('CROSS-OUTLET RANK', isSupervisorReport ? 'Not shown — Supervisor view is locked to this outlet (see Report 2 for property-wide leaderboard)' : 'See Gamification Hub');
       y += 10;
+
+      // ── Per-employee points breakdown ──
+      if (employeePoints.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(9);
+        doc.text('EMPLOYEE POINTS — THIS WEEK', margin, y); y += 12;
+        resetZebra();
+        tableHeader([
+          { text: 'EMPLOYEE', x: margin },
+          { text: 'POINTS', x: margin + 250 },
+          { text: 'ACTIVE DAYS', x: margin + 330 },
+          { text: 'RANK', x: margin + 420 },
+        ]);
+        employeePoints.forEach((emp, idx) => {
+          tableRow([
+            { text: emp.name, x: margin },
+            { text: `${emp.points} pts`, x: margin + 250, color: [119, 177, 57], bold: true },
+            { text: `${emp.streak} day(s)`, x: margin + 330 },
+            { text: `#${idx + 1}`, x: margin + 420, bold: idx < 3 },
+          ]);
+        });
+        y += 6;
+        narrativeNote('Points are calculated from gamification_ledger entries within the report date range only. Each employee\'s total reflects their individual actions this week, not a sum across the outlet.');
+        y += 10;
+      }
 
       // ── Live action log ──
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(40, 40, 40);
       doc.setFontSize(9);
-      doc.text('LIVE ACTION LOG — THIS CYCLE', margin, y); y += 12;
+      doc.text('LIVE ACTION LOG — THIS WEEK', margin, y); y += 12;
       resetZebra();
       tableHeader([
-        { text: 'ACTION LOGGED', x: margin },
-        { text: 'POINTS', x: margin + 300 },
-        { text: 'LINKED METRIC', x: margin + 370 },
+        { text: 'EMPLOYEE', x: margin },
+        { text: 'ACTION LOGGED', x: margin + 130 },
+        { text: 'POINTS', x: margin + 340 },
+        { text: 'LINKED METRIC', x: margin + 410 },
       ]);
-      // Fetch live action logs from gamification_ledger
-      try {
-        let actionQuery = supabase.from('gamification_ledger').select('action_key, points_awarded, created_at').order('created_at', { ascending: false }).limit(7);
-        if (isSupervisorReport && personnelOutletId) {
-          actionQuery = actionQuery.eq('outlet_id', personnelOutletId);
-        }
-        const { data: actionLogs } = await actionQuery;
-        const actionLabels: Record<string, string> = {
-          entry_with_photo: 'Entry with Photo',
-          energy_reading: 'Energy Reading',
-          on_time_entry: 'On-Time Entry',
-          streak_bonus: 'Streak Bonus',
-          mila_comment: 'Mila AI Comment',
-          mila_suggestion: 'Mila AI Suggestion',
-          calibration_check: 'Completed calibration check',
-          spoilage_photo: 'Submitted spoilage photo',
-          rescued_produce: 'Rescued near-expiry produce',
-          water_flow_reduction: 'Reduced water flow rate',
-          organic_segregation: 'Correctly segregated organics',
-          batched_dishwasher: 'Batched dishwasher load',
-          lights_off: 'Turned off prep station lights',
-        };
-        const metricLinks: Record<string, string> = {
-          entry_with_photo: 'Food Waste',
-          energy_reading: 'Energy',
-          on_time_entry: 'Food Waste',
-          streak_bonus: 'Engagement',
-          mila_comment: 'Engagement',
-          mila_suggestion: 'Engagement',
-          calibration_check: 'Energy / Water accuracy',
-          spoilage_photo: 'Food Waste',
-          rescued_produce: 'Food Waste',
-          water_flow_reduction: 'Water',
-          organic_segregation: 'Waste Destination',
-          batched_dishwasher: 'Water / Energy',
-          lights_off: 'Energy',
-        };
-        if (actionLogs && actionLogs.length > 0) {
-          actionLogs.forEach((log: any) => {
-            const label = actionLabels[log.action_key] || (log.action_key || 'Action').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
-            const metric = metricLinks[log.action_key] || '—';
-            tableRow([
-              { text: label, x: margin },
-              { text: `+${log.points_awarded || 0}`, x: margin + 300, color: [119, 177, 57], bold: true },
-              { text: metric, x: margin + 370 },
-            ]);
-          });
-        } else {
+      const actionLabels: Record<string, string> = {
+        entry_with_photo: 'Entry with Photo',
+        energy_reading: 'Energy Reading',
+        on_time_entry: 'On-Time Entry',
+        streak_bonus: 'Streak Bonus',
+        mila_comment: 'Mila AI Comment',
+        mila_suggestion: 'Mila AI Suggestion',
+        calibration_check: 'Completed calibration check',
+        spoilage_photo: 'Submitted spoilage photo',
+        rescued_produce: 'Rescued near-expiry produce',
+        water_flow_reduction: 'Reduced water flow rate',
+        organic_segregation: 'Correctly segregated organics',
+        batched_dishwasher: 'Batched dishwasher load',
+        lights_off: 'Turned off prep station lights',
+        supervisor_reward: 'Supervisor Reward',
+      };
+      const metricLinks: Record<string, string> = {
+        entry_with_photo: 'Food Waste',
+        energy_reading: 'Energy',
+        on_time_entry: 'Food Waste',
+        streak_bonus: 'Engagement',
+        mila_comment: 'Engagement',
+        mila_suggestion: 'Engagement',
+        calibration_check: 'Energy / Water accuracy',
+        spoilage_photo: 'Food Waste',
+        rescued_produce: 'Food Waste',
+        water_flow_reduction: 'Water',
+        organic_segregation: 'Waste Destination',
+        batched_dishwasher: 'Water / Energy',
+        lights_off: 'Energy',
+        supervisor_reward: 'Engagement',
+      };
+      if (actionLogsData && actionLogsData.length > 0) {
+        actionLogsData.slice().reverse().forEach((log) => {
+          const label = actionLabels[log.action_key] || (log.action_key || 'Action').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+          const metric = metricLinks[log.action_key] || '—';
           tableRow([
-            { text: 'No actions logged this cycle', x: margin, color: [150, 150, 150] },
-            { text: '—', x: margin + 300 },
-            { text: '—', x: margin + 370 },
+            { text: log.staff_name, x: margin },
+            { text: label, x: margin + 130 },
+            { text: `+${log.points_awarded || 0}`, x: margin + 340, color: [119, 177, 57], bold: true },
+            { text: metric, x: margin + 410 },
           ]);
-        }
-      } catch {
+        });
+      } else {
         tableRow([
-          { text: 'Action log unavailable', x: margin, color: [150, 150, 150] },
-          { text: '—', x: margin + 300 },
-          { text: '—', x: margin + 370 },
+          { text: 'No actions logged this week', x: margin, color: [150, 150, 150] },
+          { text: '—', x: margin + 130 },
+          { text: '—', x: margin + 340 },
+          { text: '—', x: margin + 410 },
         ]);
       }
       y += 6;
@@ -4554,23 +4677,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               </div>
                               {/* Outlet filter for charts */}
                               {outlets.length > 1 && (
-                                <div className="flex items-center gap-2 ml-auto shrink-0">
-                                  <Filter size={14} className="text-brand-gold/60" />
-                                  <div className="w-44">
-                                    <CustomSelect
-                                      compact
-                                      value={(() => {
-                                        const code = chartOutletFilter || outlets[0]?.code || '';
-                                        const o = outlets.find(o => o.code === code);
-                                        return o ? `${o.name} (${code})` : '';
-                                      })()}
-                                      options={outlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
-                                      onChange={v => {
-                                        const code = outlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
-                                        setChartOutletFilter(code);
-                                      }}
-                                    />
-                                  </div>
+                                <div className="ml-auto shrink-0">
+                                  <OutletFilterDropdown
+                                    value={chartOutletFilter || outlets[0]?.code || ''}
+                                    options={outlets.filter(o => o.name)}
+                                    onChange={setChartOutletFilter}
+                                    valueKey="code"
+                                  />
                                 </div>
                               )}
                             </div>
@@ -4781,6 +4894,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             scopeOutletId={!isCompanyWide ? (personnelOutletId || undefined) : undefined}
                             scopeUserId={!isCompanyWide ? user.id : undefined}
                             weekOffset={isCompanyWide ? weekOffset : 0}
+                            dataOwnerUserId={dataOwnerUserId}
                           />
                         </div>
                       )}
@@ -4794,6 +4908,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             scopeOutletId={!isCompanyWide ? (personnelOutletId || undefined) : undefined}
                             scopeUserId={!isCompanyWide ? user.id : undefined}
                             weekOffset={isCompanyWide ? weekOffset : 0}
+                            dataOwnerUserId={dataOwnerUserId}
                           />
                         </div>
                       )}
