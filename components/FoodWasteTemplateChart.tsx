@@ -8,7 +8,7 @@ const DAY_KEY_MAP: Record<string, string> = {
   'THU': 'dayThu', 'FRI': 'dayFri', 'SAT': 'daySat',
 };
 
-const DEFAULT_COLORS = ['#77B139', '#d4af37', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
+const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
 
 interface OutletMeta { key: string; label: string; color: string; }
 
@@ -56,16 +56,20 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({
 
     const minVal = 0;
     const totals = normalizedData.map(d => outletMeta.reduce((sum, o) => sum + (Number((d as any)[o.key]) || 0), 0));
-    const rawMax = Math.max(...totals, benchmark * 6, 1);
-    // Round up to a clean Y-axis max with 4 equal intervals
-    const niceMax = (() => {
-        const interval = rawMax / 4;
-        const mag = Math.pow(10, Math.floor(Math.log10(interval || 1)));
-        const n = interval / mag;
-        let ni = n <= 1 ? 1 : n <= 1.5 ? 1.5 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 3 ? 3 : n <= 4 ? 4 : n <= 5 ? 5 : n <= 6 ? 6 : n <= 8 ? 8 : 10;
-        return ni * mag * 4;
+    // Dynamic Y-axis: scale to whichever is higher — actual data or benchmark — plus 20% headroom
+    const { maxVal, yTicks } = (() => {
+        const dataMax = benchmark;
+        const paddedMax = dataMax * 1.2;
+        const roughInterval = paddedMax / 5;
+        const mag = Math.pow(10, Math.floor(Math.log10(roughInterval || 1)));
+        const n = roughInterval / mag;
+        const niceN = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+        const interval = niceN * mag;
+        const niceMax = Math.ceil(paddedMax / interval) * interval;
+        const count = Math.round(niceMax / interval);
+        const ticks = Array.from({ length: count + 1 }, (_, i) => i * interval).reverse();
+        return { maxVal: niceMax, yTicks: ticks };
     })();
-    const maxVal = niceMax;
     const range = maxVal - minVal;
     const fmtY = (v: number) => v === 0 ? '0' : v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1000 ? `${Math.round(v/1000)}K` : Math.round(v).toString();
 
@@ -74,6 +78,7 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({
 
     const weeklyTotal = totals.reduce((a, b) => a + b, 0);
     const avgDay = weeklyTotal / (normalizedData.length || 1);
+    // benchmark is daily target; compare weekly total against 7 days * daily target
     const hasAlert = weeklyTotal > benchmark * 7;
 
     return (
@@ -106,7 +111,7 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statBenchmark')}</p>
-                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{(benchmark * 7).toFixed(0)}<span className="text-[10px] text-white/40 ml-0.5">kg/wk</span></p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{benchmark.toFixed(0)}<span className="text-[10px] text-white/40 ml-0.5">kg/d</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statWeekly')}</p>
@@ -122,7 +127,7 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({
             <div className="flex-1 w-full relative min-h-0 pb-6">
                 {/* Y-Axis */}
                 <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between py-1 z-10 pointer-events-none w-12">
-                    {[maxVal, maxVal * 0.75, maxVal * 0.5, maxVal * 0.25, 0].map((val, i) => (
+                    {yTicks.map((val, i) => (
                         <div key={i} className="flex items-center justify-end pr-2 h-0">
                             <span className="text-[9px] font-bold text-white/50 tabular-nums">{fmtY(val)}</span>
                         </div>
@@ -133,17 +138,7 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({
                 <div className="absolute left-12 right-0 top-0 bottom-6">
                     {/* Grid lines */}
                     <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                        {[0, 1, 2, 3, 4].map(i => <div key={i} className="w-full border-t border-white/5" />)}
-                    </div>
-
-                    {/* Benchmark label */}
-                    <div className="absolute inset-0 pointer-events-none">
-                        <div className="absolute right-0 -translate-y-1/2 flex items-center gap-1" style={{ top: `${getY(benchmark)}%` }}>
-                            <div className="w-2 h-2 rounded-full bg-brand-gold border border-brand-gold" />
-                            <div className="bg-brand-gold/20 border border-brand-gold/40 px-1.5 py-0.5 rounded text-[7px] font-black text-brand-gold uppercase tracking-wider">
-                                {benchmark.toFixed(1)}kg/d
-                            </div>
-                        </div>
+                        {yTicks.map((_, i) => <div key={i} className="w-full border-t border-white/5" />)}
                     </div>
 
                     {/* SVG Stacked Bars */}
@@ -215,6 +210,16 @@ const FoodWasteTemplateChart: React.FC<FoodWasteTemplateChartProps> = ({
                             );
                         })}
                     </svg>
+
+                    {/* Benchmark label — after SVG so it renders on top of the line */}
+                    <div className="absolute inset-0 pointer-events-none z-20">
+                        <div className="absolute right-0 -translate-y-1/2 flex items-center gap-1" style={{ top: `${getY(benchmark)}%` }}>
+                            <div className="w-2 h-2 rounded-full bg-brand-gold border border-brand-gold" />
+                            <div className="bg-brand-gold px-1.5 py-0.5 rounded text-[7px] font-black text-[#0d2117] uppercase tracking-wider">
+                                {benchmark.toFixed(1)}kg/d
+                            </div>
+                        </div>
+                    </div>
 
                     {/* Data point dots */}
                     {normalizedData.map((d, i) => {

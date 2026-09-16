@@ -164,7 +164,7 @@ export const useFoodWasteChartData = (targetKg: number = 80, activeOutletCount: 
               keys.find(k => k.slice(0, 4) === outletName.slice(0, 4));
 
             if (matchedKey && dayMap[dayLabel]) {
-              dayMap[dayLabel][matchedKey] += co2e;
+              dayMap[dayLabel][matchedKey] += mass;
             }
           });
         }

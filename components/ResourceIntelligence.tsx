@@ -22,6 +22,16 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
   const { t } = useI18n();
   const [chartOutletFilter, setChartOutletFilter] = useState<string>(allOutlets[0]?.code || 'all');
 
+  // Outlet color/label maps — same pattern as DashboardPage and FoodWasteIntelligence
+  const resourceOutletColors = allOutlets.reduce((acc, o) => {
+    acc[(o.outlet_name || o.name).toUpperCase()] = o.color_hex || '#d4af37';
+    return acc;
+  }, {} as Record<string, string>);
+  const resourceOutletLabels = allOutlets.reduce((acc, o) => {
+    acc[(o.outlet_name || o.name).toUpperCase()] = o.name;
+    return acc;
+  }, {} as Record<string, string>);
+
   const {
     waterData,
     energyData,
@@ -70,8 +80,9 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
   // Effective chart benchmarks — use per-outlet values when available
   const effectiveWaterTarget = chartOutletBenchmarks?.water ?? waterTarget;
   const effectiveEnergyTarget = chartOutletBenchmarks?.energy ?? energyTarget;
-  const effectiveWaterDailyBenchmark = effectiveWaterTarget / 7;
-  const effectiveEnergyDailyBenchmark = effectiveEnergyTarget / 7;
+  // water_usage_liters and energy_limit_kwh are stored as daily targets (L/day, kWh/day)
+  const effectiveWaterDailyBenchmark = effectiveWaterTarget;
+  const effectiveEnergyDailyBenchmark = effectiveEnergyTarget;
 
   // For daily mode (supervisor/basic): KPI cards show today only, not the full 7-day chart total
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -82,9 +93,9 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
     ? energyData.filter(d => d.day === todayLabel).reduce((acc, d) => acc + outletKeys.reduce((s, k) => s + (Number(d[k]) || 0), 0), 0)
     : energyWeeklyTotal;
 
-  // Scale targets to daily for non-admin
-  const waterTargetScaled = dailyMode ? waterTarget / 7 : waterTarget;
-  const energyTargetScaled = dailyMode ? energyTarget / 7 : energyTarget;
+  // Targets are daily; in weekly mode compare against 7-day sum
+  const waterTargetScaled = dailyMode ? waterTarget : waterTarget * 7;
+  const energyTargetScaled = dailyMode ? energyTarget : energyTarget * 7;
 
   const showAlertWater = todayWater > waterTargetScaled;
   const showAlertEnergy = todayEnergy > energyTargetScaled;
@@ -248,6 +259,8 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
           icon={<Droplets size={18} className="text-blue-400" />}
           allOutlets={allOutlets}
           outletKeys={filteredOutletKeys}
+          outletColors={resourceOutletColors}
+          outletLabels={resourceOutletLabels}
         />
         <ResourceTemplateChart
           data={energyData}
@@ -258,6 +271,8 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
           icon={<Zap size={18} className="text-brand-gold" />}
           allOutlets={allOutlets}
           outletKeys={filteredOutletKeys}
+          outletColors={resourceOutletColors}
+          outletLabels={resourceOutletLabels}
         />
       </div>
 
