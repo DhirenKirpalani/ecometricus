@@ -5,6 +5,7 @@ import { useFoodWasteChartData } from '../hooks/useFoodWasteChartData';
 import Co2EmissionsTemplateChart from './Co2EmissionsTemplateChart';
 import FoodWasteTemplateChart from './FoodWasteTemplateChart';
 import CustomSelect from './CustomSelect';
+import OutletFilterDropdown from './OutletFilterDropdown';
 import { supabase } from '../lib/supabase';
 import { Outlet } from '../types';
 import { useI18n } from '../lib/useI18n';
@@ -155,22 +156,13 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
         </div>
         {/* Outlet filter for charts */}
         {allOutlets.length > 1 && (
-          <div className="flex items-center gap-2 w-full sm:w-auto sm:shrink-0">
-            <Filter size={14} className="text-brand-gold/60 shrink-0" />
-            <div className="flex-1 sm:w-44">
-              <CustomSelect
-                compact
-                value={(() => {
-                  const o = allOutlets.find(o => o.code === chartOutletFilter);
-                  return o ? `${o.name} (${o.code})` : '';
-                })()}
-                options={allOutlets.filter(o => o.name).map(o => `${o.name} (${o.code})`)}
-                onChange={v => {
-                  const code = allOutlets.find(o => `${o.name} (${o.code})` === v)?.code || '';
-                  setChartOutletFilter(code);
-                }}
-              />
-            </div>
+          <div className="w-full sm:w-auto sm:shrink-0">
+            <OutletFilterDropdown
+              value={chartOutletFilter || allOutlets[0]?.code || ''}
+              options={allOutlets.filter(o => o.name)}
+              onChange={setChartOutletFilter}
+              valueKey="code"
+            />
           </div>
         )}
       </div>
