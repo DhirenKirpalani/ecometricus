@@ -23,6 +23,7 @@ interface FoodWasteIntelligenceProps {
   scopeOutletId?: string;
   scopeUserId?: string;
   weekOffset?: number;
+  dataOwnerUserId?: string | null;
 }
 
 const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
@@ -34,7 +35,8 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
   scopeOutletName,
   scopeOutletId,
   scopeUserId,
-  weekOffset = 0
+  weekOffset = 0,
+  dataOwnerUserId
 }) => {
   const { t } = useI18n();
   const [chartOutletFilter, setChartOutletFilter] = useState<string>(allOutlets[0]?.code || 'all');
@@ -43,7 +45,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
   const [chartOutletBenchmarks, setChartOutletBenchmarks] = useState<{ waste: number } | null>(null);
   useEffect(() => {
     const fetchOutletBenchmarks = async () => {
-      if (!chartOutletFilter || chartOutletFilter === 'all' || allOutlets.length <= 1) {
+      if (!chartOutletFilter || chartOutletFilter === 'all') {
         setChartOutletBenchmarks(null);
         return;
       }
@@ -52,11 +54,13 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
       const outletName = outlet.outlet_name || outlet.name || '';
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+      // Use the data owner's user_id (admin) — for supervisors, this is resolved from personnel
+      const benchmarkUserId = dataOwnerUserId || session.user.id;
       const { data } = await supabase
         .from('benchmarks')
         .select('food_waste_target_kg')
         .eq('outlet_name', outletName)
-        .eq('user_id', session.user.id)
+        .eq('user_id', benchmarkUserId)
         .maybeSingle();
       if (data && data.food_waste_target_kg) {
         setChartOutletBenchmarks({ waste: data.food_waste_target_kg });
@@ -65,7 +69,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
       }
     };
     fetchOutletBenchmarks();
-  }, [chartOutletFilter, allOutlets]);
+  }, [chartOutletFilter, allOutlets, dataOwnerUserId]);
 
   // Effective chart benchmarks — use per-outlet values when available
   const effectiveWasteTarget = chartOutletBenchmarks?.waste ?? benchmarks.food_waste_target_kg;

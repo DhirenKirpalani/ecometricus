@@ -1770,17 +1770,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   useEffect(() => {
     const fetchChartOutletBenchmarks = async () => {
       const code = chartOutletFilter || outlets[0]?.code || '';
-      if (!code || outlets.length <= 1) { setChartOutletBenchmarks(null); return; }
+      if (!code) { setChartOutletBenchmarks(null); return; }
       const outlet = outlets.find(o => o.code === code);
       if (!outlet) { setChartOutletBenchmarks(null); return; }
       const outletName = outlet.outlet_name || outlet.name || '';
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+      // Use the data owner's user_id (admin) — for supervisors, this is resolved from personnel
+      const benchmarkUserId = dataOwnerUserId || session.user.id;
       const { data } = await supabase
         .from('benchmarks')
         .select('food_waste_target_kg, water_usage_liters, energy_limit_kwh')
         .eq('outlet_name', outletName)
-        .eq('user_id', session.user.id)
+        .eq('user_id', benchmarkUserId)
         .maybeSingle();
       if (data) {
         setChartOutletBenchmarks({
@@ -1793,7 +1795,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
       }
     };
     fetchChartOutletBenchmarks();
-  }, [chartOutletFilter, outlets]);
+  }, [chartOutletFilter, outlets, dataOwnerUserId]);
 
   // Effective chart benchmarks — use per-outlet values when available, otherwise global params
   const effectiveChartWasteTarget = chartOutletBenchmarks?.waste ?? params.wasteTarget;
@@ -4892,6 +4894,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             scopeOutletId={!isCompanyWide ? (personnelOutletId || undefined) : undefined}
                             scopeUserId={!isCompanyWide ? user.id : undefined}
                             weekOffset={isCompanyWide ? weekOffset : 0}
+                            dataOwnerUserId={dataOwnerUserId}
                           />
                         </div>
                       )}
@@ -4905,6 +4908,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                             scopeOutletId={!isCompanyWide ? (personnelOutletId || undefined) : undefined}
                             scopeUserId={!isCompanyWide ? user.id : undefined}
                             weekOffset={isCompanyWide ? weekOffset : 0}
+                            dataOwnerUserId={dataOwnerUserId}
                           />
                         </div>
                       )}

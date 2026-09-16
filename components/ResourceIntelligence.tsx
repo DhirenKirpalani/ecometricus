@@ -15,11 +15,12 @@ interface ResourceIntelligenceProps {
   scopeOutletId?: string;
   scopeUserId?: string;
   weekOffset?: number;
+  dataOwnerUserId?: string | null;
 }
 
 const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
 
-const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets, dailyMode = false, scopeOutletName, scopeOutletId, scopeUserId, weekOffset = 0 }) => {
+const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets, dailyMode = false, scopeOutletName, scopeOutletId, scopeUserId, weekOffset = 0, dataOwnerUserId }) => {
   const { t } = useI18n();
   const [chartOutletFilter, setChartOutletFilter] = useState<string>(allOutlets[0]?.code || 'all');
 
@@ -51,7 +52,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
   const [chartOutletBenchmarks, setChartOutletBenchmarks] = useState<{ water: number; energy: number } | null>(null);
   useEffect(() => {
     const fetchOutletBenchmarks = async () => {
-      if (!chartOutletFilter || chartOutletFilter === 'all' || allOutlets.length <= 1) {
+      if (!chartOutletFilter || chartOutletFilter === 'all') {
         setChartOutletBenchmarks(null);
         return;
       }
@@ -64,7 +65,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
         .from('benchmarks')
         .select('water_usage_liters, energy_limit_kwh')
         .eq('outlet_name', outletName)
-        .eq('user_id', session.user.id)
+        .eq('user_id', dataOwnerUserId || session.user.id)
         .maybeSingle();
       if (data && (data.water_usage_liters || data.energy_limit_kwh)) {
         setChartOutletBenchmarks({
@@ -76,7 +77,7 @@ const ResourceIntelligence: React.FC<ResourceIntelligenceProps> = ({ allOutlets,
       }
     };
     fetchOutletBenchmarks();
-  }, [chartOutletFilter, allOutlets, waterTarget, energyTarget]);
+  }, [chartOutletFilter, allOutlets, waterTarget, energyTarget, dataOwnerUserId]);
 
   // Effective chart benchmarks — use per-outlet values when available
   const effectiveWaterTarget = chartOutletBenchmarks?.water ?? waterTarget;
