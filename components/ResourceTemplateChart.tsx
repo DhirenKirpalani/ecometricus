@@ -25,6 +25,10 @@ interface ResourceTemplateChartProps {
     allOutlets?: Outlet[];
     /** Dynamic outlet keys from the hook */
     outletKeys?: string[];
+    /** Outlet color mapping (keyed by uppercase outlet name) */
+    outletColors?: Record<string, string>;
+    /** Outlet display names (keyed by uppercase outlet name) */
+    outletLabels?: Record<string, string>;
 }
 
 const DEFAULT_COLORS = ['#d4af37', '#77B139', '#F97316', '#60A5FA', '#A855F7', '#FF914D'];
@@ -39,6 +43,8 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
     icon,
     allOutlets,
     outletKeys = [],
+    outletColors = {},
+    outletLabels = {},
 }) => {
     const { t } = useI18n();
     const [selectedDay, setSelectedDay] = useState<ResourceData | null>(null);
@@ -53,22 +59,26 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
         if (outletKeys.length === 0) return [];
         return outletKeys.map((key, i) => {
             const outlet = allOutlets?.find(o => (o.outlet_name || o.name).toUpperCase() === key);
-            const label = outlet?.name || key.charAt(0) + key.slice(1).toLowerCase();
-            const color = outlet?.color_hex || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+            const label = outletLabels[key] || outlet?.name || key.charAt(0) + key.slice(1).toLowerCase();
+            const color = outletColors[key] || outlet?.color_hex || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
             return { key, label, color };
         });
-    }, [outletKeys, allOutlets]);
+    }, [outletKeys, allOutlets, outletColors, outletLabels]);
 
     const totals = useMemo(() => data.map(d => outletMeta.reduce((sum, o) => sum + (Number(d[o.key]) || 0), 0)), [data, outletMeta]);
 
-    const maxVal = useMemo(() => {
-        if (maxValProp != null) return maxValProp;
-        const rawMax = Math.max(...totals, benchmark * 6, 1);
-        const interval = rawMax / 4;
-        const mag = Math.pow(10, Math.floor(Math.log10(interval || 1)));
-        const n = interval / mag;
-        let ni = n <= 1 ? 1 : n <= 1.5 ? 1.5 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 3 ? 3 : n <= 4 ? 4 : n <= 5 ? 5 : n <= 6 ? 6 : n <= 8 ? 8 : 10;
-        return ni * mag * 4;
+    const { maxVal, yTicks } = useMemo(() => {
+        const dataMax = benchmark;
+        const paddedMax = dataMax * 1.2;
+        const roughInterval = paddedMax / 5;
+        const mag = Math.pow(10, Math.floor(Math.log10(roughInterval || 1)));
+        const n = roughInterval / mag;
+        const niceN = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+        const interval = niceN * mag;
+        const niceMax = Math.ceil(paddedMax / interval) * interval;
+        const count = Math.round(niceMax / interval);
+        const ticks = Array.from({ length: count + 1 }, (_, i) => i * interval).reverse();
+        return { maxVal: niceMax, yTicks: ticks };
     }, [maxValProp, totals, benchmark]);
 
     const fmtY = (v: number) => v === 0 ? '0' : v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1000 ? `${Math.round(v/1000)}K` : Math.round(v).toString();
@@ -121,7 +131,7 @@ const ResourceTemplateChart: React.FC<ResourceTemplateChartProps> = ({
             <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statBenchmark')}</p>
-                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(benchmark * 7).toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">{unit}/wk</span></p>
+                    <p className="text-sm font-geometric font-black text-white leading-none mt-1">{Math.round(benchmark).toLocaleString()}<span className="text-[10px] text-white/40 ml-0.5">{unit}/d</span></p>
                 </div>
                 <div className="bg-brand-dark/40 rounded-lg px-3 py-2 border border-brand-gold/5">
                     <p className="text-[8px] font-black text-brand-gold/60 uppercase tracking-widest">{t('charts.statWeekly')}</p>

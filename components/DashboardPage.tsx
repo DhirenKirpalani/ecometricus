@@ -1798,10 +1798,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
   const effectiveChartWasteTarget = chartOutletBenchmarks?.waste ?? params.wasteTarget;
   const effectiveChartWaterTarget = chartOutletBenchmarks?.water ?? params.waterTarget;
   const effectiveChartEnergyTarget = chartOutletBenchmarks?.energy ?? params.energyTarget;
-  const effectiveChartWasteDailyBenchmark = effectiveChartWasteTarget / 7;
-  const effectiveChartCo2DailyBenchmark = (effectiveChartWasteTarget / 7) * 2.85;
-  const effectiveChartWaterDailyBenchmark = effectiveChartWaterTarget / 7;
-  const effectiveChartEnergyDailyBenchmark = effectiveChartEnergyTarget / 7;
+  // food_waste_target_kg is stored as a daily target (kg/day)
+  const effectiveChartWasteDailyBenchmark = effectiveChartWasteTarget;
+  const effectiveChartCo2DailyBenchmark = effectiveChartWasteTarget * 2.85;
+  // water_usage_liters and energy_limit_kwh are stored as daily targets
+  const effectiveChartWaterDailyBenchmark = effectiveChartWaterTarget;
+  const effectiveChartEnergyDailyBenchmark = effectiveChartEnergyTarget;
 
   // Handle auto-mapping roles/permissions when position changes
   // Skip when editing an existing user — use a ref to avoid race conditions
@@ -4606,7 +4608,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout, onUpdateU
                               <Co2EmissionsTemplateChart
                                 data={wasteChartData}
                                 benchmark={effectiveChartCo2DailyBenchmark}
-                                weeklyTotal={wasteWeeklyTotal}
+                                weeklyTotal={wasteWeeklyTotal * 2.85}
                                 outletKeys={filteredOutletKeys}
                                 outletColors={templateOutletColors}
                                 outletLabels={templateOutletLabels}

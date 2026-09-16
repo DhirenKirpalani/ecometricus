@@ -68,8 +68,9 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
 
   // Effective chart benchmarks — use per-outlet values when available
   const effectiveWasteTarget = chartOutletBenchmarks?.waste ?? benchmarks.food_waste_target_kg;
-  const effectiveDailyMassBenchmark = effectiveWasteTarget / 7;
-  const effectiveDailyCo2Benchmark = (effectiveWasteTarget / 7) * 2.85;
+  // food_waste_target_kg is a daily target (kg/day)
+  const effectiveDailyMassBenchmark = effectiveWasteTarget;
+  const effectiveDailyCo2Benchmark = effectiveWasteTarget * 2.85;
   const { totalMass, carbonImpact, financialLoss, outletDetails, isLoading, error: wasteError } = useFoodWasteData(
     outletId,
     unitType,
@@ -91,7 +92,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
 
   // Outlet color/label maps and all outlet name keys derived from allOutlets
   const wasteOutletColors = allOutlets.reduce((acc, o) => {
-    acc[(o.outlet_name || o.name).toUpperCase()] = o.color_hex || '#77B139';
+    acc[(o.outlet_name || o.name).toUpperCase()] = o.color_hex || '#d4af37';
     return acc;
   }, {} as Record<string, string>);
   const wasteOutletLabels = allOutlets.reduce((acc, o) => {
@@ -269,7 +270,7 @@ const FoodWasteIntelligence: React.FC<FoodWasteIntelligenceProps> = ({
                 <Co2EmissionsTemplateChart
                   data={cumulativeData}
                   benchmark={effectiveDailyCo2Benchmark}
-                  weeklyTotal={weeklyTotal}
+                  weeklyTotal={weeklyTotal * 2.85}
                   outletKeys={filteredWasteOutletKeys}
                   outletColors={wasteOutletColors}
                   outletLabels={wasteOutletLabels}
