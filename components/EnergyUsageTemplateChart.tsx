@@ -161,8 +161,6 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({
                         </defs>
                         {/* Green safe zone below benchmark */}
                         <rect x="0" y={getY(benchmark)} width="100" height={100 - getY(benchmark)} fill="#77B139" fillOpacity="0.08" />
-                        {/* Benchmark line */}
-                        <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1.5" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.9" />
                         {normalizedData.map((d, i) => {
                             const x = getX(i, normalizedData.length);
                             const total = outletMeta.reduce((s, o) => s + (Number((d as any)[o.key]) || 0), 0);
@@ -204,6 +202,8 @@ const EnergyUsageTemplateChart: React.FC<EnergyUsageTemplateChartProps> = ({
                                 </g>
                             );
                         })}
+                        {/* Benchmark line — after bars so it renders on top */}
+                        <line x1="0" y1={getY(benchmark)} x2="100" y2={getY(benchmark)} stroke="#C8A413" strokeWidth="1.5" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity="0.9" />
                     </svg>
 
                     {/* Benchmark label — after SVG so it renders on top of the line */}
