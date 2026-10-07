@@ -356,7 +356,7 @@ async function generateAdminSummary(): Promise<void> {
                 'Authorization': `Bearer ${deepseekApiKey}`,
             },
             body: JSON.stringify({
-                model: 'deepseek-v4-flash',
+                model: 'deepseek-flash',
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt },
