@@ -22,6 +22,6 @@ View your app in AI Studio: https://ai.studio/apps/drive/1bZpO4Gg5WY8buzGcJ-DjvW
 ## AI Integration (Mila V2)
 
 This project now uses **DeepSeek-V3** via the OpenAI-compatible API.
-- **Engine**: DeepSeek-V3 (`deepseek-chat`)
+- **Engine**: DeepSeek-V4 Flash (`deepseek-v4-flash`)
 - **Knowledge Base**: Hardcoded GSTC 2026 / ESG Criteria.
 - **Live Metrics**: Correlates Daily Migration Data from Dashboard Vitals (Profit, Sales, Waste, etc.).
