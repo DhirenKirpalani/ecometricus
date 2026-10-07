@@ -14,7 +14,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://rqhlhazvplpajzwwoncz.supabase.co';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY') || 'sk-0a92323227144880af7b3a250fbfbe42';
+const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY') || '';
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
@@ -356,7 +356,7 @@ async function generateAdminSummary(): Promise<void> {
                 'Authorization': `Bearer ${deepseekApiKey}`,
             },
             body: JSON.stringify({
-                model: 'deepseek-chat',
+                model: 'deepseek-v4-flash',
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt },

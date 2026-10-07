@@ -116,8 +116,7 @@ const MilaWidget: React.FC<MilaWidgetProps> = ({ context }) => {
         }
 
         try {
-            // @ts-ignore
-            const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || "sk-0a92323227144880af7b3a250fbfbe42";
+            const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
             if (!apiKey) throw new Error(t('mila.errorMissingApiKey'));
 
             // RAG: Retrieve relevant documents from internal knowledge base
@@ -232,7 +231,7 @@ INSTRUCTIONS:
                         'Authorization': `Bearer ${apiKey}`
                     },
                     body: JSON.stringify({
-                        model: 'deepseek-chat',
+                        model: 'deepseek-v4-flash',
                         messages: apiMessages,
                         tools: tools.length > 0 ? tools : undefined,
                         tool_choice: 'auto',
