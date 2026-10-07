@@ -231,7 +231,7 @@ INSTRUCTIONS:
                         'Authorization': `Bearer ${apiKey}`
                     },
                     body: JSON.stringify({
-                        model: 'deepseek-v4-flash',
+                        model: 'deepseek-flash',
                         messages: apiMessages,
                         tools: tools.length > 0 ? tools : undefined,
                         tool_choice: 'auto',
